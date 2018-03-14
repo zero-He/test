@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8" ?>   
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.homework.dao.mybatis.HomeworkConfigDao">
+
+	<insert id="addHomeworkConfig" keyProperty="configId"  useGeneratedKeys="true" >
+		<![CDATA[
+		insert into hw_homework_config (
+		   	year,
+		   	type,
+		   	work_begintime,
+		   	work_endtime,
+		   	cycle_begintime,
+		   	cycle_endtime,
+		   	memo,
+		   	createdBy,
+		   	createdOn,
+		   	modifiedBy,
+		   	modifiedOn,
+		   	isDeleted
+		) VALUES (
+		   	#{year},
+		   	#{type},
+		   	now(),
+		   	#{work_endtime},
+		   	#{cycle_begintime},
+		   	#{cycle_endtime},
+		   	#{memo},
+		   	#{createdBy},
+		   	now(),
+		   	#{createdBy},
+		    now(),
+		    0
+		)
+		]]>
+	</insert>
+
+	<select id="GetHomeworkConfigList" parameterType="long"
+		resultType="cn.strong.leke.homework.model.HomeworkConfig">
+		
+		SELECT *
+		  FROM hw_homework_config
+		 WHERE isdeleted =0
+		 <if test="null != year and  ''!= year">
+		  and year= #{year}
+		 </if>
+		 <if test="type !=null and  ''!= type">
+		  and type= #{type}
+		 </if>
+		 order by createdOn  desc
+		
+	</select>
+
+</mapper>   

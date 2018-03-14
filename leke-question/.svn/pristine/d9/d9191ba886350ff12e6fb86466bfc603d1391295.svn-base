@@ -1,0 +1,57 @@
+<div class="detail">
+	<div class="m-search-box">
+		<div class="item">
+			<label class="title">审核日期：</label>
+			<input type="text" class="Wdate u-ipt u-ipt-nm"
+				data-bind="datepicker: {
+							value: query.startDate,
+							maxDate : query.endDate,
+							dateFmt: 'yyyy-MM-dd'
+						}"/>
+			- 
+			<input type="text" class="Wdate u-ipt u-ipt-nm" 
+				data-bind="datepicker: {
+							value: query.endDate,
+							minDate : query.startDate,
+							dateFmt: 'yyyy-MM-dd'
+						}"/>
+			<label class="title">审核人：</label>
+			<input type="text" class="u-ipt u-ipt-nm" data-bind="value: query.userName">
+			<input class="u-btn u-btn-nm u-btn-bg-turquoise" type="button"
+				data-bind="value: '查询', click: function() {doSearch();}">
+		</div>
+	</div>
+	<div class="base_view1">
+		<div class="m-table">
+			<table>
+				<thead>
+					<tr>
+						<th>审核人</th>
+						<th>领取量</th>
+						<th>审核量</th>
+						<th>有效量</th>
+					</tr>
+				</thead>
+				<tbody>
+					<!-- ko foreach: inputStatisList -->
+					<tr>
+						<td>
+							<a class="s-c-turquoise" href="javascript:void(0);"
+								data-bind="text: $data.userName, click: function() {$parent.viewUserCheckAmount($data);}"></a>
+						</td>
+						<td data-bind="text: $data.taskAmount || 0"></td>
+						<td data-bind="text: $data.checkAmount || 0"></td> 
+						<td data-bind="text: $data.effectiveAmount || 0"></td> 
+					</tr> 
+					<!-- /ko -->
+					<tr class="s-c-orange">
+						<td>合计</td> 
+						<td data-bind="text: taskTotalAmount"></td> 
+						<td data-bind="text: checkTotalAmount"></td> 
+						<td data-bind="text: effectiveTotalAmount"></td> 
+					</tr>
+				</tbody>
+			</table>
+		</div>
+	</div>
+</div>

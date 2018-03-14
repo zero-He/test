@@ -1,0 +1,83 @@
+<div class="m-search-box">
+	<label class="title">执行日期：</label>
+	<input type="text" name="date" class="u-ipt u-ipt-nm"
+		data-bind="datepicker: {
+			value: query.date,
+			maxDate: '%y-%M-%d'
+		}"/>
+	<label class="title">应用名：</label>
+	<select name="serverName" class="u-select u-select-nm"
+		data-bind="options: domains,
+				   optionsText: 'name',
+				   optionsValue: 'subdomain',
+				   optionsCaption: '==请选择==',
+				   value: query.serverName,
+				   valueAllowUnset: true"></select>
+	<input name="sqlId" class="u-ipt u-ipt-lg"
+		data-bind="value: query.sqlId"/>
+	<input type="submit" value="查询" class="u-btn u-btn-nm u-btn-bg-turquoise"
+		data-bind="click: doSearch"/>
+</div>
+
+<div class="m-table">
+<table>
+	<tbody>
+		<tr>
+			<th>SQL ID</th>
+			<th>类名</th>
+			<!-- ko foreach: sortThs -->
+			<th>
+				<label class="f-csp" title="点击排序"
+					data-bind="click: function() {
+						$component.orderBy($data.prop);
+					}">
+				<span data-bind="text: name">&nbsp;</span>
+				<i class="icon iconfont"
+					data-bind="css: {
+						's-c-gray': $component.orderBy() != $data.prop
+					}">&#xf0170;</i>
+				</label>
+			</th>
+			<!-- /ko -->
+			<th style="width: 100px;">操作</th>
+		</tr>
+	
+		<!-- ko foreach: visibleStats -->
+		<tr>
+			<td>
+				<a target="_blank" class="s-c-turquoise"
+					data-bind="text: sqlId, attr: {
+						href: recordUrl
+					}"></a>
+			</td>
+			<td data-bind="text: className"></td>
+			<td data-bind="text: avgCostTime"></td>
+			<td data-bind="text: maxCostTime"></td>
+			<td data-bind="text: count"></td>
+			<td>
+				<a target="_blank" class="s-c-turquoise"
+					data-bind="attr: {
+						href: infoUrl
+					}">SQL语句</a>
+			</td>
+		</tr>
+		<!-- /ko -->
+	</tbody>
+</table>
+</div>
+<div data-bind="component: {
+	name: 'leke-page',
+	params: {
+		curPage: curPage,
+		totalSize: totalSize,
+		pageSize: pageSize
+	}
+}"></div>
+<!-- ko if: visibleStats().length == 0 -->
+<p class="m-tips">
+	<i></i>
+	<span>
+	当前没有相关数据!
+	</span>
+</p>
+<!-- /ko -->

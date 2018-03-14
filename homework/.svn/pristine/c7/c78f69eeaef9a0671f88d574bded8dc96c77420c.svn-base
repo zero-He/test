@@ -1,0 +1,155 @@
+package cn.strong.leke.homework.service.impl;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import javax.annotation.Resource;
+
+import org.bson.types.ObjectId;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StopWatch;
+
+import cn.strong.leke.common.serialize.support.json.JsonUtils;
+import cn.strong.leke.common.utils.CollectionUtils;
+import cn.strong.leke.common.utils.StringUtils;
+import cn.strong.leke.homework.dao.mybatis.ExerciseOldDao;
+import cn.strong.leke.homework.manage.ExerciseService;
+import cn.strong.leke.homework.model.ExerciseItem;
+import cn.strong.leke.homework.model.ExerciseOld;
+import cn.strong.leke.homework.model.mongo.Exercise;
+import cn.strong.leke.homework.model.mongo.ExerciseQuestionCorrect;
+import cn.strong.leke.homework.model.mongo.ExerciseQuestionResult;
+import cn.strong.leke.homework.service.ExerciseOldService;
+import cn.strong.leke.homework.util.AnswerUtils;
+import cn.strong.leke.homework.util.ExerciseCommon;
+
+@Service
+public class ExerciseOldServiceImpl implements ExerciseOldService {
+
+	@Resource
+	private ExerciseOldDao exerciseOldDao;
+	@Resource
+	private ExerciseService exerciseService;
+	
+	private static final Logger log = LoggerFactory.getLogger(ExerciseOldDao.class);
+
+	@Override
+	public void migrationToMongoDB() {
+		log.info("mysql : Exercise ExerciseItem 迁移到 MongoDB exercise 【Start】 ");
+		long maxExerciseId = 0L;
+		StopWatch watch = new StopWatch();
+		watch.start();
+		while (true) {
+			//每次从mysql 读取 10w条
+			List<ExerciseOld> partDatas = exerciseOldDao.findBatchExercise(maxExerciseId);
+			if (CollectionUtils.isEmpty(partDatas)) {
+				break;
+			}
+			long maxSize = 10000L; //每次往mongodb写入1w条
+			Long skip = 0L;
+			long groupCount = (long) Math.ceil(BigDecimal.valueOf(partDatas.size())
+					.divide(BigDecimal.valueOf(maxSize), 2, RoundingMode.HALF_UP).doubleValue());
+			for (Long i = 0L; i < groupCount; i++) {
+				skip = i * maxSize;
+				List<ExerciseOld> stepExercises = partDatas.stream().skip(skip).limit(maxSize).collect(Collectors.toList());
+
+				List<ExerciseItem> stepExerciseItems = exerciseOldDao.findBatchExerciseItem(stepExercises.stream()
+						.map(v -> v.getExerciseId()).collect(Collectors.toList()));
+				List<Exercise> mgExercises = stepExercises.stream().map(e->{
+					List<ExerciseItem> exerciseItems = stepExerciseItems.stream().filter(eitem->eitem.getExerciseId().equals(e.getExerciseId())).collect(Collectors.toList());
+					return this.buildExercise(e, exerciseItems);
+				}).collect(Collectors.toList());
+				this.exerciseService.insertMany(mgExercises);
+			}
+			maxExerciseId = partDatas.get(partDatas.size() - 1).getExerciseId();
+			log.info("exerciseIdList: "+partDatas.stream().map(v->v.getExerciseId()).collect(Collectors.toList()).toString());
+		}
+		watch.stop();
+		log.info("mysql : Exercise ExerciseItem 迁移到 MongoDB exercise 执行时间"+ watch.getTotalTimeSeconds()+" 【End】");
+	}
+	
+	private cn.strong.leke.homework.model.mongo.Exercise buildExercise(ExerciseOld oldExercise,List<ExerciseItem> items){
+		cn.strong.leke.homework.model.mongo.Exercise mgoExercise = new cn.strong.leke.homework.model.mongo.Exercise();
+		mgoExercise.setExerciseId(new ObjectId().toString());
+		mgoExercise.setMysqlKey(oldExercise.getExerciseId());
+		mgoExercise.setExerciseName(oldExercise.getExerciseName());
+		if(oldExercise.getRightNum()==null || oldExercise.getTotalNum() == null || oldExercise.getTotalNum() == 0){
+			mgoExercise.setAccuracy(BigDecimal.valueOf(0d));
+		}else{
+			BigDecimal rigthRate = BigDecimal.valueOf(oldExercise.getRightNum()).divide(
+					BigDecimal.valueOf(oldExercise.getTotalNum()), 2, RoundingMode.HALF_UP);
+			mgoExercise.setAccuracy(rigthRate);
+		}
+		mgoExercise.setExerciseType(oldExercise.getExerciseType());
+		mgoExercise.setCreatedBy(oldExercise.getCreatedBy());
+		if(oldExercise.getCreatedOn() != null){
+			mgoExercise.setCreatedOn(oldExercise.getCreatedOn().getTime());
+		}
+		mgoExercise.setModifiedBy(oldExercise.getModifiedBy());
+		if(oldExercise.getModifiedOn() != null){
+			mgoExercise.setModifiedOn(oldExercise.getModifiedOn().getTime());
+		}
+		//题目难易度
+//		mgoExercise.setDifficultyLevel(difficultyLevel);
+		mgoExercise.setIsDeleted(oldExercise.getIsDeleted());
+		mgoExercise.setRelIds(Arrays.asList(oldExercise.getRelId()));
+		mgoExercise.setRightNum(oldExercise.getRightNum());
+		mgoExercise.setSchoolId(oldExercise.getSchoolId());
+		mgoExercise.setTotalNum(oldExercise.getTotalNum());
+		mgoExercise.setStudentId(oldExercise.getStudentId());
+		mgoExercise.setStatus(1);
+		mgoExercise.setSubjectId(oldExercise.getSubjectId());
+		mgoExercise.setSubjectName(oldExercise.getSubjectName());
+		mgoExercise.setSubmitTime(oldExercise.getSubmitTime().getTime());
+		mgoExercise.setSubmitState(ExerciseCommon.EXERCISE_SUBMIT);
+		//构造题目信息
+		List<ExerciseQuestionResult> questions = new ArrayList<ExerciseQuestionResult>();
+		items.stream().filter(v -> v.getParentId() == null).forEach(v -> {
+			List<ExerciseItem> wholeExerciseItems = new ArrayList<ExerciseItem>();
+			wholeExerciseItems.add(v);
+			if (StringUtils.isEmpty(v.getCorrectContent())) {
+				items.stream().filter(sub -> v.getItemId().equals(sub.getParentId())).forEach(sub -> {
+					wholeExerciseItems.add(sub);
+				});
+			}
+			questions.add(parseToWholeQuestion(wholeExerciseItems));
+		});
+		mgoExercise.setQuestions(questions);
+	    mgoExercise.setReport(exerciseService.buildExerciseReport(mgoExercise));
+		return mgoExercise;
+	}
+	
+	private ExerciseQuestionResult parseToWholeQuestion(List<ExerciseItem> items){
+		ExerciseItem parent = items.stream().filter(v->v.getParentId() == null).findFirst().get();
+		ExerciseQuestionResult question = parseToSingleQuestion(parent);
+		List<ExerciseItem> subs= items.stream().filter(v->v.getParentId() != null).collect(Collectors.toList());
+		if(CollectionUtils.isNotEmpty(subs)){
+			question.setSubs(new ArrayList<ExerciseQuestionResult>());
+			subs.forEach(sub->{
+				question.getSubs().add(parseToSingleQuestion(sub));
+			});
+		}
+		return question;
+	}
+
+	private ExerciseQuestionResult parseToSingleQuestion(ExerciseItem item) {
+		ExerciseQuestionResult question = new ExerciseQuestionResult();
+		question.setQuestionId(item.getQuestionId());
+		question.setIsCorrect(item.getIsCorrect());
+		question.setCorrectRate(item.getCorrectRate());
+		if (StringUtils.isNotEmpty(item.getCorrectContent())) {
+			question.setAnswerContent(AnswerUtils.parseAnswerContent(item.getAnswerContent()));
+			question.setCorrectContent(JsonUtils.readList(item.getCorrectContent(), ExerciseQuestionCorrect.class));
+		} else {
+			question.setSubs(new ArrayList<ExerciseQuestionResult>());
+		}
+		return question;
+	}
+
+}

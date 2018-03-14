@@ -1,0 +1,574 @@
+var React = require('common/react/react');
+var ReactDOM = require('common/react/react-dom');
+var LekeDate = require('common/base/date');
+var {cx} = require('common/react/react-utils');
+var ReactChart = require('common/react/ReactChart');
+var SimpleTable = require('./SimpleTable');
+var LessonChartConfig = require('./LessonChartConfig');
+var {toFixed, toRate} = require('../utils/number');
+var Dialog = require('dialog');
+
+// 预/复习概览
+class ReviewOverview extends React.Component {
+	render() {
+		let {phase, subNames, overall, exams} = this.props;
+		let {total, finish, portion, finish1, finish2, finish3} = overall;
+		let unfinish = total - finish - portion;
+		let title = phase == 1 ? '预习' : '复习';
+		var items = [
+			{ name : subNames[0], value : finish1 },
+			{ name : subNames[1], value : finish2 },
+			{ name : subNames[2], value : finish3 }
+		];
+		var columns = [
+			{ title: '作业名称', width: '80%', field: function(data, index) {
+				if (data.correctNum > 0) {
+					return <a className="taskname s-c-turquoise" href={`../../homework/${data.homeworkId}.htm`} title={data.homeworkName} target="_blank">{data.homeworkName}</a>;
+				}
+				return <span className="taskname" title={data.homeworkName}>{data.homeworkName}</span>;
+			}},
+			{ title: '平均分', width: '20%', field: function(data, index) {
+				return toFixed(data.avgScore, 1);
+			}}
+		];
+		return (
+			<div>
+				<h3 className="seniortitle">{title}情况概览</h3>
+				<div className="previewsituation">
+					<div className="item">
+						<h3 className="title">{title}总体完成情况</h3>
+						<ReactChart className="report" style={{height: 300}} option={LessonChartConfig.buildOverallFinishPie(finish, portion, unfinish)} />
+						<p className="text">
+							<span>本次{title}任务应完成人数<span className="s-c-turquoise">{total}</span>，</span>
+							<span>已完成人数<span className="s-c-turquoise">{finish}</span>，比率<span className="s-c-turquoise">{toRate(finish, total, 1)}%</span>，</span>
+							<span>部分完成人数<span className="s-c-turquoise">{portion}</span>，比率<span className="s-c-turquoise">{toRate(portion, total, 1)}%</span>，</span>
+							<span>未完成人数<span className="s-c-tomato">{unfinish}</span>，比率<span className="s-c-tomato">{toRate(unfinish, total, 1)}%</span>。</span>
+						</p>
+					</div>
+					<div className="item">
+						<h3 className="title">{title}分类完成情况</h3>
+						<ReactChart className="report" style={{height: 300}} option={LessonChartConfig.buildCategoryFinishRadar(total, items)} />
+						<p className="text preview">
+							<span>{subNames[0]}{title}人数<span className="s-c-turquoise">{finish1}</span>，比率<span className="s-c-turquoise">{toRate(finish1, total, 1)}%</span>；</span><br />
+							<span>{subNames[1]}{title}人数<span className="s-c-turquoise">{finish2}</span>，比率<span className="s-c-turquoise">{toRate(finish2, total, 1)}%</span>；</span><br />
+							<span>{subNames[2]}{title}人数<span className="s-c-turquoise">{finish3}</span>，比率<span className="s-c-turquoise">{toRate(finish3, total, 1)}%</span>。</span><br />
+						</p>
+					</div>
+					<div className="item">
+						<h3 className="title">{phase == 1 ? '预习' : '课后'}作业班级平均分</h3>
+						<div className="average">
+							<SimpleTable columns={columns} datas={exams.slice(0, 5)} defVal="--" />
+						</div>
+						<div><span className="s-c-r">*</span> 点击作业名称可查看班级作业分析报告。</div>
+					</div>
+				</div>
+			</div>
+		);
+	}
+}
+
+// 预/复习详情
+class ReviewFinished extends React.Component {
+	handleOpenIssue(userId) {
+		let url = `${Leke.domain.beikeServerName}/auth/common/review/confuse.htm?courseSingleId=${ReportCst.lessonId}&studentId=${userId}`;
+		Dialog.open({
+			size : 'lg',
+			title : '预习困惑\结论',
+			url : url
+		});
+	}
+	renderIssue(item) {
+		if (item.hasIssue != true) {
+			return <td>未提交</td>;
+		}
+		return <td><a className="s-c-turquoise" onClick={() => this.handleOpenIssue(item.userId)}>查看</a></td>;
+	}
+	renderState(details, firsts, start) {
+		let {phase} = this.props;
+		let icons = ['nocontent', 'defeated', 'succeed'];
+		return details.map((item, i) => {
+			return (
+				<tr>
+					{i == 0 ? firsts : null}
+					<td>{start + i + 1}</td>
+					<td>{item.userName}</td>
+					<td><i className={icons[item.state1 + 1]}></i></td>
+					<td><i className={icons[item.state2 + 1]}></i></td>
+					<td><i className={icons[item.state3 + 1]}></i></td>
+					{phase === 1 ? this.renderIssue(item) : null}
+				</tr>
+			);
+		});
+	}
+	render() {
+		let {phase, details} = this.props;
+		let title = phase == 1 ? '预习' : '复习';
+		let bodys = [];
+		var state2 = details.filter(item => item.state == 2);
+		var state1 = details.filter(item => item.state == 1);
+		var state0 = details.filter(item => item.state == 0);
+		var num2 = state2.length, num1 = state1.length, num0 = state0.length;
+		if (state2.length > 0) {
+			bodys = bodys.concat(this.renderState(state2, [<td className="greenbg" rowSpan={num2}>完成（{num2}人）</td>], 0));
+		}
+		if (state1.length > 0) {
+			bodys = bodys.concat(this.renderState(state1, [<td className="yellowbg" rowSpan={num1}>部分完成（{num1}人）</td>], num2));
+		}
+		if (state0.length > 0) {
+			bodys = bodys.concat(this.renderState(state0, [<td className="redbg" rowSpan={num0}>未完成（{num0}人）</td>], num2 + num1));
+		}
+		let headers;
+		if (phase == 1) {
+			headers = (
+				<tr>
+					<th style={{width: '12%'}}>状态</th>
+					<th style={{width: '12%'}}>序号</th>
+					<th style={{width: '15%'}}>姓名</th>
+					<th style={{width: '15%'}}>课件</th>
+					<th style={{width: '15%'}}>微课</th>
+					<th style={{width: '15%'}}>试卷</th>
+					<th style={{width: '16%'}}>预习困惑\结论</th>
+				</tr>
+			);
+		} else {
+			headers = (
+				<tr>
+					<th style={{width: '14%'}}>状态</th>
+					<th style={{width: '14%'}}>序号</th>
+					<th style={{width: '18%'}}>姓名</th>
+					<th style={{width: '18%'}}>课件</th>
+					<th style={{width: '18%'}}>试卷</th>
+					<th style={{width: '18%'}}>笔记</th>
+				</tr>
+			);
+		}
+		return (
+			<div className="preparecomplete">
+				<h3 className="seniortitle">{title}完成详情</h3>
+				<div className="m-table m-table-center">
+					<table>
+						<thead>
+							{headers}
+						</thead>
+						<tbody>
+							{bodys}
+						</tbody>
+					</table>
+				</div>
+			</div>
+		);
+	}
+}
+
+// 时间轴
+class BehaviorTimeline extends React.Component {
+	render() {
+		function index(data, index) {
+			return index + 1;
+		}
+		function timeString(data, index) {
+			var str = LekeDate.format(data.start, 'HH:mm:ss');
+			if (data.end != null && data.end > 0) {
+				str += ' - ' + LekeDate.format(data.end, 'HH:mm:ss');
+			}
+			return str;
+		}
+		function timeLength(data, index) {
+			if (data.end != null && data.end > 0) {
+				var len = Math.floor(data.end / 1000) - Math.floor(data.start / 1000);
+				var second = len % 60, minute = Math.floor(len / 60);
+				return `${minute}分${second}秒`;
+			}
+			return '--';
+		}
+		var columns = [
+			{ title: '序号', width: '10%', field: index },
+			{ title: '互动项目', width: '25%', field: 'typeName' },
+			{ title: '备注', width: '25%', field: 'topic' },
+			{ title: '起止时间', width: '20%', field: timeString },
+			{ title: '时长（分钟）', width: '20%', field: timeLength }
+		];
+		return (
+			<div>
+				<h3 className="seniortitle">课堂行为</h3>
+				<SimpleTable columns={columns} datas={this.props.datas} defVal="--" />
+			</div>
+		);
+	}
+}
+
+// 课堂评价
+class LessonEvaluate extends React.Component {
+	renderScore(title, score) {
+		let rate = toRate(score, 5, 1);
+		return (
+			<dl className="e-eval-score">
+				<dt>{title}：</dt>
+				<dd><em><i style={{width:`${rate}%`}}></i></em></dd>
+				<dd><b>{score}</b></dd>
+			</dl>
+		);
+	}
+	renderEval(title, evalInfo) {
+		let totalScore = 0, score = 0, percent = 0, rate = 0, userCount = 0, score1 = 0, score2 = 0, score3 = 0;
+		if (evalInfo != null) {
+			userCount = evalInfo.userCount;
+			score1 = evalInfo.professionalScore;
+			score2 = evalInfo.rhythmScore;
+			score3 = evalInfo.interactionScore;
+			totalScore = score1 + score2 + score3;
+			score = toFixed(totalScore / 3, 1);
+			percent = toRate(score, 5);
+			rate = toRate(evalInfo.goodCount, userCount, 1);
+		}
+		return (
+			<div className="item">
+				<h3 className="title">{title}</h3>
+				<div className="info">
+					<div className="fraction">
+						<div className="num">{score}</div>
+						<dl className="e-eval-score">
+							<dd><em><i style={{width:`${percent}%`}}></i></em></dd>
+						</dl>
+					</div>
+					<div className="rateofpraise">
+						 <span>共<span className="s-c-tomato">{userCount}</span>人评价</span>
+						 <br />
+						 <span>好评率：<span className="s-c-tomato">{rate}%</span></span>
+					</div>
+				</div>
+				<div className="table-point">
+					{this.renderScore('教学效果', score1)}
+					{this.renderScore('教学态度', score2)}
+					{this.renderScore('课堂互动', score3)}
+				</div>
+			</div>
+		);
+	}
+	renderFlower(flower) {
+		return (
+			<div className="item f-ml20">
+				<h3 className="title">收到鲜花</h3>
+				<div className="evaluatecount">{flower}</div>
+			</div>
+		);
+	}
+	render() {
+		let {flower, lessonEval, teacherEval} = this.props;
+		return (
+			<div className="evaluate">
+				<h3 className="seniortitle">课堂评价</h3>
+				<div  className="f-bfc">
+					{this.renderEval('本课堂评价', lessonEval)}
+					<div className="vs">vs</div>
+					{this.renderEval('累计评价', teacherEval)}
+					{this.renderFlower(flower)}
+				</div>
+				<div className="link">
+					<a href={`../evaluate/${ReportCst.lessonId}.htm`} target="_blank">学生评价详情 <i></i></a>
+				</div>
+			</div>
+		);
+	}
+}
+
+// 金榜
+class LessonTopRank extends React.Component {
+	render() {
+		var icons = ['gold', 'silver', 'cuprum']
+		function index(data, index) {
+			return index < 3 ? (<i className={icons[index]}></i>) : index + 1;
+		}
+		var columns = [
+			{ title: '排名', width: '10%', field: index },
+			{ title: '姓名', width: '18%', field: 'userName' },
+			{ title: '预习', width: '12%', field: 'review' },
+			{ title: '课堂互动', width: '12%', field: 'interact' },
+			{ title: '随堂测试', width: '12%', field: 'testing' },
+			{ title: '乐豆奖惩', width: '12%', field: 'reward' },
+			{ title: '综合得分', width: '12%', field: 'score' }
+		];
+		let clazzName = encodeURIComponent(ReportCst.view.lesson.className);
+		let subjectName = encodeURIComponent(ReportCst.view.lesson.subjectName);
+		let startTime = LekeDate.format(ReportCst.view.lesson.startTime, 'yyyy-MM-dd HH:mm')
+		var chatUrl = `${Leke.domain.chatServerName}/auth/common/chat/chatDetail.htm?courseSingleId=${ReportCst.lessonId}&clazzName=${clazzName}&subjectName=${subjectName}&startTime=${startTime}`;
+		return (
+			<div className="achievementlist">
+				<h3 className="seniortitle">课堂金榜</h3>
+				<SimpleTable columns={columns} datas={this.props.datas} defVal="--" />
+				<div className="link">
+					<a className="s-c-turquoise" href={`../behavior/${ReportCst.lessonId}.htm`} target="_blank">学生课堂行为列表&gt;&gt;<i></i></a>
+					<a className="s-c-turquoise" href={chatUrl} target="_blank">课堂聊天记录&gt;&gt;<i></i></a>
+				</div>
+			</div>
+		);
+	}
+}
+
+// 随堂作业
+class LessonExamInfo extends React.Component {
+	render() {
+		var datas = this.props.datas;
+		if (datas == null || datas.length == 0) {
+			return null;
+		}
+		var columns = [
+			{ title: '作业名称', width: '23%', field: function(data, index) {
+				if (data.correctNum > 0) {
+					return <a className="s-c-turquoise" href={`../../homework/${data.homeworkId}.htm`} target="_blank">{data.homeworkName}</a>;
+				}
+				return data.homeworkName;
+			}},
+			{ title: '提交人数(比率)', width: '7%', field: function(data, index) {
+				var rate = toRate(data.finishNum, data.totalNum, 1);
+				return `${data.finishNum}(${rate}%)`;
+			}},
+			{ title: '未交人数(比率)', width: '7%', field: function(data, index) {
+				var unfinished = data.totalNum - data.finishNum;
+				var rate = toRate(unfinished, data.totalNum, 1);
+				return `${unfinished}(${rate}%)`;
+			}},
+			{ title: '总分', width: '7%', field: function(data, index) {
+				return toFixed(data.totalScore, 1);
+			}},
+			{ title: '平均分', width: '7%', field: function(data, index) {
+				return toFixed(data.avgScore, 1);
+			}},
+			{ title: '最高分', width: '7%', field: function(data, index) {
+				return toFixed(data.maxScore, 1);
+			}},
+			{ title: '最低分', width: '7%', field: function(data, index) {
+				return toFixed(data.minScore, 1);
+			}},
+			{ title: '优秀人数(比率)', width: '7%', field: function(data, index) {
+				if (data.finishNum == 0) {
+					return '--';
+				}
+				var rate = toRate(data.levelA, data.correctNum, 1);
+				return `${data.levelA}(${rate}%)`;
+			}},
+			{ title: '良好人数(比率)', width: '7%', field: function(data, index) {
+				if (data.finishNum == 0) {
+					return '--';
+				}
+				var rate = toRate(data.levelB, data.correctNum, 1);
+				return `${data.levelB}(${rate}%)`;
+			}},
+			{ title: '及格人数(比率)', width: '7%', field: function(data, index) {
+				if (data.finishNum == 0) {
+					return '--';
+				}
+				var rate = toRate(data.levelC, data.correctNum, 1);
+				return `${data.levelC}(${rate}%)`;
+			}},
+			{ title: '较差人数(比率)', width: '7%', field: function(data, index) {
+				if (data.finishNum == 0) {
+					return '--';
+				}
+				var rate = toRate(data.levelD, data.correctNum, 1);
+				return `${data.levelD}(${rate}%)`;
+			}},
+			{ title: '危险人数(比率)', width: '7%', field: function(data, index) {
+				if (data.finishNum == 0) {
+					return '--';
+				}
+				var rate = toRate(data.levelE, data.correctNum, 1);
+				return `${data.levelE}(${rate}%)`;
+			}}
+		];
+		return (
+			<div>
+				<h3 className="seniortitle">随堂作业</h3>
+				<SimpleTable columns={columns} datas={datas} defVal="--" />
+				<div><span className="s-c-r">*</span> 点击作业名称可查看班级作业分析报告。</div>
+			</div>
+		);
+	}
+}
+
+// 课堂考勤
+class LessonAttendance extends React.Component {
+	handleShowNames(status) {
+		var url = `../attendnames/${ReportCst.lessonId}-${status}.htm`;
+		Dialog.open({
+			size : 'nm',
+			title : '名单',
+			url : url
+		});
+	}
+	render() {
+		var {planNum, realNum, missNum, partNum} = this.props.attend;
+		return (
+			<div>
+				<h3 className="seniortitle">课堂考勤</h3>
+				<div className="m-table m-table-center">
+					<table>
+						<thead>
+							<tr>
+								<th style={{width: '25%'}}>应到人数</th>
+								<th style={{width: '25%'}}>实到人数</th>
+								<th style={{width: '25%'}}>非全勤人数</th>
+								<th style={{width: '25%'}}>缺勤人数</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr>
+								<td>{planNum}</td>
+								<td>{realNum}</td>
+								<td>{partNum > 0 ? <span className="s-c-turquoise f-csp" onClick={this.handleShowNames.bind(this, 0)}>{partNum}</span> : partNum}</td>
+								<td>{missNum > 0 ? <span className="s-c-turquoise f-csp" onClick={this.handleShowNames.bind(this, 2)}>{missNum}</span> : missNum}</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+		);
+	}
+}
+
+// 课堂点名
+class LessonCallInfo extends React.Component {
+	handleShowNames(names) {
+		var tpl = '<div class="names">' + names.map(n => `<span>${n}</span>`).join('') + '</div>';
+		Dialog.open({
+			size : 'nm',
+			title : '名单',
+			tpl : tpl
+		});
+	}
+	render() {
+		var that = this;
+		var datas = this.props.datas;
+		if (datas == null || datas.length == 0) {
+			return null;
+		}
+		function startTime(data, index) {
+			return LekeDate.format(data.start, 'yyyy-MM-dd HH:mm');
+		}
+		function startUser(data, index) {
+			return data.type == 401 ? ReportCst.view.lesson.teacherName : '系统';
+		}
+		function undone(data, index) {
+			var undo = data.total - data.done;
+			if (undo == 0) {
+				return undo;
+			}
+			return <span className="s-c-turquoise f-csp" onClick={that.handleShowNames.bind(that, data.unNames)}>{data.total - data.done}</span>;
+		}
+		var columns = [
+			{ title: '点名', width: '20%', field: 'topic' },
+			{ title: '时间', width: '16%', field: startTime },
+			{ title: '发起者', width: '16%', field: startUser },
+			{ title: '应点到人数', width: '16%', field: 'total' },
+			{ title: '实点到人数', width: '16%', field: 'done' },
+			{ title: '未点到人数', width: '16%', field: undone }
+		];
+		return (
+			<div>
+				<h3 className="seniortitle">课堂点名</h3>
+				<SimpleTable columns={columns} datas={datas} defVal="--" />
+			</div>
+		);
+	}
+}
+
+// 快速提问
+class LessonQuickInfo extends React.Component {
+	render() {
+		var datas = this.props.datas;
+		if (datas == null || datas.length == 0) {
+			return null;
+		}
+		function index(data, index) {
+			return index + 1;
+		}
+		function startTime(data, index) {
+			return LekeDate.format(data.start, 'yyyy-MM-dd HH:mm');
+		}
+		function done(data, index) {
+			var rate = toRate(data.done, data.total);
+			return `${data.done}(${rate}%)`;
+		}
+		var columns = [
+			{ title: '序号', width: '15%', field: index },
+			{ title: '发起时间', width: '20%', field: startTime },
+			{ title: '类型', width: '25%', field: 'topic' },
+			{ title: '在线人数', width: '20%', field: 'total' },
+			{ title: '提交人数(比率)', width: '20%', field: done }
+		];
+		return (
+			<div>
+				<h3 className="seniortitle">快速提问</h3>
+				<SimpleTable columns={columns} datas={this.props.datas} defVal="--" />
+			</div>
+		);
+	}
+}
+
+class LessonReportView extends React.Component {
+	constructor(props) {
+		super(props);
+		this.state = {
+			tabIdx: props.tabIdx
+		};
+	}
+	handleTabChange(tabIdx) {
+		this.setState({
+			tabIdx: tabIdx
+		});
+	}
+	render() {
+		let {tabIdx} = this.state;
+		let contents = [];
+		if (tabIdx == 1) {
+			let review = ReportCst.view.preview, subNames = ['课件', '微课', '试卷'];
+			contents.push(<ReviewOverview phase={1} subNames={subNames} overall={review.overall} exams={review.exams} />);
+			contents.push(<ReviewFinished phase={1} subNames={subNames} details={review.details} exams={review.exams} />);
+		} else if (tabIdx == 2) {
+			if (ReportCst.view.middle == null) {
+				contents.push(<div className="m-tips"><i></i><span>课堂暂未结束，请待课堂结束后再查看。</span></div>);
+			} else if (ReportCst.view.middle.success == false) {
+				contents.push(<div className="m-tips"><i></i><span>{ReportCst.view.middle.message}</span></div>);
+			} else {
+				var {flower, lessonEval, teacherEval, interacts, tops, exams, attendStatInfo, calleds, quicks} = ReportCst.view.middle;
+				contents.push(<BehaviorTimeline datas={interacts} />);
+				contents.push(<LessonEvaluate lessonEval={lessonEval} teacherEval={teacherEval} flower={flower} />);
+				contents.push(<LessonTopRank datas={tops} />);
+				contents.push(<LessonExamInfo datas={exams} />);
+				contents.push(<LessonAttendance attend={attendStatInfo} />);
+				contents.push(<LessonCallInfo datas={calleds} />);
+				contents.push(<LessonQuickInfo datas={quicks} />);
+			}
+		} else {
+			if (ReportCst.view.review != null) {
+				let review = ReportCst.view.review, subNames = ['课件', '试卷', '笔记'];
+				contents.push(<ReviewOverview phase={3} subNames={subNames} overall={review.overall} exams={review.exams} />);
+				contents.push(<ReviewFinished phase={3} subNames={subNames} details={review.details} exams={review.exams} />);
+			} else {
+				contents.push(<div className="m-tips"><i></i><span>课堂暂未结束，请待课堂结束后再查看。</span></div>);
+			}
+		}
+		var lesson = ReportCst.view.lesson;
+		return (
+			<div className="z-classreviewreport">
+				<h3 className="tips">
+					<i className="date"></i>
+					<span>{LekeDate.format(lesson.startTime, 'yyyy-MM-dd HH:mm')} - {LekeDate.format(lesson.endTime, 'HH:mm')}</span>
+					<span className="f-ml20">{lesson.subjectName}</span>
+					<span className="f-ml20">{lesson.courseSingleName}</span>
+				</h3>
+				<div className="m-tab">
+					<ul>
+						<li className={tabIdx == 1 ? "active" : ""} onClick={this.handleTabChange.bind(this, 1)}><a href="javascript:void(0);">预习检查</a></li>
+						<li className={tabIdx == 2 ? "active" : ""} onClick={this.handleTabChange.bind(this, 2)}><a href="javascript:void(0);">课堂报告</a></li>
+						<li className={tabIdx == 3 ? "active" : ""} onClick={this.handleTabChange.bind(this, 3)}><a href="javascript:void(0);">复习检查</a></li>
+					</ul>
+				</div>
+				<div className="content">{contents}</div>
+			</div>
+		);
+	}
+}
+
+let conatiner = document.getElementById('container');
+ReactDOM.render(<LessonReportView tabIdx={ReportCst.tabIdx} />, container);

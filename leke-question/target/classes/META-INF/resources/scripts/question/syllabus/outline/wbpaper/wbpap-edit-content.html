@@ -1,0 +1,27 @@
+<!-- ko if: inited -->
+<div data-bind="component: {
+	name: 'paper-editor-content',
+	params: {
+		rootvm: rootvm,
+		showAddGroup: true
+	}
+}"></div>
+<div class="f-tac f-mt20 f-mb20">
+   	<button class="u-btn u-btn-nm f-mr5"
+   		data-bind="css: rootvm.pending() ? 'u-btn-bg-gray' : 'u-btn-bg-turquoise',
+   		disable: rootvm.pending,
+   		click: function() {
+   			rootvm.doSave();
+   		}, i18n: 'pap.paper.btn.savePaper'"></button>
+   	<button class="u-btn u-btn-nm f-mr5"
+   		data-bind="css: rootvm.pending() ? 'u-btn-bg-gray' : 'u-btn-bg-turquoise',
+   		disable: rootvm.pending,
+   		click: function() {
+   			rootvm.saveDraft();
+   		}, i18n: 'pap.paper.btn.saveDraft'"></button>
+   	<button class="u-btn u-btn-bg-gray u-btn-nm f-mr5"
+   		data-bind="click: function() {
+   			rootvm.doCancel();
+   		}, i18n: 'pap.paper.btn.cancel'"></button>
+</div>
+<!-- /ko -->

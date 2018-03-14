@@ -1,0 +1,111 @@
+/*
+ * Copyright (c) 2014 Strong Group - 版权所有
+ * 
+ * This software is the confidential and proprietary information of
+ * Strong Group. You shall not disclose such confidential information 
+ * and shall use it only in accordance with the terms of the license 
+ * agreement you entered into with www.cnstrong.cn.
+ */
+package cn.strong.leke.homework.controller;
+
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.util.List;
+
+import javax.annotation.Resource;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.util.HtmlUtils;
+
+import cn.strong.leke.beike.model.Microcourse;
+import cn.strong.leke.beike.model.MicrocourseFile;
+import cn.strong.leke.beike.model.Types;
+import cn.strong.leke.common.serialize.support.json.JsonUtils;
+import cn.strong.leke.context.user.UserContext;
+import cn.strong.leke.framework.exceptions.Validation;
+import cn.strong.leke.framework.page.jdbc.Page;
+import cn.strong.leke.framework.web.JsonResult;
+import cn.strong.leke.homework.model.HomeworkDTO;
+import cn.strong.leke.homework.model.HomeworkQuery;
+import cn.strong.leke.homework.service.HomeworkDtlService;
+import cn.strong.leke.homework.service.HomeworkService;
+import cn.strong.leke.model.user.User;
+import cn.strong.leke.remote.service.beike.IBeikeRemoteService;
+import cn.strong.leke.remote.service.microcourse.IMicrocourseRemoteService;
+
+/**
+ * 预习检查
+ * @author  DuanYanming
+ * @created 2014年11月6日 下午1:38:07
+ * @since   v1.0.0
+ */
+@Controller()
+@RequestMapping("/auth/*")
+public class PreviewHomeworkController {
+
+	@Resource
+	private HomeworkService homeworkService;
+	@Resource
+	private HomeworkDtlService homeworkDtlService;
+	@Resource
+	private IBeikeRemoteService iBeikeRemoteService;
+	@Resource
+	private IMicrocourseRemoteService iMicrocourseRemoteService;
+
+	@RequestMapping("teacher/preview//previewList")
+	public void homeworkList() {
+
+	}
+
+	/**
+	 * 加载预习作业
+	 */
+	@RequestMapping("teacher/preview//loadHomeworkList")
+	@ResponseBody
+	public JsonResult loadHomeworkList(HomeworkQuery homework, Page page) {
+		User user = UserContext.user.get();
+		homework.setTeacherId(user.getId());
+		homework.setSchoolId(user.getCurrentSchool().getId());
+		List<HomeworkDTO> homeworkList = homeworkService.findHomeworkList(homework, page);
+		page.setDataList(homeworkList);
+
+		JsonResult json = new JsonResult();
+		json.addDatas("page", page);
+		return json;
+	}
+	
+	@RequestMapping(value = { "teacher/preview/viewMicro","classTeacher/preview/viewMicro","parent/preview/viewMicro", "student/preview/viewMicro" })
+	public String viewMicro(Model model,String id,Long microcourseId) throws UnsupportedEncodingException{
+		Microcourse microcourse = iBeikeRemoteService.getMicrocourseById(microcourseId);
+		//TODO set MicrocourseFile
+		MicrocourseFile microcourseFile = iMicrocourseRemoteService.getMicrocourseFileById(microcourseId);// microcourseFileHandler.getByMicrocourseId(microcourseId);
+//		MicrocourseDTO dto = microcourseQueryService.getById(microcourseId);
+		Validation.isPageNotFound(microcourse == null);
+		Validation.isPageNotFound(microcourseFile == null);
+		User user = UserContext.user.get();
+		String microcourseName = microcourse.getMicrocourseName();
+		model.addAttribute("holidayId",id);
+		model.addAttribute("microcourse", microcourse);
+		model.addAttribute("microcourseFile", microcourseFile);
+		model.addAttribute("title", URLEncoder.encode(URLEncoder.encode(microcourseName, "UTF-8"), "UTF-8"));
+		model.addAttribute("userId", user.getId());
+		model.addAttribute("isMedia", Types.isMedia(microcourseFile.getType()));
+		model.addAttribute("type", Types.valueOf(microcourseFile.getType()));
+//		model.addAttribute("resourceId", resourceId);
+		model.addAttribute("microcourseName", HtmlUtils.htmlEscape(microcourseName));
+		model.addAttribute("initJson", JsonUtils.toJSON(microcourse));
+//		model.addAttribute("knowledges", dto.getKnowledges());
+		model.addAttribute("schoolstageSubject", microcourse.getSchoolStageName() + microcourse.getSubjectName());
+		/*RateResource rate = rateResourceRemoteService.getRateResource(microcourseId, ResourceTypes.MICROCOURSE);
+		Integer scoreStr = 0;
+		if (rate != null) {
+			scoreStr = Math.round(rate.getTotalScore() / rate.getCommentCount()) * 20;
+		}
+		model.addAttribute("rate", rate);
+		model.addAttribute("scoreStr", scoreStr);*/
+		return "/auth/common/microcourse/view";
+	}
+}

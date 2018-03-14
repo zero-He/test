@@ -1,0 +1,155 @@
+package cn.strong.leke.homework.controller;
+
+import static java.util.stream.Collectors.toList;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.function.Predicate;
+
+import javax.annotation.Resource;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
+
+import cn.strong.leke.common.serialize.support.json.JsonUtils;
+import cn.strong.leke.context.user.UserContext;
+import cn.strong.leke.framework.page.jdbc.Page;
+import cn.strong.leke.framework.web.JsonResult;
+import cn.strong.leke.homework.manage.SheetQueryService;
+import cn.strong.leke.homework.manage.SheetTaskService;
+import cn.strong.leke.homework.model.SheetBook;
+import cn.strong.leke.homework.model.SheetErr;
+import cn.strong.leke.homework.model.SheetPage;
+import cn.strong.leke.homework.model.SheetTask;
+import cn.strong.leke.homework.model.SheetTask.SheetGroup;
+import cn.strong.leke.homework.service.HomeworkMainService;
+import cn.strong.leke.homework.util.SheetCst;
+import cn.strong.leke.model.user.User;
+
+@Controller
+@RequestMapping("/auth/*")
+public class SheetController {
+
+	@Resource
+	private SheetTaskService sheetTaskService;
+	@Resource
+	private SheetQueryService sheetQueryService;
+	@Resource
+	private HomeworkMainService homeworkMainService;
+
+	@RequestMapping("/teacher/task/{taskId}")
+	public String redirect(@PathVariable("taskId") String taskId) {
+		return "redirect:/auth/teacher/sheet/taskInfo.htm?taskId=" + taskId;
+	}
+
+	/**
+	 * 任务列表页
+	 * @return
+	 */
+	@RequestMapping(value = "/teacher/sheet/taskList", method = RequestMethod.GET)
+	public String tasklist(@RequestParam(defaultValue = "false") Boolean superuser, Model model) {
+		model.addAttribute("superuser", superuser);
+		return "/auth/common/sheet/taskList";
+	}
+
+	/**
+	 * 任务数据查询
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/teacher/sheet/taskList", method = RequestMethod.POST)
+	public JsonResult tasklist(Date startDate, Date endDate, Page page) {
+		User user = UserContext.user.get();
+		List<SheetTask> tasks = this.sheetQueryService.findSheetTaskByQuery(user.getId(), startDate, endDate, page);
+		page.setDataList(tasks);
+		return new JsonResult().addDatas("page", page);
+	}
+
+	/**
+	 * 任务详情页
+	 * @return
+	 */
+	@RequestMapping(value = "/teacher/sheet/taskInfo", method = RequestMethod.GET)
+	public String taskInfo(String taskId, @RequestParam(defaultValue = "false") Boolean superuser, Model model) {
+		SheetTask sheetTask = this.sheetQueryService.getSheetTaskById(taskId);
+		List<SheetGroup> sheetGroups = this.sheetQueryService.findSheetGroupsByTaskId(taskId);
+		List<SheetPage> errorPages = this.sheetQueryService.findErrorPagesByTaskId(taskId);
+		List<SheetBook> allErrorBooks = this.sheetQueryService.findErrorBooksByTaskId(taskId);
+		Predicate<SheetBook> filter = v -> SheetErr.UNSHARP_SUSPECT.code.equals(v.getErrorNo());
+		List<SheetBook> errorBooks = allErrorBooks.stream().filter(filter.negate()).collect(toList());
+		List<SheetBook> suspectBooks = allErrorBooks.stream().filter(filter).collect(toList());
+		model.addAttribute("superuser", superuser);
+		model.addAttribute("sheetTask", sheetTask);
+		model.addAttribute("sheetGroups", sheetGroups);
+		model.addAttribute("errorPages", errorPages);
+		model.addAttribute("errorBooks", errorBooks);
+		model.addAttribute("suspectBooks", suspectBooks);
+		model.addAttribute("errorBookSize", errorPages.size() + errorBooks.size());
+		model.addAttribute("suspectBookSize", suspectBooks.size());
+		return "/auth/common/sheet/taskInfo";
+	}
+
+	@ResponseBody
+	@RequestMapping(value = "/teacher/sheet/rewrite", method = RequestMethod.GET)
+	public JsonResult rewrite(String taskId) {
+		this.sheetTaskService.executeNormalReWrite(taskId);
+		return new JsonResult();
+	}
+
+	/**
+	 * 作业学生列表
+	 * @return
+	 */
+	@RequestMapping(value = "/teacher/sheet/bookList", method = RequestMethod.GET)
+	public String bookList(String taskId, Long homeworkId, Model model) {
+		List<SheetBook> sheetBooks = this.sheetQueryService.findSheetPagesByTaskIdAndHomeworkId(taskId, homeworkId);
+		model.addAttribute("bookJson", JsonUtils.toJSON(sheetBooks));
+		model.addAttribute("totalNum", sheetBooks.size());
+		String homeworkName = sheetBooks.isEmpty() ? "" : sheetBooks.get(0).getHomeworkName();
+		model.addAttribute("homeworkName", homeworkName);
+		return "/auth/common/sheet/bookList";
+	}
+
+	/**
+	 * 某页详情
+	 * @return
+	 */
+	@RequestMapping(value = "/teacher/sheet/pageInfo", method = RequestMethod.GET)
+	public String pageInfo(String pageId, Model model) {
+		SheetPage sheetPage = this.sheetQueryService.getSheetPageById(pageId);
+		List<String> imgs = sheetPage.getPages().stream().sorted(SheetCst.COMP_BLOCK).map(v -> v.getImg())
+				.collect(toList());
+		model.addAttribute("sheetPage", sheetPage);
+		model.addAttribute("imgs", JsonUtils.toJSON(imgs));
+		return "/auth/common/sheet/pageInfo";
+	}
+
+	/**
+	 * 某份作业详情页
+	 * @return
+	 */
+	@RequestMapping(value = "/common/sheet/bookInfo", method = RequestMethod.GET)
+	public String bookInfo(String bookId, Model model) {
+		SheetBook sheetBook = this.sheetQueryService.getSheetBookById(bookId);
+		List<SheetPage> sheetPages = this.sheetQueryService.findSheetPageByIds(sheetBook.getPageIds());
+		List<String> imgs = sheetPages.stream().flatMap(v -> v.getPages().stream().sorted(SheetCst.COMP_BLOCK))
+				.map(v -> v.getImg()).collect(toList());
+		List<List<String>> imgss = new ArrayList<>();
+		for (int i = 0; i < imgs.size() / 2; i++) {
+			imgss.add(imgs.subList(i * 2, i * 2 + 2));
+		}
+		if (imgs.size() % 2 == 1) {
+			imgss.add(imgs.subList(imgs.size() - 1, imgs.size()));
+		}
+		model.addAttribute("sheetBook", sheetBook);
+		model.addAttribute("sheetPages", sheetPages);
+		model.addAttribute("imgs", JsonUtils.toJSON(imgss));
+		return "/auth/common/sheet/bookInfo";
+	}
+}

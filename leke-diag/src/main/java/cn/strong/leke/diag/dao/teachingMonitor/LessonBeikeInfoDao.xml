@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="UTF-8" ?>   
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.diag.dao.teachingMonitor.LessonBeikeInfoDao">
+	
+	<sql id="teacherOfGradeSubject">
+	    <!-- 关联年级、学科下的老师 -->
+		AND EXISTS (
+					SELECT 1 FROM lesson.ls_klass f, lesson.ls_klass_teacher t 
+		            WHERE t.userId = a.teacherId 
+		            AND f.classId = t.classId
+		            AND f.isExpired = 0
+		            AND f.isDeleted = 0
+		            AND f.type = 1
+		            AND t.roleId = 101
+		            AND t.isDeleted = 0
+		            AND f.schoolId = #{schoolId}
+		            <if test="gradeId != null and gradeId != -1">
+		            AND f.gradeId = #{gradeId}
+					</if>
+					<if test="subjectId != null and subjectId != -1">
+					AND t.subjectId = #{subjectId}
+					</if>
+		            )
+	</sql>
+	
+	<select id="findLessonBeikeInfoByGradeSubject" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.teachingMonitor.LessonBeikeInfo">
+		SELECT
+	      a.courseSingleId,
+		  a.startTime,
+		  a.endTime,
+		  a.schoolId,
+		  a.teacherId,
+		  a.teacherName,
+		  a.classId,
+		  f.className,
+		  f.gradeId,
+		  f.gradeName,
+		  b.subjectId,
+		  b.subjectName,
+		  a.isPrepared,
+		  a.cwCount,
+		  a.mcCount,
+		  a.hwCount,
+		  0 isEarlyPrepared
+		FROM
+			lesson.ls_lesson a, lesson.ls_klass_subject b, lesson.ls_attendance_lesson c, lesson.ls_klass f
+		WHERE a.classSubjId = b.classSubjId 
+		AND a.classId = f.classId
+		AND a.courseSingleId = c.scId
+		AND a.isDeleted = 0
+		AND f.isExpired = 0
+		AND f.isDeleted = 0
+		AND a.startTime <![CDATA[>=]]> DATE(#{startDate})
+		AND a.startTime <![CDATA[<]]> DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+		AND a.schoolId = #{schoolId}
+	    <if test="classId != null">
+			AND a.classId = #{classId}
+		</if>
+		<if test="gradeId != null and gradeId != -1">
+			AND f.gradeId = #{gradeId}
+		</if>
+		<if test="subjectId != null and subjectId != -1">
+			AND b.subjectId = #{subjectId}
+		</if>
+		<include refid="teacherOfGradeSubject"/>
+	</select>
+	
+	<select id="findStageIdByGrade" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="Long">
+		SELECT
+			t.schoolStageId
+		FROM
+			tutor.tutor_schoolStage_grade t,
+			tutor.tutor_school_stage b
+		WHERE t.schoolStageId = b.schoolStageId
+		AND	t.gradeId = #{gradeId}
+		AND t.isDeleted = 0
+		AND b.schoolId = #{schoolId}
+		AND b.isDeleted = 0
+	</select>
+	
+	<select id="findTrendDateByDay" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.teachingMonitor.CommProp">
+		SELECT
+		  startDate,
+		  endDate,
+		  dateStr
+		FROM
+		(
+			SELECT 
+				@d :=@d + 1 AS rn, 
+				DATE_ADD(#{startDate}, INTERVAL @d DAY) startDate,
+				DATE_ADD(#{startDate}, INTERVAL @d DAY) endDate,
+				DATE_ADD(#{startDate}, INTERVAL @d DAY) dateStr 
+			FROM lesson.ls_dateAssistant, (SELECT @d :=- 1) b LIMIT #{limit}
+		)a
+	</select>
+	
+	<select id="findTrendDateByWeek" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.teachingMonitor.CommProp">
+		SELECT z.*, CONCAT_WS('/',z.startDate, z.endDate) dateStr FROM(
+			SELECT
+				p.startDate,
+				CASE
+					WHEN DATE(#{endDate}) BETWEEN p.startDate AND p.endDate THEN
+						#{endDate}
+					ELSE
+						p.endDate
+				END endDate
+			FROM
+				(SELECT t.startDate,
+								SUBDATE(t.startDate,WEEKDAY(t.startDate)-6) endDate
+					 FROM (SELECT @d :=@d + 1 AS rn, DATE_ADD(#{startDate}, INTERVAL @d DAY) startDate FROM lesson.ls_dateAssistant, (SELECT @d :=- 1) b LIMIT #{limit}) t) p
+					WHERE DAYOFWEEK(p.startDate) = 2
+						 OR p.startDate = DATE(#{startDate})
+		 )z
+	</select>
+	
+	<select id="findTrendDateByMonth" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.teachingMonitor.CommProp">
+		SELECT z.*,CONCAT_WS('/',z.startDate, z.endDate) dateStr FROM(
+			SELECT
+				p.startDate,
+				CASE
+					WHEN DATE(#{endDate}) BETWEEN p.startDate AND p.endDate THEN #{endDate}
+					ELSE
+						p.endDate
+				END endDate
+			FROM
+				(SELECT t.*,
+						LAST_DAY(t.startDate) endDate
+					 FROM (SELECT @d :=@d + 1 AS rn, DATE_ADD(#{startDate}, INTERVAL @d DAY) startDate FROM lesson.ls_dateAssistant, (SELECT @d :=- 1) b LIMIT #{limit}) t) p
+					WHERE DATE_ADD(p.startDate,INTERVAL -DAY(p.startDate) + 1 DAY) = p.startDate
+						 OR p.startDate = DATE(#{startDate})
+		)z
+	</select>
+
+	<select id="findTeacherBeikeRateRank" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.teachingMonitor.BeikeRate">
+		SELECT
+		  p.teacherId,
+		  p.teacherName,
+		  CONVERT(IF(p.totalLesson = 0, 0, ROUND(p.preparedLesson / p.totalLesson * 100, 1)), DECIMAL(4,1)) preparedLessonRate
+		FROM
+		(
+			SELECT
+				a.teacherId,
+				a.teacherName,
+				COUNT(1) totalLesson,
+				IFNULL(SUM(IF(a.isPrepared = 1, 1, 0)), 0) preparedLesson
+			FROM
+				lesson.ls_lesson a, lesson.ls_klass_subject b, lesson.ls_attendance_lesson c, ls_klass f
+			WHERE a.classId = b.classId 
+			AND a.classId = f.classId
+		    AND a.courseSingleId = c.scId
+			AND a.startTime <![CDATA[>=]]> DATE(#{startDate})
+			AND a.startTime <![CDATA[<]]> DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+		    AND a.isDeleted = 0
+		    AND f.isExpired = 0
+		    AND f.isDeleted = 0
+		    <!-- AND f.type = 1 -->
+			AND a.schoolId = #{schoolId}
+			<if test="gradeId != null and gradeId != -1">
+			AND f.gradeId = #{gradeId}
+		    </if>
+			<if test="subjectId != null and subjectId != -1">
+			AND b.subjectId = #{subjectId}
+		    </if>
+		    <include refid="teacherOfGradeSubject"/>
+			GROUP BY a.teacherId, a.teacherName
+		) p
+	</select>
+
+	<select id="findLessonDtlOfTeacher" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.teachingMonitor.LessonBeikeInfo">
+    	SELECT m.* FROM
+    	(SELECT
+		  a.courseSingleId,
+		  a.courseSingleName,
+		  UNIX_TIMESTAMP(DATE_FORMAT(a.startTime, '%Y-%m-%d %H:%i')) lessonTime,
+		  CONCAT(DATE_FORMAT(a.startTime, '%Y-%m-%d %H:%i'),'-',DATE_FORMAT(a.endTime, '%H:%i')) lessonTimeStr,
+		  (SELECT k.className FROM lesson.ls_klass k WHERE k.classId = a.classId) className,
+		  b.ratio,
+		  b.realCount,
+		  b.totalCount,
+		  b.absentCount,
+		  a.cwCount,
+		  a.mcCount,
+		  a.hwCount
+		FROM lesson.ls_lesson a, lesson.ls_attendance_lesson b, lesson.ls_klass_subject c, ls_klass f
+		WHERE a.courseSingleId = b.scId
+		AND a.classSubjId = c.classSubjId
+		AND a.classId = f.classId
+		AND a.isDeleted = 0
+		AND f.isExpired = 0
+		AND f.isDeleted = 0
+		AND a.schoolId = #{schoolId}
+		AND a.startTime <![CDATA[>=]]> DATE(#{startDate})
+		AND a.startTime <![CDATA[<]]> DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+		AND a.teacherId = #{teacherId}
+		<if test="gradeId != null and gradeId != -1">
+		AND f.gradeId = #{gradeId}
+	    </if>
+		<if test="subjectId != null and subjectId != -1">
+		AND c.subjectId = #{subjectId}
+	    </if>
+	    <include refid="teacherOfGradeSubject"/>
+	    )m ORDER BY ${orderAttr} ${orderType}
+    </select>
+    
+    <select id="findTeacherSubject" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.teachingMonitor.CommProp">
+		SELECT DISTINCT
+		  b.subjectId,
+		  b.subjectName,
+		  b.userId teacherId,
+		  b.userName teacherName
+		FROM
+		  lesson.ls_klass a, lesson.ls_klass_teacher b
+		WHERE a.classId = b.classId
+		AND a.isDeleted = 0
+		AND a.isExpired = 0
+		AND a.isDeleted = 0
+		AND a.type = 1
+		AND b.isDeleted = 0 
+		AND b.subjectId > 0
+		AND a.schoolId = #{schoolId}
+		<if test="gradeId != null and gradeId != -1">
+		AND a.gradeId = #{gradeId}
+	    </if>
+		<if test="subjectId != null and subjectId != -1">
+		AND b.subjectId = #{subjectId}
+	    </if>
+		<if test="teacherName != null and teacherName != ''">
+		AND b.userName like CONCAT('%', #{teacherName}, '%')
+	    </if>
+	</select>
+</mapper>   

@@ -1,0 +1,60 @@
+var tchWkList =function(){	
+	wkList.call(this);		//继承 /homework/vacationWork/DecList.js
+	this.RowBind=function(data){
+		
+		 
+           
+//           <input type="button" class="task-li-btn lesson-btn-cannot-work study" data-url="{{url}}" value="开始学习">
+//            <input type="button" class="task-li-btn task-li-btn-orange" value="作业">
+//            <input type="button" class="task-li-btn micro-start-btn" value="开始学习">
+//            <input type="button" class="task-li-btn micro-start-btn" value="重新学习">
+
+		
+	    var btnName="查看练习";
+	  //  data.microHwState=0;
+	    var flag =(typeof(data.microHwState)!='undefined')&&data.microHwState==1;
+		var btnClass=flag?"view":"lesson-btn-cannot-work";
+		  var json= "({exerciseId:'"+data.exerciseId+"',knowledgeId:'"+data.kId+"',microId:'"+data.microId+"',microState:'"+data.microState+"',microHwState:'"+data.microHwState+"',knowledgeName:'"+data.kName+"'})";
+        var btn = '<input type="button" class="task-li-btn '+btnClass+'" data-json="'+json+'" data-microid="'+data.microId+'" value="'+btnName+'"/>'
+		data.btns =btn;	
+		
+		 	
+		 //flag =((typeof(data.microState)!='undefined')&&data.microState!=0)	
+		 btnName="查看微课";
+		 btnClass="study"
+		 var url ="/auth/hd/student/vacationWork/WkStudy.htm?microcourseId="+data.microId;
+         btn = '<input type="button" class="task-li-btn '+btnClass+'"  data-url="'+url+'" value="'+btnName+'"/>'
+		 data.btns +=btn;
+	};
+
+	//查看
+	$(".view").live("click",function(){
+		//var id =$(this).data("microid");
+		
+		 var json=$(this).data("json");
+		 json =eval(json);
+	     var exerciseId =json.exerciseId;
+		  if(exerciseId!=null&&exerciseId.length>0){
+			// alert("window.homework.viewWk(exerciseId);exerciseId:"+exerciseId);
+             window.homework.viewWk(exerciseId);
+		  }
+		  else{
+		  	Utils.Notice.print('对不起，该微课暂无作业！',3000);
+		  }
+				
+		
+		
+	});
+   //学习
+	$(".study").live("click",function(){
+			var url =$(this).data("url");
+			url+="&id="+$("[name='id']").val();
+		window.location.href=url;
+	}); 
+    	
+
+	
+};
+tchWkList.prototype =new wkList();
+var c =new tchWkList();
+c.init();

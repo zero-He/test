@@ -1,0 +1,122 @@
+<%@ page pageEncoding="UTF-8"%>
+<%@ include file="/pages/common/tags.jsp"%>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <title>乐答</title>
+    <link rel="stylesheet" href="${assets}/styles/mobile/global.css">
+    <link rel="stylesheet" href="${assets}/styles/mobile/doubt.css">
+    <%@ include file="/pages/common/cordova.jsp"%>
+</head>
+<body id="jDroploadId">
+	<header class="c-header">
+        <a class="back" href="detail.htm?doubtId=${doubtId}&resolved=${resolved}"></a>
+        	${word}
+        <span id="jSubmit" class="operation">提交</span>
+        <input id="jDoubtId" type="hidden" value="${doubtId}">
+        <input id="jResolved" type="hidden" value="${resolved}">
+    </header>
+    <form style="display: none;" id="jForm" action="explain.htm" method="post">
+    </form>
+    <section class="c-question-edit">
+        <div class="description">
+            <textarea name="" id="jDescribe" cols="30" rows="10" placeholder="<c:if test="${currentRoleId==101}">回答内容</c:if><c:if test="${currentRoleId==100}">追问内容</c:if>" maxlength="500"></textarea>
+            <span class="count"><i id="jCount">0</i>/<i>500</i></span>
+        </div>
+
+        <div class="preview">
+            <div class="c-media" id="jAudioDiv" style="display: none;">
+                <button class="media-btn">
+                    <span class="waves">
+                        <b class="w1"><i></i></b>
+                        <b class="w2"><i></i></b>
+                        <b class="w3"><i></i></b>
+                    </span>
+                </button>
+                <span id="jAudioLength" class="length"></span> 
+            </div>
+
+            <ul>
+                <li>
+                    <div id="jPhotos" class="photos">
+                    </div>
+                </li>
+                <li>
+                    <div id="jCamera" class="camera">
+                    </div>
+                </li>
+                <li>
+                    <div class="media" id="j-media"></div>
+                </li>
+            </ul>
+        </div>
+
+        <!-- 录音弹层 -->
+        <div class="media-box" id="jRecordDiv">
+            <div class="content">
+                <h5><span class="cancel">取消</span>添加录音<span class="save">确定</span></h5>
+                <div class="tips">
+                    <span id="jTips">点击开始录音最长3分钟</span>
+                    <span id="jShowMediaTime"></span>
+                </div>
+                <!-- 操作区 -->
+                <table class="operation">
+                    <tr>
+                        <td>
+                            <span id="jRecordAgain" class="record-again">重录</span>
+                        </td>
+                        <td>
+                            <div id="jRecord" class="start-record c-record">
+                                <ul>
+                                    <li></li>
+                                    <li></li>
+                                    <li></li>
+                                    <li></li>
+                                    <li></li>
+                                </ul>
+                            </div>
+                        </td>
+                        <td>
+                            <div id="jStop" class="stop">
+                                <div class="m-circleprogress">
+                                    <span class="status"></span>
+                                    <div class="l">
+                                        <div class="l-circle"></div>
+                                    </div>
+                                    <div class="r">
+                                        <div class="r-circle"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="jPlay" class="play" style="display: none;">
+                                <div class="m-circleprogress">
+                                    <span class="status"></span>
+                                    <div class="l">
+                                        <div class="l-circle"></div>
+                                    </div>
+                                    <div class="r">
+                                        <div class="r-circle"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+                <div id="jRecordTips" class="record-tips">
+                	注意！每次只可上传一段语音，已添加的语音会被替换。
+                </div>
+            </div>
+        </div>
+    </section>
+	<div class="m-load" style="display: none;">
+	    <i class="loader"></i>
+	</div>
+    <script src="${assets}/scripts/common/mobile/common.js?_t=${_t}"></script>
+    <script src="/scripts/m/common/nativePlugins.js?_tt=${_t}"></script>
+    <script src="/scripts/m/common/tools.js?_tt=${_t}"></script>
+    <script src="/scripts/m/doubt/explain.js?_tt=${_t}"></script>
+</body>
+</html>

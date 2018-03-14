@@ -1,0 +1,30 @@
+<div class="z-resource-input">
+	<div class="left" data-bind="component: {
+		name: 'wbpap-wbnode-chooser',
+		params: {
+			workbook: workbook,
+			selected: wbnode
+		}
+	}"></div>
+
+	<div class="right f-bfc" style="min-height: 800px;">
+<!-- ko if: !wbnode() -->
+		<p class="m-tips">
+			<i></i>
+			<span>请选择左侧章节查看试卷!</span>
+		</p>
+<!-- /ko -->
+<!-- ko if: wbnode() -->
+		<div data-bind="component: {
+			name: 'wbpap-paper-list',
+			params: {
+				mode: 'view',
+				wbnode: wbnode,
+				workbook: workbook
+			}
+		}"></div>
+<!-- /ko -->
+
+	</div>
+	
+</div>

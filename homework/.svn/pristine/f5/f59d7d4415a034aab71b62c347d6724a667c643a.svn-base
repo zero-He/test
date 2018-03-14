@@ -1,0 +1,91 @@
+<%@ page pageEncoding="UTF-8"%>
+<%@ include file="/pages/common/tags.jsp"%>
+<!DOCTYPE html>
+<html>
+<head>
+<title><locale:message code="common.page.nav.ac.homework" /> - <locale:message code="common.page.header.leke" /></title>
+<%@ include file="/pages/common/meta.jsp"%>
+<link rel="stylesheet" href="${ctx}/scripts/common/ui/ui-tree/skin/default/ui-tree.css?t=${_t}" type="text/css">
+<link rel="stylesheet" href="${assets}/styles/homework/homework.css?t=${_t}" type="text/css">
+<link rel="stylesheet" type="text/css" href="${assets}/styles/beike/beike.css?t=${_t}" />
+</head>
+<body>
+	<%@ include file="/pages/header/header.jsp"%>
+	<div class="g-bd">
+		<div class="g-mn">
+			<!-- 布置作业 -->
+			<div class="m-arrangehomework">
+				<div class="m-table">
+					<table>
+						<tr>
+							<th colspan="2">布置作业</th>
+							<th colspan="2">
+								<div class="time">
+									<label for="" title="到了定时布置时间后，学生可以在作业中看到这份作业并进行作答">定时布置时间：</label>
+									<input type="text" class="u-ipt u-ipt-nm" id="startTime" name="startTime" data-bind="datepicker: {
+										value: startTime,dateFmt: 'yyyy-MM-dd HH:mm',minDate: '%y-%M-%d %h:%M:%d',maxDate: '#F{$dp.$D(\'closeTime\');}'}">
+									<label for="" title="学生提交作业的最晚时间">截止时间：</label>
+									<input type="text" class="u-ipt u-ipt-nm" id="closeTime" name="closeTime" data-bind="datepicker: {
+										value: closeTime,dateFmt: 'yyyy-MM-dd HH:mm',minDate: '#F{$dp.$D(\'startTime\');}'}">
+								</div>
+							</th>
+						</tr>
+						<!-- ko foreach: list -->
+						<tr>
+							<td align="center"  data-bind="text: $index() + 1"></td>
+							<td colspan="2" >
+								<ul class="select">
+									<li class="select-work">
+										<label for="">选择作业：
+										<button class="u-btn u-btn-sm u-btn-bg-orange" data-bind="click: function($data){
+											$root.openPaper($index,$data);
+										}">请选择</button></label>
+										<div class="con">
+										<!-- ko foreach: papers -->
+											<span class="item"><b data-bind="text: paperName"></b>
+											<i data-bind="click: function($data){
+												$root.rmPaper($parentContext.$index,$data);
+											}">&times;</i></span>
+										<!-- /ko -->
+										</div>
+									</li>
+									<li class="select-student">
+										<label for="">选择学生：
+										<button class="u-btn u-btn-sm u-btn-bg-orange" data-bind="click: function(){
+											$root.openStudentGroup($index,$data);
+										}">请选择</button></label>
+										<div class="con">
+										<!-- ko foreach: studentGroups -->
+											<span class="item"><b data-bind="text: str,attr:{title: str + (courseSetId ? '(' + gradeName + ')' : '')}"></b><i data-bind="click: function($data){
+												$root.rmStudentGroup($parentContext.$index,$data);
+											}">&times;</i></span>
+										<!-- /ko -->
+										</div>
+									</li>
+								</ul>
+							</td>
+							<td align="center">
+								<span class="del" data-bind="click: function($data){ $root.rmHomework($data);}">删除</span>
+							</td>
+						</tr>
+					<!-- /ko -->
+					</table>
+				</div>
+				<div class="m-tiptext m-tiptext-text m-tiptext-warning">
+                    <i class="iconfont icon">󰅂 </i> <div class="msg">小乐提醒您：如果您想给不同层次的学生布置不同的作业，可以点击“+增加作业”试试。</div>
+                </div>
+				<div class="add-work"><span class="add" data-bind="click: addHomework">+增加作业</span></div>	
+			<div class="submit">
+				<button class="u-btn u-btn-nm" id="jSubmit" data-bind="click: saveHomework,css: $root.pending() ? 'u-btn-bg-gray' : 'u-btn-bg-turquoise',
+   					disable: $root.pending" ><locale:message code="homework.homework.distribute.submit" /></button>
+			</div>
+		</div>
+	</div>
+	<script type="text/javascript">
+		window.CST = {
+				papers: ${papers}
+		}
+		seajs.use('homework/batch/distribute');
+	</script>
+</body>
+</html>

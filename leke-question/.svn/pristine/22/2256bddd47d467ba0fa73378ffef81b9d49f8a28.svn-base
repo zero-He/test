@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.question.dao.mybatis.question.IQuestionOperationDao">
+
+	<insert id="add" useGeneratedKeys="true" keyProperty="operationId"
+		parameterType="cn.strong.leke.question.model.question.QuestionOperation">
+		INSERT INTO que_question_operation(
+			questionId,operationType,isDeleted, createdBy, createdOn
+		) VALUES (
+			#{questionId},#{operationType},0, #{createdBy}, now()
+		)
+	</insert>
+</mapper>

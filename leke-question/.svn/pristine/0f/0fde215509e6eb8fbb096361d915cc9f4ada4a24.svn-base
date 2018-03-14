@@ -1,0 +1,68 @@
+<div class="detail">
+	<div class="m-search-box">
+		<div class="item">
+			<!-- ko if: roleId == 403 -->
+			<label class="title">录入人:</label>
+			<span data-bind="text: userName">&nbsp;</span><br/>
+			<!-- /ko -->
+			<label class="title">录入日期：</label>
+			<input type="text" name="startDate" class="Wdate u-ipt u-ipt-nm" id="startDate" 
+				data-bind="datepicker: {
+							value: query.startDate,
+							maxDate : query.endDate,
+							dateFmt: 'yyyy-MM-dd'
+						}"/>
+			- 
+			<input type="text" name="endDate" class="Wdate u-ipt u-ipt-nm" id="endDate"
+				data-bind="datepicker: {
+							value: query.endDate,
+							minDate : query.startDate,
+							dateFmt: 'yyyy-MM-dd'
+						}"/>
+			<input class="u-btn u-btn-nm u-btn-bg-turquoise" type="button" id="bSearch"
+				data-bind="value: '查询', click: function() {doSearch();}">
+		</div>
+	</div>
+	<div class="base_view1">
+		<div class="m-table">
+			<table>
+				<thead>
+					<tr>
+						<th>录入日期</th>
+						<th>录入量</th>
+						<th>被退回量</th>
+						<th>修正量</th>
+						<th>有效量</th>
+					</tr>
+				</thead>
+				<tbody>
+					<!-- ko foreach: inputStatisList -->
+					<tr>
+						<td data-bind="text: $data.createdDateStr"></td> 
+						<td>
+							<a class="s-c-turquoise" href="javascript:void(0);"
+								data-bind="text: $data.inputAmount || 0, click: function(){$parent.viewUserInputAmount($data);}"></a>
+						</td>
+						<td>
+							<a class="s-c-turquoise" href="javascript:void(0);"
+								data-bind="text: $data.returnAmount || 0, click: function(){$parent.viewUserReturnAmount($data);}"></a>
+						</td> 
+						<td>
+							<a class="s-c-turquoise" href="javascript:void(0);"
+								data-bind="text: $data.correctAmount || 0, click: function(){$parent.viewUserCorrectAmount($data);}"></a>
+						</td>
+						<td data-bind="text: $data.effectiveAmount || 0"></td> 
+					</tr> 
+					<!-- /ko -->
+					<tr class="s-c-orange">
+						<td>合计</td> 
+						<td data-bind="text: inputTotalAmount"></td> 
+						<td data-bind="text: returnTotalAmount"></td> 
+						<td data-bind="text: correctTotalAmount"></td> 
+						<td data-bind="text: effectiveTotalAmount"></td> 
+					</tr>
+				</tbody>
+			</table>
+		</div>
+	</div>
+</div>

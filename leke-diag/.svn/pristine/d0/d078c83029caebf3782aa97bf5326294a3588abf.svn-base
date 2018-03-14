@@ -1,0 +1,539 @@
+package cn.strong.leke.diag.controller;
+
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellType;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFCell;
+import org.apache.poi.xssf.usermodel.XSSFRow;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
+
+import cn.strong.leke.common.utils.NumberUtils;
+import cn.strong.leke.common.utils.StringUtils;
+import cn.strong.leke.context.base.SchoolStageContext;
+import cn.strong.leke.context.base.SubjectContext;
+import cn.strong.leke.context.user.UserContext;
+import cn.strong.leke.core.dfs.FileUtils;
+import cn.strong.leke.diag.dao.diag.model.ExamReport;
+import cn.strong.leke.diag.dao.diag.model.ExamReportDtl;
+import cn.strong.leke.diag.service.ExamReportService;
+import cn.strong.leke.diag.util.ExcelUtils;
+import cn.strong.leke.framework.page.jdbc.Page;
+import cn.strong.leke.framework.web.JsonResult;
+import cn.strong.leke.model.base.Clazz;
+import cn.strong.leke.model.base.SchoolStage;
+import cn.strong.leke.model.user.User;
+import cn.strong.leke.remote.model.tukor.SchoolStageRemote;
+import cn.strong.leke.remote.model.tukor.SubjectRemote;
+import cn.strong.leke.remote.model.tukor.UserRemote;
+import cn.strong.leke.remote.service.lesson.IKlassRemoteService;
+import cn.strong.leke.remote.service.tutor.user.IUserRemoteService;
+
+/**
+ * 描述：成绩单管理
+ * @author  xujinsong
+ * @created 2017年6月22日 
+ * @since   v1.0.0
+ */
+@Controller
+@RequestMapping("/auth/")
+public class ExamReportController {
+
+	protected static final Logger logger = LoggerFactory.getLogger(ExamReportController.class);
+
+	@Resource
+	private ExamReportService examReportService;
+
+	@Resource
+	private IUserRemoteService userRemoteService;
+	
+	@Resource
+	private IKlassRemoteService klassRemoteService;
+	
+	//PC端	创建成绩单
+	@RequestMapping({"provost/examReport/toAddExamReport", "teacher/examReport/toAddExamReport", "classTeacher/examReport/toAddExamReport"})
+	public String toAddExamReport() {
+		return "/auth/homework/createExamReport";
+	}
+	
+	//PC端	显示成绩单明细列表
+	@RequestMapping({"provost/examReport/toShowExamReportDtl", "teacher/examReport/toShowExamReportDtl", "classTeacher/examReport/toShowExamReportDtl"})
+	public String toShowExamReportDtl(Long examReportId, Long isCreatedBySelf, Long statusCd, Long isNewCreated, Model model) {
+		model.addAttribute("examReportId", examReportId);
+		model.addAttribute("isCreatedBySelf", isCreatedBySelf);
+		model.addAttribute("statusCd", statusCd);
+		model.addAttribute("isNewCreated", isNewCreated);
+		return "/auth/homework/showExamReportDtl";
+	}
+	
+	// PC端	显示成绩单
+	@RequestMapping({"provost/examReport/toShowExamReport", "teacher/examReport/toShowExamReport", "classTeacher/examReport/toShowExamReport"
+		, "student/examReport/toShowExamReport", "parent/examReport/toShowExamReport"})
+	public String toShowExamReport(Model model) {
+		return "/auth/homework/showExamReport";
+	}
+	
+	//移动端	显示成绩单
+	@RequestMapping({"m/parent/examReport/toShowExamReportPhone", "m/student/examReport/toShowExamReportPhone"})
+	public String toShowExamReportPhone(Model model) {
+		return "/auth/homework/showExamReportPhone";
+	}
+	
+	//PC端	查看学生具体成绩信息
+	@RequestMapping({"parent/examReport/toShowStuExamReport", "student/examReport/toShowStuExamReport"})
+	public String toShowStuExamReport(Long examReportId, Long studentId, Model model) {
+		model.addAttribute("examReportId", examReportId);
+		model.addAttribute("studentId", studentId);
+		return "/auth/homework/showStuExamReportDtl";
+	}
+	
+	//移动端  学生&家长   查看学生具体成绩信息
+	@RequestMapping({"m/parent/examReport/toShowStuExamReportPhone", "m/student/examReport/toShowStuExamReportPhone"})
+	public String toShowStuExamReportPhone(Long examReportId, Long studentId, Model model) {
+		if (studentId == null) {
+			studentId = UserContext.user.getUserId();
+		}
+		List<ExamReportDtl> list = examReportService.queryExamReportDtlByStudentId(examReportId, studentId);
+		ExamReportDtl examReportDtl = list.get(0);
+		model.addAttribute("studentName", examReportDtl.getStudentName());
+		model.addAttribute("greatings", examReportDtl.getGreatings());
+		model.addAttribute("schoolName", examReportDtl.getSchoolName());
+		model.addAttribute("createdOn", examReportDtl.getCreatedOn());
+		model.addAttribute("list", list);
+		return "/auth/homework/showStuExamReportDtlPhone";
+	}
+	
+	//显示错误信息
+	@RequestMapping({"provost/examReport/toShowError", "teacher/examReport/toShowError", "classTeacher/examReport/toShowError"})
+	public String toShowError(String msg, Model model) {
+		model.addAttribute("msg", msg);
+		return "/auth/homework/examReport-error";
+	}
+
+	/**
+	 * 创建成绩单
+	 * @param examReport
+	 */
+	@SuppressWarnings("unchecked")
+	@RequestMapping({"provost/examReport/createExamReport", "teacher/examReport/createExamReport", "classTeacher/examReport/createExamReport"})
+	@ResponseBody
+	public JsonResult addExamReport(ExamReport examReport) {
+		User user = UserContext.user.get();
+		Long schoolId = Long.valueOf(String.valueOf(user.getCurrentSchool().getId()));
+		String schoolName = user.getCurrentSchool().getName();
+		examReport.setSchoolId(schoolId);
+		examReport.setCreatedBy(user.getId());
+		examReport.setSchoolName(schoolName);
+		examReport.setCreatedUser(user.getUserName());
+
+		JsonResult checkJson = checkExamReportDtl(examReport);
+		JsonResult resultJson = new JsonResult();
+		
+		if (checkJson.isSuccess()) {//成绩单校验成功
+			List<ExamReportDtl> examReportDtlList = (List<ExamReportDtl>)checkJson.getDatas().get("examReportDtlList");
+			boolean isSuccess = examReportService.insertExamReport(examReport, examReportDtlList);
+			
+			if(isSuccess){
+				resultJson.addDatas("success", true);
+				resultJson.addDatas("examReportId", examReport.getExamReportId());
+				resultJson.addDatas("examReportName", examReport.getExamReportName());
+				return resultJson;
+			}else{
+				resultJson.addDatas("success", false);
+				resultJson.addDatas("msg", "成绩单数据入库失败");
+				return resultJson;
+			}
+		} else {//成绩单校验失败
+			resultJson.addDatas("success", false);
+			resultJson.addDatas("msg", checkJson.getMessage());
+			return resultJson;
+		}
+		
+	}
+
+	/**
+	 * 下载成绩单模板
+	 * @param request
+	 * @param response
+	 * @throws IOException
+	 */
+	@RequestMapping({"provost/examReport/downloadTemplate", "teacher/examReport/downloadTemplate", "classTeacher/examReport/downloadTemplate"})
+	public void downloadTemplate(HttpServletRequest request, HttpServletResponse response) throws IOException {
+		response.setCharacterEncoding("UTF-8");
+		response.setContentType("application/octet-stream;charset=UTF-8");
+		String agent = request.getHeader("user-agent");
+		String fileName = FileUtils.getEncodingFileName("成绩单模板.xlsx", agent);
+		StringBuilder sb = new StringBuilder();
+		sb.append("attachment;").append(fileName);
+		response.setHeader("Content-disposition", sb.toString());
+
+		XSSFWorkbook wb = new XSSFWorkbook();
+		XSSFSheet sheet = wb.createSheet();
+		XSSFRow row = sheet.createRow(0);
+		String[] titleArr = { "乐号", "姓名", "学科1" };
+		for (int i = 0; i < titleArr.length; i++) {
+			XSSFCell cell = row.createCell(i);
+			cell.setCellValue(titleArr[i]);
+		}
+
+		wb.write(response.getOutputStream());
+		wb.close();
+	}
+
+	/**
+	 * 发布或作废成绩单
+	 * @param examReportId
+	 * @param examReportName
+	 * @param model
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping({"provost/examReport/updateExamReportStatus", "teacher/examReport/updateExamReportStatus", "classTeacher/examReport/updateExamReportStatus"})
+	public JsonResult updateExamReportStatus(Long examReportId, Long status) {
+		JsonResult json = new JsonResult();
+		User user = UserContext.user.get();
+		
+		boolean isSuccess = examReportService.updateExamReportStatus(examReportId, status, user.getId());
+
+		if (isSuccess) {
+			json.setSuccess(true);
+			if(status == 2){
+				json.setMessage("成绩单发布成功！");
+			}else if(status == 3){
+				json.setMessage("成绩单作废成功！");
+			}
+		}else {
+			json.setSuccess(false);
+			if(status == 2){
+				json.setMessage("成绩单发布失败！");
+			}else if(status == 3){
+				json.setMessage("成绩单作废失败！");
+			}
+		}
+		return json;
+	}
+
+	/**
+	 * 查询成绩单
+	 * @param model
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping({"provost/examReport/findExamReport", "teacher/examReport/findExamReport", "classTeacher/examReport/findExamReport",
+		"student/examReport/findExamReport", "parent/examReport/findExamReport","m/student/examReport/findExamReport", "m/parent/examReport/findExamReport"})
+	public JsonResult findExamReport(Long studentId, Page page) {
+		JsonResult json = new JsonResult();
+		
+		User user = UserContext.user.get();
+		Long roleId = user.getCurrentRole().getId();
+		Long schoolId = Long.valueOf(String.valueOf(user.getCurrentSchool().getId()));
+		List<ExamReport> examReportList = null;
+		
+		if (roleId == 104) {//教务
+			examReportList = examReportService.queryExamReportByProvost(user.getId(), schoolId, page);
+		} else if (roleId == 101 || roleId == 103) {//班主任，老师
+			examReportList = examReportService.queryExamReportByTeacher(user.getId(), schoolId, page);
+		} else if (roleId == 100 || roleId == 102) {//学生，家长
+			examReportList = examReportService.queryExamReportByStudentId((null == studentId? user.getId() : studentId), page);
+		}
+		
+		page.setDataList(examReportList);
+		json.addDatas("page", page);
+		json.addDatas("dataList", examReportList);
+		return json;
+	}
+
+	/**
+	 * 教务或老师根据成绩单ID，学生根据学生ID和成绩单ID 查询成绩单列表明细
+	 * @param examReportId
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping({"provost/examReport/findExamReportDtl", "teacher/examReport/findExamReportDtl", "classTeacher/examReport/findExamReportDtl",
+		"student/examReport/findExamReportDtl", "parent/examReport/findExamReportDtl", "m/student/examReport/findExamReportDtl", "m/parent/examReport/findExamReportDtl"})
+	public JsonResult findExamReportDtl(Long examReportId, Long studentId, Page page, Model model) {
+		JsonResult json = new JsonResult();
+		User user = UserContext.user.get();
+		Long roleId = user.getCurrentRole().getId();
+				
+		if (roleId == 104 || roleId == 101 || roleId == 103) {//教务，班主任，老师
+			List<ExamReportDtl> examReportDtlList = examReportService.queryExamReportDtlByRptId(examReportId, page);
+			page.setDataList(examReportDtlList);
+			json.addDatas("page", page);
+		} else if (roleId == 100 || roleId == 102) {//学生，家长
+			List<ExamReportDtl> examReportDtlList = examReportService.queryExamReportDtlByStudentId(examReportId, (null == studentId? user.getId() : studentId));
+			json.addDatas("dataList", examReportDtlList);
+		}
+
+		return json;
+	}
+
+	/**
+	 * 根据家长ID查询已确认关联的子女列表 
+	 * 状态0,1
+	 * @param parentId
+	 * @param model
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping({"parent/examReport/findChildrenByParentId", "m/parent/examReport/findChildrenByParentId"})
+	public JsonResult findChildrenByParentId(Long parentId, Model model) {
+		JsonResult json = new JsonResult();
+		User user = UserContext.user.get();
+		
+		List<Map<String, Object>> childrenList = userRemoteService.findUserByParentId(user.getId()).stream().map(u->{
+			Map<String, Object> m = new HashMap<>();
+			m.put("studentId", u.getId());
+			m.put("studentName", u.getUserName());
+			return m;
+			}).collect(Collectors.toList());
+		
+		model.addAttribute("childrenList", childrenList);
+		json.addDatas("childrenList", childrenList);
+		return json;
+	}
+
+	/**
+	 * 查询乐课网支持的学科
+	 * @param model
+	 * @return
+	 */
+	@RequestMapping({"provost/examReport/findLekeSubject", "teacher/examReport/findLekeSubject", "classTeacher/examReport/findLekeSubject"})
+	public String findLekeSubject(Model model) {
+		List<SchoolStageRemote> schoolStageList =  SchoolStageContext.findSchoolStages();
+		List<Map<String, Object>> subjectList = schoolStageList.stream().map(v -> {
+			String subjectNames = v.getSubjects().stream().map(SubjectRemote::getSubjectName).collect(Collectors.joining(","));
+			Map<String, Object> item = new HashMap<>();
+			item.put("schoolStageName", v.getSchoolStageName());
+			item.put("subjectName", subjectNames);
+			return item;
+		}).collect(Collectors.toList());
+		
+		model.addAttribute("subjectList", subjectList);
+		return "/auth/homework/showLekeSubject";
+	}
+
+	private void setErrorMsg(String msg, JsonResult json) {
+		logger.error(msg);
+		json.setSuccess(false);
+		json.setMessage(msg);
+	}
+
+	public JsonResult checkExamReportDtl(ExamReport examReport) {
+		List<SubjectRemote> subjectList = SubjectContext.findSubjects();
+		List<ExamReportDtl> examReportDtlList = new ArrayList<>();
+		JsonResult json = new JsonResult();
+		String msg = "导入失败，";
+
+		Workbook wb = null;
+		try {
+			Sheet sheet = null;
+			Row titleRow = null;
+			
+			wb = ExcelUtils.getWorkbook(examReport.getFilePath());
+			
+			sheet = wb.getSheetAt(0);
+			titleRow = sheet.getRow(0);
+
+			//表头验证
+			if (null == titleRow) {
+				msg += "第一行不能为空行，必须是成绩单表头！";
+				setErrorMsg(msg, json);
+				return json;
+			}
+			
+			List<String> excelsubjectList = new ArrayList<>();
+			for (int i = 0; i < titleRow.getLastCellNum(); i++) {
+				Cell cell = titleRow.getCell(i);
+				if (i == 0) {
+					if (null == cell || !cell.getStringCellValue().equals("乐号")) {
+						msg += "第一行第一列内容必须是乐号！";
+						setErrorMsg(msg, json);
+						return json;
+					}
+				} else if (i == 1) {
+					if (null == cell || !cell.getStringCellValue().equals("姓名")) {
+						msg += "第一行第二列内容必须是姓名！";
+						setErrorMsg(msg, json);
+						return json;
+					}
+				} else {
+					if (null != cell && !subjectList.stream().anyMatch(s->s.getSubjectName().equals(cell.getStringCellValue()))) {
+						msg += "学科与乐课网学科不匹配。<a href='findLekeSubject.htm' target='_blank' style='text-decoration:underline'>点击查看乐课网当前支持的学科列表</a>";
+						setErrorMsg(msg, json);
+						return json;
+					} else if (null == cell) {
+						msg += "第1行第" + (i + 1) + "列学科不能为空";
+						setErrorMsg(msg, json);
+						return json;
+					} else{
+						if(excelsubjectList.contains(cell.getStringCellValue())){
+							msg += "第1行第" + (i + 1) + "列学科重复";
+							setErrorMsg(msg, json);
+							return json;
+						}
+						excelsubjectList.add(cell.getStringCellValue());
+					}
+
+				}
+			}
+
+			//数据验证
+			Row dataRow = null;
+			Cell dataCell = null;
+
+			//乐号
+			String loginName = null;
+			
+			//学生姓名
+			Long studentId = null;
+			String studentName = null;
+			
+			//班级
+			Long classId = null;
+			String className = null;
+
+			ExamReportDtl examReportDtl = null;
+			Long subjectId = null;
+			Clazz clazz = null;
+			UserRemote userRemote = null;
+			
+			//循环数据行
+			for (int i = 1; i <= sheet.getLastRowNum(); i++) {
+				dataRow = sheet.getRow(i);
+				if (null == dataRow) continue;
+
+				//循环判断数据行中的列内容是否有效，列数以表头为准
+				for (int j = 0; j < titleRow.getLastCellNum(); j++) {
+					dataCell = dataRow.getCell(j);
+
+					//第一列 乐号
+					if (j == 0) {
+						if (null == dataCell) {
+							msg += "第" + (i + 1) + "行第" + (j + 1) + "列数据为空，请填写乐号！若确实无数据，则右键删除整行";
+							setErrorMsg(msg, json);
+							return json;
+						} else {
+							try {
+								dataCell.setCellType(CellType.STRING);
+								loginName = dataCell.getStringCellValue().trim();
+							} catch (IllegalStateException e) {
+								msg += "第" + (i + 1) + "行第" + (j + 1) + "列，请填写数字类型的乐号！";
+								setErrorMsg(msg, json);
+								return json;
+							}
+						}
+					}else if (j == 1) {//第二列 姓名
+						if (null == dataCell) {
+							msg += "第" + (i + 1) + "行第" + (j + 1) + "列数据为空，请填写姓名！";
+							setErrorMsg(msg, json);
+							return json;
+						} else {
+							try {
+								if(dataCell.getCellTypeEnum() == CellType.NUMERIC){
+									studentName = NumberUtils.format(dataCell.getNumericCellValue(), "0.#");
+								}else{
+									studentName = dataCell.getStringCellValue();
+								}
+								
+								userRemote = userRemoteService.findUserByLoginName(String.valueOf(loginName));
+								if(null == userRemote){
+									msg += "第" + (i + 1) + "行第" + (j + 1) + "列乐号不存在！";
+									setErrorMsg(msg, json);
+									return json;
+								}else if (!userRemote.getUserName().equals(studentName)) {
+									msg += "第" + (i + 1) + "行第" + (j + 1) + "列乐号与姓名不匹配！";
+									setErrorMsg(msg, json);
+									return json;
+								}
+								
+								studentId = userRemoteService.findUserIdByLoginName(String.valueOf(loginName));
+								clazz = klassRemoteService.getDeptClazzByStudentId(studentId);
+								classId = (null == clazz ? null : clazz.getClassId());
+								className = (null == clazz ? null : clazz.getClassName());
+							} catch (IllegalStateException e) {
+								msg += "第" + (i + 1) + "行第" + (j + 1) + "列，请填写有效的姓名！";
+								setErrorMsg(msg, json);
+								return json;
+							}
+						}
+					}else if (j >= 2) {//第三列开始 学科成绩
+						if (null == dataCell) {
+							msg += "第" + (i + 1) + "行第" + (j + 1) + "列数据为空，请填写分数！";
+							setErrorMsg(msg, json);
+							return json;
+						} else if (null != dataCell) {
+							try {
+								examReportDtl = new ExamReportDtl();
+
+								examReportDtl.setLoginName(loginName);
+								examReportDtl.setStudentId(studentId);
+								examReportDtl.setStudentName(studentName);
+
+								String subjectName = titleRow.getCell(j).getStringCellValue();
+								subjectId = (Long) subjectList.stream().filter(s -> s.getSubjectName().equals(subjectName)).collect(Collectors.toList()).get(0).getSubjectId();
+								examReportDtl.setSubjectName(subjectName);
+								examReportDtl.setSubjectId(subjectId);
+								
+								dataCell.setCellType(CellType.STRING);
+								if(!StringUtils.hasText(dataCell.getStringCellValue())){
+									msg += "第" + (i + 1) + "行第" + (j + 1) + "列分数不能为空！";
+									setErrorMsg(msg, json);
+									return json;
+								}else if(Integer.valueOf(dataCell.getStringCellValue()) < 0){
+									msg += "第" + (i + 1) + "行第" + (j + 1) + "列分数不能为负数！";
+									setErrorMsg(msg, json);
+									return json;
+								}else if(Integer.valueOf(dataCell.getStringCellValue()) > 1000){
+									msg += "第" + (i + 1) + "行第" + (j + 1) + "列分数不能大于1000！";
+									setErrorMsg(msg, json);
+									return json;
+								}
+								
+								examReportDtl.setScore(new BigDecimal(Double.valueOf(dataCell.getStringCellValue())));
+								examReportDtl.setClassId(classId);
+								examReportDtl.setClassName(className);
+
+								examReportDtlList.add(examReportDtl);
+							} catch (NumberFormatException e) {
+								msg += "第" + (i + 1) + "行第" + (j + 1) + "请填写有效分数！";
+								setErrorMsg(msg, json);
+								return json;
+							}
+						}
+					}
+
+				}
+			}
+			json.addDatas("examReportDtlList", examReportDtlList);
+			wb.close();
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			setErrorMsg("成绩单校验失败!", json);
+		}
+		return json;
+	}
+
+
+}

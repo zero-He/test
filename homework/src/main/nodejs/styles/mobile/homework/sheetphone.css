@@ -1,0 +1,296 @@
+
+* {-webkit-touch-callout: none; -webkit-user-select: none; user-select: none;}
+input, textarea, .textarea, .textarea * {-webkit-user-select: auto; user-select: auto;}
+/** ********** 页面 ********* */
+.c-tips {position: fixed; width: 100%; top: 0; right: 0; left: 0; bottom: 0; margin: 0; background: #fff; text-align: center;}
+.c-tips:before {content: ""; display: inline-block; width: 84px; height: 84px; margin-top: 120px; background: url("../../../images/mobile/homework/tips.png") no-repeat; background-size: 100%;}
+.c-tips .msg {margin: 10px auto; width: 160px; color: #999; font-size: 14px;}
+
+/** 试卷导航栏 */
+.c-header {width: 100%; height: 50px; line-height: 50px; font-size: 14px; font-weight: bold; text-align: center; color: #4ea375; background: #f5f7f8; border-bottom: 1px solid #dbdbdb;}
+.c-header-score {position: absolute; top: 0; left: 0; width: 80px; text-align: left; padding-left: 35px; height: 50px; background: url("../../../images/mobile/homework/an-score.png") no-repeat 10px center; background-size: 18px 19px;}
+.c-header-clock {margin: 0 auto; width: 74px; text-align: right; height: 50px; background: url("../../../images/mobile/homework/an-clock.png") no-repeat 10px center; background-size: 18px 19px;}
+.c-header-card {position: absolute; top: 0; right: 0; width: 50px; height: 50px; background: url("../../../images/mobile/homework/an-tcard.png") no-repeat 10px center; background-size: 50%; background-position: 11px center;}
+.c-header-card:active {background-image: url("../../../images/mobile/homework/an-tcardon.png"); background-position: 11px center;}
+
+/** ********** 试卷结构 ********** */
+.c-sheet {position: absolute;top: 50px; left: 0; right: 0; bottom: 0; overflow: auto;}
+/** 试卷大题栏 **/
+.c-sheet-group {width: 100%; height: 45px; padding: 0 16px; line-height: 45px; font-size: 16px; color: #333; background: #f5f7f8; border-bottom: 1px solid #dbdbdb;}
+.c-sheet-group-title {float: left; max-width: 240px; font-weight: bold; overflow: hidden; word-wrap: normal; white-space: nowrap; text-overflow: ellipsis;}
+.c-sheet-group-title-name {}
+.c-sheet-group-title-score {}
+.c-sheet-group-title-total {font-style: normal;}
+.c-sheet-group-serial {float: right; max-width: 75px; height: 45px; color: #555;}
+.c-sheet-group-serial-curr {font-size: 24px; color: #fb866e;}
+.c-sheet-group-serial-sep {}
+.c-sheet-group-serial-total {}
+/** 试卷材料栏 **/
+.c-sheet-material {height: 100%;}
+.c-sheet-material-container {padding: 10px;}
+.c-sheet-material-container img {width: 100%;}
+/** 试卷内容栏 */
+.c-sheet-body {font-size: 14px; color: #555; overflow: auto; width: 100%;}
+
+/** ********** 题型卡 ********** */
+.c-card-overlay {position: absolute; top: 50px; left: 0px; right: 0; bottom: 0; background-color: rgba(0, 0, 0, .2);}
+.c-card {position: absolute; top: 50px; left: 0; right: 0; bottom: 0; overflow: auto; background: #fff;}
+/** 题型卡状态颜色 */
+.c-card .c-queno {border: 1px solid #dbdbdb; border-radius: 50%; color: #dbdbdb; font-size: 16px;}
+.c-card .c-queno-unfinish {border-color: #dbdbdb; color: #dbdbdb;}
+.c-card .c-queno-finished {border-color: #4ea375; color: #4ea375;}
+.c-card .c-queno-isright {border-color: #4ea375; color: #4ea375;}
+.c-card .c-queno-iswrong {border-color: #fc6; color: #fc6;}
+.c-card .c-queno-unknow {border-color: #dbdbdb; color: #dbdbdb;}
+/* 题型卡头部 */
+.c-card-header {height: auto; overflow: hidden; padding: 19px 0; background: #fff; clear: both;}
+.c-card-header>li {float: left; height: 40px; text-align: center;}
+.c-card-header>li:nth-child(1) {width: 29%; border-right: 1px solid #dbdbdb;}
+.c-card-header>li:nth-child(2) {width: 32%; border-right: 1px solid #dbdbdb;}
+.c-card-header>li:nth-child(3) {width: 39%;}
+.c-card-header .title {font-size: 16px; margin-bottom: 3px;}
+.c-card-header .content {font-size: 14px;}
+.c-card-header .content i {font-style: normal; color: #fb864f;}
+/** 题型卡解析 */
+.c-card-explain {height: 40px; line-height: 40px; font-size: 12px; color: #999; padding: 0 16px; border-top: 1px solid #dbdbdb; border-bottom: 1px solid #dbdbdb; background: #fff;}
+.c-card-explain span {display: inline-block; height: 15px; line-height: 15px; vertical-align: middle;}
+.c-card-explain .c-queno {width: 15px; height: 15px; margin-right: 4px; margin: 0 4px;}
+/** 题型卡标题栏 */
+.c-card-group {}
+.c-card-group .group-title {padding: 0 16px; border-bottom: 1px solid #dbdbdb; background: #f5f7f8; height: 45px; line-height: 45px; font-size: 16px; color: #333;}
+.c-card-group .group-title div {width: 100%; overflow: hidden; word-wrap: normal; white-space: nowrap; text-overflow: ellipsis;}
+.c-card-group .group-ques {border-bottom: 1px solid #dbdbdb; padding: 6px 16px; width: 100%; height: auto; overflow: hidden;}
+.c-card-group .group-ques div {float: left; width: 20%; font-size: 12px; text-align: center;}
+.c-card-group .group-ques div span {display: block; margin: 6px auto; width: 35px; height: 35px; line-height: 33px;}
+
+/*底部按钮区*/
+.c-card-foot {position: absolute; width: 100%; bottom: 0; height: 50px; font-size: 18px; font-weight: bold;}
+.c-card-foot .btn {float: left; box-sizing: border-box; width: 50%; height: 50px; line-height: 50px; border:none;}
+.c-card-foot .btn-save {color: #4ea375; background: #fff; border-top: 1px solid #dbdbdb;}
+.c-card-foot .btn-submit {color: #fff; background: #4ea375; border-top: 1px solid #4ea375;}
+
+/** ********** 题目结构 ********** */
+.c-que {font-size: 14px; color: #555; padding: 0 16px; border-bottom: 1px #fff solid;}
+/** ********** 题目导航 ********** */
+.c-que-wrapper .wrapper-head {width: 100%; height: 45px;}
+.c-que-wrapper .wrapper-body {position: absolute; overflow: auto; width: 100%; top: 45px; bottom: 0; left: 0; right: 0;}
+.c-que-nav {width: 100%; height: 45px; line-height: 45px; padding: 0 16px; font-size: 16px; color: #333; background: #fff; border-bottom: 1px solid #dbdbdb;}
+.c-que-nav .title {float: left; max-width: 210px; overflow: hidden; word-wrap: normal; white-space: nowrap; text-overflow: ellipsis;}
+.c-que-nav .title-name {}
+.c-que-nav .title-score {}
+.c-que-nav .title-total {font-style: normal;}
+.c-que-nav .serial {float: right; max-width: 75px; height: 45px; color: #555;}
+.c-que-nav .serial-curr {font-size: 24px; color: #fb866e;}
+.c-que-nav .serial-sep {}
+.c-que-nav .serial-total {}
+/** ********** 子题导航 ********** */
+.c-que-child-nav {border: none; width: 100%; height: 45px; padding: 0 16px; line-height: 45px; font-size: 14px; color: #333; background: #fff;}
+.c-que-child-nav .title {float: left; max-width: 240px; overflow: hidden;word-wrap: normal; white-space: nowrap; text-overflow: ellipsis;}
+.c-que-child-nav .title-name {}
+.c-que-child-nav .serial {float: right; max-width: 75px; height: 45px; line-height: 45px; color: #555;}
+.c-que-child-nav .serial-current {font-size: 24px; color: #fb866e;}
+.c-que-child-nav .serial-separator {font-size: 18px;}
+.c-que-child-nav .serial-total {font-size: 16px;}
+/** ********* 题目序号及批改结果 ********** */
+.c-que-index {width: 100%; height: 32px; line-height: 32px; font-size: 14px; color: #555;}
+.c-que-index .serial {width: 80px; display: inline-block;}
+.c-que-index .result {float: right; width: 200px; height: 32px; text-align: right;}
+.c-score-box span {display: inline-block; width: 10px; height: 25px; vertical-align: top; background: url('../../../images/mobile/homework/an-grades.png') no-repeat -3px 4px;}
+.c-score-box span.state-null {background:url('../../../images/mobile/homework/grade-null.png') no-repeat center; margin-right: 2px;}
+.c-score-box span.state-0{background-position:-25px 2px}
+.c-score-box span.state-1{background-position:-46px 4px}
+.c-score-box span.state-2{background-position:-66px 2px}
+.c-score-box span.state-3{background-position:-86px 5px}
+.c-score-box span.state-4{width:12px;background-position:-104px 3px}
+.c-score-box span.state-5{width:12px;background-position:-126px 3px}
+.c-score-box span.state-6{width:12px;background-position:-146px 3px}
+.c-score-box span.state-7{width:12px;height:21px;margin-top:4px;background-position:-126px -21px}
+.c-score-box span.state-8{background-position:-6px -19px}
+.c-score-box span.state-9{background-position:-25px -19px}
+.c-score-box span.state-point{width:4px;background-position:-8px 2px}
+.c-score-box span.state-score{width:25px;height:30px;background-position:-154px -15px}
+.c-score-box span.state-right{width:25px;background-position:-64px -20px}
+.c-score-box span.state-wrong{width:25px;background-position:-37px -20px}
+.c-score-box span.state-half{width:25px;background-position:-90px -20px}
+.c-score-box i.state-selfcheck {display: inline-block; padding: 0 2px; height: 32px; line-height: 32px; color: #ffa033; font-style: normal;}
+.c-score-box i.state-uncorrect {display: inline-block; padding: 0 2px; height: 32px; line-height: 32px; color: #4ea375; font-style: normal;}
+/** 题目状态栏 */
+.c-que-state {}
+/** 题目题干栏 */
+.c-que-stem {line-height: 25px; margin-bottom: 20px;}
+.c-que-stem-fillmark {padding: 0 15px 2px; border-bottom: 1px solid #555; line-height: 24px;}
+.c-que-stem-fillmark i{padding: 0px 4px; font-size: 10px; font-style: normal;}
+
+/** 题目答题区 */
+.c-area {margin-bottom: 20px;}
+.c-area img {max-width: 100%;}
+/** ********** 答题区：选择 ********** **/
+.c-area-options {padding-top: 10px;}
+.c-area-options .option-mark {text-align: center; font-size: 14px; top: 0; width: 35px; height: 35px; line-height: 35px; border: 1px solid #4ea375; border-radius: 50%;}
+.c-area-options .option-mark-true {color: #fff; background: #4ea375;}
+.c-area-options .option-mark-false {color: #4ea375;}
+.c-area-options-1 {width: 100%; padding-bottom: 10px;}
+.c-area-options-1 .option {position: relative; width:100%; min-height: 35px; margin-bottom: 10px; line-height: 25px;}
+.c-area-options-1 .option-mark {float: left;}
+.c-area-options-1 .option-text {margin-left: 50px;}
+.c-area-options-2 {}
+.c-area-options-2 .option {float: left; width: 25%; margin-bottom: 20px;}
+.c-area-options-2 .option-mark {margin: 0 auto;}
+.c-area-options-2 .option-text {display: none;}
+.c-area-options-2::after {content: ''; display: block; height: 0; clear: both; overflow: hidden;}
+/** ********** 答题区：填空 ********** **/
+.c-area-fillblank {padding-top: 10px;}
+.c-area-fillblank .fill {display: -webkit-flex; display: -webkit-box; display: flex; width: 100%; margin-bottom: 24px; position: relative;}
+.c-area-fillblank .fill-index {height: 14px; width: 20px; margin: auto 0; font-size: 10px; line-height: 16px;}
+.c-area-fillblank .fill-text {-webkit-box-flex: 1;-webkit-flex: 1;flex: 1; position: relative; width: -webkit-calc(100% - 20px); width: calc(100% - 20px); padding-left: 6px; border-bottom: 1px solid #555; font-size: 14px; line-height: 24px; color: #555; overflow: hidden; word-break: break-all;}
+.c-area-fillblank .fill-text img {display: inline-block; width: 50px; height: 50px;}
+.c-area-fillblank .fill-text-placeholder {color: #999;}
+.c-area-fillblank .fill-editor {display: inline-block; position: absolute; right: 0; bottom: 0; width: 25px; height: 25px; background: url("../../../images/mobile/homework/pen-on.png") no-repeat center; background-size: 150%;}
+.c-area-fillblank .editor .fill-text {padding-right: 36px;}
+.c-area-fillblank .result .fill-text {padding-right: 36px;}
+.c-area-fillblank .fill-state {display: inline-block; position: absolute; right: 0; bottom: 0; width: 25px; height: 25px; background: url("../../../images/mobile/homework/an-grades.png") no-repeat center;}
+.c-area-fillblank .fill-state-right{background-position: -64px -20px;}
+.c-area-fillblank .fill-state-wrong{background-position: -37px -20px;}
+.c-area-fillblank .fill-state-half{background-position: -90px -20px;}
+
+/** ********** 答题区：段句 ********** **/
+.c-area-punctuate {padding-top: 10px; line-height: 25px;}
+.c-area-punctuate .mark1 {color: #4ea375;}
+.c-area-punctuate .mark {display: inline-block; border: none; border-bottom: 1px solid #555; margin: 0 4px; width: 10px; height: 15px; line-height: 14px; text-align: center; vertical-align: middle; color: #4ea375; font-size: 14px;}
+/** ********** 答题区：问答 ********** **/
+.c-area-openend {min-height: 80px; border: 1px solid #e7e7e7; padding: 4px; padding-bottom: 40px; width: 100%; word-break: break-all; overflow: hidden;}
+.c-area-openend .placeholder {color: #999;}
+/** ********** 答题区：口语 ********** **/
+.c-recorder {width: 100%; height: 108px; padding: 20px 0; position: relative;}
+.c-recorder .record-tips {position: absolute; top: 34px; left: 0; width: 80px; height: 43px;}
+.c-recorder .record-on {width: 68px; height: 68px; border-radius: 50%; margin: 0 auto; background: #759def; border: 3px solid #759def;}
+.c-recorder .record-off {width: 68px; height: 68px; border-radius: 50%; margin: 0 auto; background:url("../../../images/mobile/homework/an-tongue.png") no-repeat center;background-size:100%;}
+.c-recorder .player-on {position: absolute; top: 34px; right: 50px; width: 43px; height: 43px; background:url('../../../images/mobile/homework/an-hear-pause.png') no-repeat center; background-size:100%;}
+.c-recorder .player-off {position: absolute; top: 34px; right: 50px; width: 43px; height: 43px; background:url('../../../images/mobile/homework/an-hear-play.png') no-repeat center; background-size:100%;}
+.c-recorder .record-on:active, .c-recorder .record-off:active, .c-recorder .player-on:active, .c-recorder .player-off:active {opacity: 0.6;}
+/*录音中动画*/
+.c-recorder ul.volume {width: 70%; height: 43px; margin: 0 auto; display: -webkit-box; display: -webkit-flex; display: flex; -webkit-flex-flow: row; flex-flow: row; -webkit-box-align: flex-end; -webkit-align-items: flex-end; align-items: flex-end; -webkit-justify-content: space-around; justify-content: space-around;}
+.c-recorder ul.volume li {width:3px; border-radius:2px; background:#fff;}
+.c-recorder ul.volume-lg .eins{-webkit-animation: waving 0.5s linear infinite alternate;animation: waving 0.5s linear infinite alternate;}
+.c-recorder ul.volume-lg .zwei{-webkit-animation: waving 0.5s linear 0.25s infinite alternate;animation: waving 0.5s linear 0.25s infinite alternate;}
+.c-recorder ul.volume-lg .drei{-webkit-animation: waving 0.5s linear 0.5s infinite alternate;animation: waving 0.5s linear 0.5s infinite alternate;}
+.c-recorder ul.volume-lg .vier{-webkit-animation: waving 0.5s linear 0.75s infinite alternate;animation: waving 0.5s linear 0.75s infinite alternate;}
+.c-recorder ul.volume-lg .fuenf{-webkit-animation: waving 0.5s linear 1s infinite alternate;animation: waving 0.5s linear 1s infinite alternate;}
+.c-recorder ul.volume-sm .eins{-webkit-animation: waving-s 0.5s linear infinite alternate;animation: waving-s 0.5s linear infinite alternate;}
+.c-recorder ul.volume-sm .zwei{-webkit-animation: waving-s 0.5s linear 0.25s infinite alternate;animation: waving-s 0.5s linear 0.25s infinite alternate;}
+.c-recorder ul.volume-sm .drei{-webkit-animation: waving-s 0.5s linear 0.5s infinite alternate;animation: waving-s 0.5s linear 0.5s infinite alternate;}
+.c-recorder ul.volume-sm .vier{-webkit-animation: waving-s 0.5s linear 0.75s infinite alternate;animation: waving-s 0.5s linear 0.75s infinite alternate;}
+.c-recorder ul.volume-sm .fuenf{-webkit-animation: waving-s 0.5s linear 1s infinite alternate;animation: waving-s 0.5s linear 1s infinite alternate;}
+@-webkit-keyframes waving {
+    from{height:4px;}
+    to{height:24px;}
+}
+@keyframes waving {
+    from{height:4px;}
+    to{height:24px;}
+}
+@-webkit-keyframes waving-s {
+    from{height:2px;}
+    to{height:14px;}
+}
+@keyframes waving-s {
+    from{height:2px;}
+    to{height:14px;}
+}
+/** ********** 答题区：其它(手写) ********** **/
+.c-area-handwrite {position: relative; border: 1px solid #dbdbdb;}
+.c-area-handwrite .editor {position: absolute; top: 0; right: 0; width: 40px; height: 40px; background: url("../../../images/mobile/homework/pen-on.png") no-repeat center; background-size: 105%;}
+.c-handboard {position: absolute; width: 100%; height: 60%; bottom: 0; padding: 16px; background: #fff;}
+.c-handboard .tools {width: 100%; height: 32px; text-align: right; border-bottom: 1px solid #dbdbdb; margin-bottom: 5px;}
+.c-handboard .tools span {display: inline-block; width: 30px; height: 30px; line-height: 30px; margin-left: 10px;}
+.c-handboard .tools .clean {background: url("../../../images/mobile/homework/an-delete-on.png") no-repeat center; background-size: 150%;}
+.c-handboard .tools .submit {background: url("../../../images/mobile/homework/editor-ok.png") no-repeat center; background-size: 85%;}
+.c-handboard .tools .cancel {background: url("../../../images/mobile/homework/an-close.png") no-repeat center; background-size: 130%; float: left; margin: 0;}
+.c-handboard .board {width: 100%; height: -webkit-calc(50% + 64px); height: calc(50% + 64px); position: relative;}
+.c-handboard .board img {position: absolute; max-width: 100%; max-height: 100%;}
+.c-handboard .board canvas {position: absolute; width: 100%; height: 100%;}
+
+/** ********** 交互：Confirm ********** **/
+.c-toast {position: absolute; bottom: 80px; left: 50%; width: 240px; max-height: 60px; margin-left: -120px; border-radius: 10px; background: #32323a; opacity: 0.8;}
+.c-toast .message {margin: 8px 16px; text-align: center; font-size: 14px; line-height: 20px; color: #fff;}
+.c-confirm {position: absolute; top: 50%; left: 50%; width: 290px; height: 140px; margin: -70px 0 0 -145px; border-radius: 10px; background: #fff;}
+.c-confirm .head {height: 98px; display: -webkit-box; display: -webkit-flex; display: flex; -webkit-box-pack: center; -webkit-justify-content: center; justify-content: center; -webkit-box-align: center; -webkit-align-items: center; align-items: center;}
+.c-confirm .head .message {max-height: 78px; margin: 10px 20px; overflow: auto; text-align: center; font-size: 16px; line-height: 24px; color: #555;}
+.c-confirm .foot {height: 42px; border-top: 1px solid #dbdbdb;}
+.c-confirm .foot .btn {background: none; border: none; box-sizing: border-box; height: 41px; line-height: 41px; text-align: center; font-size: 16px; color: #4ea375;}
+.c-confirm .foot .btn-cancel {width: 145px; border-bottom-left-radius: 10px; border-right: 1px solid #dbdbdb;}
+.c-confirm .foot .btn-submit {width: 145px; border-bottom-right-radius: 10px;}
+.c-confirm .foot .btn:active {background: #eee;}
+/** ********** 交互：Textarea ********** **/
+.c-richtext {position: absolute; bottom: 0; width: 100%; height: 198px; background: #fff;}
+.c-richtext .head {height: 48px; padding: 8px 0; font-size: 16px;}
+.c-richtext .head .btn {display: inline-block; width: 50px; height: 32px; line-height: 32px; color: #999; text-align: center;}
+.c-richtext .head .btn-image {background: url("../../../images/mobile/homework/editor-image.png") no-repeat center; background-size: 50%;}
+.c-richtext .head .btn-camera {background: url("../../../images/mobile/homework/editor-camera.png") no-repeat center; background-size: 50%;}
+.c-richtext .head .btn-ok {background: url("../../../images/mobile/homework/editor-ok.png") no-repeat center; background-size: 50%; float: right;}
+.c-richtext .body {width: 100%;}
+.c-richtext .body .textarea {width: 100%; height: 140px; border: none; padding: 12px 14px; font-size: 14px; line-height: 20px; outline: none; overflow: auto;}
+.c-richtext .body .textarea img {width: 40px; height: 40px; border: none; margin: 0 2px;}
+.c-richtext .body textarea {width: 100%; height: 140px; border: none; padding: 12px 14px; font-size: 14px; line-height: 20px; outline: none;}
+
+.c-image-zoom {position: absolute; width: 100%; top: 0; bottom: 0; overflow: hidden; background: rgba(0, 0, 0, .6);}
+.c-image-zoom>i.close {position: absolute; top: 10px; right: 10px; width: 45px; height: 45px; background: url('../../../images/mobile/homework/an-close.png') no-repeat center; background-size: 100%;}
+.c-image-zoom>div {width: 100%; height: 100%; display: -webkit-box; display: flex; display: -webkit-flex; -webkit-box-align: center; -webkit-align-items: center; align-items: center; -webkit-box-pack: center; -webkit-justify-content: center; justify-content: center;}
+.c-image-zoom>div>img {max-width: 100%; max-height: 100%;}
+
+.c-docview {width: 100%; height: 100%;}
+.c-docview img {max-width: 100%; padding: 8px 8px 0;}
+
+.c-work-result {position: absolute; width: 100%; top: 0; bottom: 0; overflow: hidden; background: #fff;}
+.c-work-result .m-tips {margin-top: 80px;}
+.c-work-result div.msg {font-size: 18px; color: #4ea375;}
+.c-work-result div.msg1 {text-align: center; color: #ccc; margin-top: 40px; font-size: 14px;}
+.c-work-result div.msg2 {text-align: center; color: #ccc; margin-top: 10px; font-size: 14px;}
+
+.c-choose-photo{display:none;position:fixed;bottom:0;background:#fff;height:198px;width:100%;z-index:9999;}
+.c-choose-photo .c-choose-photo-tit{height:45px;text-align:center;line-height:45px;font-size:16px;color:#555;border-bottom:1px solid #dbdbdb;}
+.c-choose-photo .c-choose-photo-tit .c-choose-photo-close{position:absolute;right:0;width:45px;height:45px;background:url('../../../images/mobile/homework/an-close.png') no-repeat center;background-size:50%;border:none;}
+.c-choose-photo .c-choose-photo-tit .c-choose-photo-close:active{opacity:0.6;}
+.c-choose-photo .c-choose-photo-list{width:215px;margin:25px auto;}
+.c-choose-photo .c-choose-photo-list .c-answer-camer{float:left;}
+.c-choose-photo .c-choose-photo-list .c-answer-upload-photo{margin-right:35px;}
+
+
+/** ********** FrameSet ********* */
+.c-frameset {width: 100%; height: 100%; position: relative;}
+.c-frame-top, .c-frame-bottom {width: 100%; position: absolute;}
+.c-frame-top {top: 0; box-sizing: border-box;}
+.c-frame-bottom {border-top: 1px solid #939393;}
+.c-frame-drag {border:none; position:absolute; left:50%; top:-43px; width:105px; height:70px; margin-left: -52px; background: url('../../../images/mobile/homework/an-pull.png') no-repeat center center; background-size: 50%;}
+.c-frame-body {position: absolute; top: 0; left: 0; right: 0; bottom: 0; overflow: auto;}
+.c-frame-body>div {height: 100%;}
+
+/** ********** AudioPlayer ********* */
+.c-player {display: -webkit-box;display: flex; display: -webkit-flex; height: 94px; margin: 0 4px; padding: 30px 0;}
+.c-player .control {width: 34px; height: 34px; box-sizing: border-box; border-radius: 50%; border: none;}
+.c-player .control-play {background:url('../../../images/mobile/homework/an-hear-pause.png') no-repeat center; background-size: 100%;}
+.c-player .control-pause {background:url('../../../images/mobile/homework/an-hear-play.png') no-repeat center; background-size: 100%;}
+.c-player-progress {position: relative; -webkit-box-flex: 1; -webkit-flex: 1; flex: 1; height: 5px; margin: 14px; margin-left: 6px;}
+.c-player-progress .bar {position: absolute; left: 7px; width: 100%; height: 7px; line-height: 7px; background: #c9d4eb;}
+.c-player-progress .bar span {display: block; height: 7px; background: #759def; width: 0;}
+.c-player-progress .point {position: absolute; height: 25px; width: 15px; top: -9px; padding: 5px 0;}
+.c-player-progress .point span {display: block; height: 15px; width: 15px; position: absolute; border-radius: 50%; background: #759def;}
+.c-player-time {font-size: 12px; width: 72px; text-align: center; line-height: 32px;}
+.c-player-time .current {color: #555;}
+.c-player-time .total {color: #999;}
+
+/** 动画 **/
+.slide-left-enter, .slide-left-leave {-webkit-transition: all .4s; transition: all .4s;}
+.slide-left-enter, .slide-left-leave.slide-left-leave-active {opacity: 0.01;}
+.slide-left-leave.slide-left-leave-active {margin-left: -800px;}
+.slide-left-enter {margin-left: 800px;}
+.slide-left-enter.slide-left-enter-active, .slide-left-leave {margin-left: 0; opacity: 1;}
+
+.slide-right-enter, .slide-right-leave {-webkit-transition: all .4s; transition: all .4s;}
+.slide-right-enter, .slide-right-leave.slide-right-leave-active {opacity: 0.01;}
+.slide-right-leave.slide-right-leave-active {margin-right: -800px;}
+.slide-right-enter {margin-right: 800px;}
+.slide-right-enter.slide-right-enter-active, .slide-right-leave {margin-right: 0; opacity: 1;}
+
+.c-slide-box {width: 100%; height: 100%; display: block; position: relative; overflow: hidden;}
+.c-slide-item {width: 100%; height: 100%; position: absolute; -webkit-transition: all .4s; transition: all .4s;}

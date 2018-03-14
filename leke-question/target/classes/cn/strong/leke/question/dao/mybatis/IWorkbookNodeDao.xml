@@ -1,0 +1,248 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.1//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.question.dao.mybatis.IWorkbookNodeDao">
+	
+	<insert id="addWorkbookNode" parameterType="cn.strong.leke.model.question.WorkbookNode" useGeneratedKeys="true" keyProperty="workbookNodeId">
+		INSERT INTO que_workbook_node(
+			workbookNodeName, workbookId, parentId, ord, lft, rgt, materialNodeId,
+			isDeleted, createdBy, createdOn, modifiedBy, modifiedOn
+		) VALUES (
+			#{workbookNodeName},#{workbookId},#{parentId},#{ord},#{lft},#{rgt},#{materialNodeId},
+			0,#{createdBy},now(),#{modifiedBy},now()
+		)
+	</insert>
+
+	<update id="delWorkbookNode" parameterType="cn.strong.leke.model.question.WorkbookNode">
+		UPDATE 
+			que_workbook_node
+		SET
+			isDeleted = 1,
+			modifiedBy = #{modifiedBy},
+			modifiedOn = now()
+		WHERE 
+			workbookNodeId=#{workbookNodeId}
+	</update>
+	
+	<update id="deleteByWorkbookId" parameterType="cn.strong.leke.model.question.WorkbookNode">
+		UPDATE 
+			que_workbook_node
+		SET
+			isDeleted = 1,
+			modifiedBy = #{modifiedBy},
+			modifiedOn = now()
+		WHERE 
+			workbookId = #{workbookId}
+			AND isDeleted = 0
+	</update>
+	
+	<!-- 修改 -->
+	<update id="updateWorkbookNode" parameterType="cn.strong.leke.model.question.WorkbookNode">
+		UPDATE 
+			que_workbook_node
+		SET
+			workbookNodeName = #{workbookNodeName},
+			ord = #{ord},
+			modifiedBy = #{modifiedBy},
+			modifiedOn = now()
+		WHERE 
+			workbookNodeId = #{workbookNodeId}
+	</update>
+	
+	<update id="updateWorkbookNodeName" parameterType="cn.strong.leke.model.question.WorkbookNode">
+		UPDATE 
+			que_workbook_node
+		SET
+			workbookNodeName=#{workbookNodeName},
+			modifiedBy=#{modifiedBy},
+			modifiedOn=NOW()	
+		WHERE 
+			isDeleted=0 AND workbookNodeId=#{workbookNodeId}
+	</update>
+	
+	<!-- 查询单条新 -->
+	<select id="getWorkbookNode" resultType="cn.strong.leke.model.question.WorkbookNode">
+		SELECT *
+		FROM que_workbook_node
+		WHERE isDeleted=0 
+		AND workbookNodeId=#{workbookNodeId}
+	</select>
+	
+	<update id="updateIncLftIndexGteLftVal" parameterType="cn.strong.leke.model.question.WorkbookNode">
+		UPDATE que_workbook_node
+		SET lft = lft + 2
+		<where>
+			<![CDATA[
+				AND lft >= #{lft}
+			]]>
+			AND workbookId = #{workbookId}
+			AND isDeleted = 0
+		</where>
+	</update>
+	
+	<update id="updateIncRgtIndexGteLftVal" parameterType="cn.strong.leke.model.question.WorkbookNode">
+		UPDATE que_workbook_node
+		SET rgt = rgt + 2
+		<where>
+			<![CDATA[
+				AND rgt >= #{lft}
+			]]>
+			AND workbookId = #{workbookId}
+			AND isDeleted = 0
+		</where>
+	</update>
+	
+	<update id="updateDecLftIndexGteLftVal" parameterType="cn.strong.leke.model.question.WorkbookNode">
+		UPDATE que_workbook_node
+		SET lft = lft - 2
+		<where>
+			<![CDATA[
+				AND lft >= #{lft}
+			]]>
+			AND workbookId = #{workbookId}
+			AND isDeleted = 0
+		</where>
+	</update>
+	
+	<update id="updateDecRgtIndexGteLftVal" parameterType="cn.strong.leke.model.question.WorkbookNode">
+		UPDATE que_workbook_node
+		SET rgt = rgt - 2
+		<where>
+			<![CDATA[
+				AND rgt >= #{lft}
+			]]>
+			AND workbookId = #{workbookId}
+			AND isDeleted = 0
+		</where>
+	</update>
+	
+	<update id="updateLftRgtIndex" parameterType="cn.strong.leke.model.question.WorkbookNode">
+		UPDATE que_workbook_node
+		<set>
+			lft = #{lft},
+			rgt = #{rgt},
+			modifiedOn = now()
+		</set>
+		<where>
+			workbookNodeId = #{workbookNodeId}
+			AND isDeleted = 0
+		</where>
+	</update>
+	
+	<!-- 根据习题册id查询所有 -->
+	<select id="findByWorkbookId" parameterType="long"
+		resultType="cn.strong.leke.model.question.WorkbookNode">
+		SELECT a.*
+		FROM que_workbook_node a
+		WHERE 
+			a.workbookId = #{workbookId}
+			AND a.isDeleted = 0
+		ORDER BY a.lft ASC
+	</select>
+	
+	<select id="countByWorkbookId" parameterType="long" resultType="_int">
+		SELECT count(*)
+		FROM que_workbook_node a
+		WHERE 
+			a.workbookId = #{workbookId}
+			AND a.isDeleted = 0
+	</select>
+	
+	<select id="findRootNodeByWorkbookId" parameterType="long"
+		resultType="cn.strong.leke.model.question.WorkbookNode">
+		SELECT a.*
+		FROM que_workbook_node a
+		WHERE 
+			a.workbookId = #{workbookId}
+			AND a.parentId = 0
+			AND a.isDeleted = 0
+		ORDER BY a.lft ASC
+	</select>
+	
+	<!-- 查询所有子节点 -->
+	<select id="findChildren" parameterType="long"
+		resultType="cn.strong.leke.model.question.WorkbookNode">
+		SELECT a.*
+		FROM que_workbook_node a
+		WHERE 
+			a.parentId = #{parentId}
+			AND a.isDeleted = 0
+		ORDER BY a.ord ASC
+	</select>
+	
+	<select id="findPath" parameterType="cn.strong.leke.model.question.WorkbookNode"
+		resultType="cn.strong.leke.model.question.WorkbookNode">
+		SELECT a.*
+		FROM que_workbook_node a
+		WHERE 
+			a.workbookId = #{workbookId}
+			<![CDATA[
+			AND a.lft <= #{lft}
+			AND a.rgt >= #{rgt}
+			]]>
+			AND a.isDeleted = 0
+		ORDER BY a.lft ASC
+	</select>
+	
+	<select id="getSameOrderFrontNode" parameterType="cn.strong.leke.model.question.WorkbookNode"
+		resultType="cn.strong.leke.model.question.WorkbookNode">
+		SELECT 
+			a.*
+		FROM que_workbook_node a
+		<where>
+			a.workbookId = #{workbookId}
+			AND parentId = #{parentId}
+			<![CDATA[
+				AND workbookNodeId < #{workbookNodeId}
+			]]>
+			AND ord = #{ord}
+			AND isDeleted = 0
+		</where>
+	</select>
+	
+	<select id="getSameOrderAfterNode" parameterType="cn.strong.leke.model.question.WorkbookNode"
+		resultType="cn.strong.leke.model.question.WorkbookNode">
+		SELECT 
+			a.*
+		FROM que_workbook_node a
+		<where>
+			a.workbookId = #{workbookId}
+			AND parentId = #{parentId}
+			<![CDATA[
+				AND workbookNodeId > #{workbookNodeId}
+			]]>
+			AND ord = #{ord}
+			AND isDeleted = 0
+		</where>
+	</select>
+	
+	<select id="getOrderFrontNode" parameterType="cn.strong.leke.model.question.WorkbookNode"
+		resultType="cn.strong.leke.model.question.WorkbookNode">
+		SELECT 
+			a.*
+		FROM que_workbook_node a
+		<where>
+			a.workbookId  = #{workbookId}
+			AND parentId = #{parentId}
+			<![CDATA[
+			AND ord < #{ord}
+			]]>
+			AND isDeleted = 0
+		</where>
+	</select>
+	
+	<select id="getOrderAfterNode" parameterType="cn.strong.leke.model.question.WorkbookNode"
+		resultType="cn.strong.leke.model.question.WorkbookNode">
+		SELECT 
+			a.*
+		FROM que_workbook_node a
+		<where>
+			a.workbookId  = #{workbookId}
+			AND parentId = #{parentId}
+			<![CDATA[
+			AND ord > #{ord}
+			]]>
+			AND isDeleted = 0
+		</where>
+	</select>
+</mapper>

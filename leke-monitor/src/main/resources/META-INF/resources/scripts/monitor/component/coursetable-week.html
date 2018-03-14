@@ -1,0 +1,158 @@
+<div class="m-table-sheet">
+	<div class="head">
+		<div class="operation-wrap f-clearfix f-mb10">
+			<div class="info f-fl">
+				<strong>一周课表</strong>
+				<span class="line">|</span>
+				<span class="time">
+					当前第 <em data-bind="text: query.weekOfYear"></em> 周
+					<em data-bind="text: query.startDate"></em> - <em data-bind="text: query.endDate"></em>
+				</span>
+			</div>
+			
+			<div class="button f-fr">
+				<input type="button" value="上一周" data-bind="click: toPrevWeek"/>
+				<input type="button" value="下一周" data-bind="click: toNextWeek"/>
+				<input type="button" value="本周" data-bind="click: toCurrentWeek, css: {
+					cur: query.isCurrentWeek
+				}"/>
+			</div>
+		</div>
+	</div>
+	<div class="m-search-box j-search-box">
+		<label class="title j-area-label">地区范围：</label>
+		<input type="hidden" name="area" class="j-area-select"/>
+		<label class="title">学校：</label>
+		<input type="text" name="school" class="u-ipt u-ipt-nm j-school-select" placeholder="请输入学校关键字"/>
+		<label class="title">学校类型：</label>
+		<select name="schoolNature" class="u-select u-select-sm"
+			data-bind="options: schoolNatures,
+					   optionsText: 'schoolNatureName',
+					   optionsValue: 'schoolNature',
+					   optionsCaption: '全部',
+					   value: query.schoolNature,
+					   valueAllowUnset: true"></select>
+		<button class="u-btn u-btn-nm u-btn-bg-turquoise"
+			data-bind="click: load">查询</button>
+	</div>
+	<!-- ko if: query.isSeller -->
+	<div class="m-search-box">
+		<label class="title">学校：</label>
+		<select name="sellerSchool" class="u-select u-select-lg"
+			data-bind="options: sellerSchools,
+					   optionsText: 'schoolName',
+					   optionsValue: 'schoolId',
+					   optionsCaption: '全部',
+					   value: query.sellerSchoolId,
+					   valueAllowUnset: true"></select>
+		<button class="u-btn u-btn-nm u-btn-bg-turquoise"
+			data-bind="click: load">查询</button>
+	</div>
+	<!-- /ko -->
+</div>
+
+<!-- ko with: coursetable -->
+<div class="z-class-table-wrap">
+	<table class="z-class-table">
+		<tbody class="all-class-total">
+			<tr class="table-tr-title">
+				<th class="table-title">日期</th>
+				<th class="td-table-wrap">
+					<table class="td-table">
+						<tr data-bind="foreach: dates">
+							<th class="table-item" width="14.285%"
+								data-bind="click: function() {
+									$component.toDayCourseHome($data);
+								}">
+								<p data-bind="text: dayOfWeekDesc"></p>
+								<p data-bind="text: date"></p>
+							</th>
+						</tr>
+					</table>
+				</th>
+			</tr>
+			<!-- ko if: $component.options.showStats -->
+			<tr class="table-content">
+				<td class="table-title">合计</td>
+				<td class="td-table-wrap">
+					<table class="td-table">
+						<tr data-bind="foreach: sdailys">
+							<td width="14.285%">
+								<p>学校：<span data-bind="text: schoolCount">0</span></p>
+								<p>课堂数：<span data-bind="text: lessonCount">0</span></p>
+								<p>课时：<span data-bind="text: hours">0</span></p>
+								<p>人数：<span data-bind="text: expectStuCount">0</span></p>
+								<p>人次：<span data-bind="text: expectStuTimes">0</span></p>
+							</td>
+						</tr>
+					</table>
+				</td>
+			</tr>
+			<!-- /ko -->
+		</tbody>
+		
+		<!-- ko foreach: periodStats -->
+		<tbody data-bind="css: period.css">
+			<!-- ko if: $component.options.showStats -->
+			<tr class="table-tr-title">
+				<td class="table-title">
+					<p data-bind="text: period.name">上午</p>
+					<p>小计</p>
+				</td>
+				<td class="td-table-wrap">
+					<table class="td-table">
+						<tr data-bind="foreach: sums">
+							<td width="14.285%">
+								<p>学校：<span data-bind="text: schoolCount">0</span></p>
+								<p>课堂数：<span data-bind="text: lessonCount">0</span></p>
+								<p>课时：<span data-bind="text: hours">0</span></p>
+								<p>人数：<span data-bind="text: expectStuCount">0</span></p>
+								<p>人次：<span data-bind="text: expectStuTimes">0</span></p>
+							</td>
+						</tr>
+					</table>
+				</td>
+			</tr>
+			<!-- /ko -->
+			
+			<!-- ko if: rows.length -->
+			<tr class="table-content">
+				<td class="table-title" data-bind="text: period.name">上午</td>
+				<td class="td-table-wrap">
+					<table class="td-table" data-bind="foreach: { data: rows, as: 'row' }">
+						<tr class="table-content" data-bind="foreach: {data: row, as: 'cell' }">
+							<td width="14.285%" class="label-logo"
+								data-bind="with: cell, click: function() {
+									$component.toSchoolDayCourse(cell);
+								}, css: cell && cell.logoCss || '' ">
+								<p>
+									<span data-bind="datetext: minStartTime, dateFmt: 'HH:mm'">&nbsp;</span>
+									~
+									<span data-bind="datetext: maxEndTime, dateFmt: 'HH:mm'">&nbsp;</span>
+								</p>
+								<p data-bind="text: schoolName"></p>
+								<p><span data-bind="text: lessonCount">0</span> 堂课</p>
+								<p><span data-bind="text: hours">0</span> 课时</p>
+								<p><span data-bind="text: expectStuCount">0</span> 人</p>
+							</td>
+						</tr>
+					</table>
+				</td>
+			</tr>
+			<!-- /ko -->
+			
+			<!-- ko if: !$component.options.showStats && !rows.length -->
+			<tr class="table-tr-title">
+				<td class="table-title">
+					<p data-bind="text: period.name">上午</p>
+				</td>
+				<td class="td-table-wrap">
+					没有相关排课信息！
+				</td>
+			</tr>
+			<!-- /ko -->
+		</tbody>
+		<!-- /ko -->
+	</table>
+</div>
+<!-- /ko -->

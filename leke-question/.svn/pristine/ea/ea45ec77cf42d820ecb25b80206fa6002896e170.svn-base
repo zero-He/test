@@ -1,0 +1,129 @@
+package cn.strong.leke.question.controller.workbook;
+
+import java.util.List;
+
+import javax.annotation.Resource;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
+
+
+
+
+
+
+import cn.strong.leke.beike.model.RepositoryBeikePkgQuery;
+import cn.strong.leke.common.utils.ListUtils;
+import cn.strong.leke.context.user.UserContext;
+import cn.strong.leke.framework.page.jdbc.Page;
+import cn.strong.leke.framework.web.JsonResult;
+import cn.strong.leke.model.question.querys.RepositoryWorkbookQuery;
+import cn.strong.leke.model.repository.RepositoryRecord;
+import cn.strong.leke.model.repository.ShareScopes;
+import cn.strong.leke.model.repository.WorkbookRepositoryRecord;
+import cn.strong.leke.question.core.workbook.query.ILekeWorkbookQueryService;
+import cn.strong.leke.question.core.workbook.query.ISchoolWorkbookQueryService;
+import cn.strong.leke.question.service.IWorkbookService;
+
+/**
+ * 教师乐课习题册 Pad端
+ * 
+ * @author hefeijie 
+ *
+ */
+
+@Controller
+@RequestMapping("/auth/teacher/hd/leke/workbook")
+public class HDTeacherLekeWorkbookController {
+	
+	
+	@Resource
+	private ILekeWorkbookQueryService lekeWorkbookQueryService;
+	
+	@Resource
+	private ISchoolWorkbookQueryService schoolWorkbookQueryService;
+	
+	@Resource
+	private IWorkbookService workbookService;
+
+	@RequestMapping("list")
+	public void list() {
+		// nothing to do
+	}
+	
+	@RequestMapping("details")
+	@ResponseBody
+	public JsonResult details(RepositoryWorkbookQuery query, Page page) {
+		JsonResult result = new JsonResult();
+		page.setPageSize(5);
+		List<WorkbookRepositoryRecord> records = lekeWorkbookQueryService.queryLekeWorkbooks(query, page);
+		page.setDataList(records);
+		result.addDatas("page", page);
+		return result;
+	}
+	
+	
+	@RequestMapping("personal/list")
+	public void personalList() {
+		// nothing to do
+	}
+	
+	@RequestMapping("favorite/details")
+	@ResponseBody
+	public JsonResult favoriteDetails(RepositoryWorkbookQuery query, Page page) {
+		JsonResult result = new JsonResult();
+		query.setShareScope(ShareScopes.FAVORITE);
+		query.setUserId(UserContext.user.getUserId());
+		List<RepositoryRecord> workbooks = workbookService.queryFavoriteWorkbooks(query, page);
+		List<WorkbookRepositoryRecord> records= ListUtils.map(workbooks, wk -> {
+			return (WorkbookRepositoryRecord) wk;
+		});
+		page.setDataList(records);
+		//result.addDatas("records", records);
+		result.addDatas("page", page);
+		return result;
+	}
+	
+	@RequestMapping("school/list")
+	public void schoolList() {
+
+	}
+
+	@RequestMapping("school/details")
+	@ResponseBody
+	public JsonResult schooldetails(RepositoryWorkbookQuery query, Page page) {
+		JsonResult result = new JsonResult();
+		query.setShareScope(ShareScopes.SCHOOL);
+		query.setSchoolId(UserContext.user.getCurrentSchoolId());
+		List<RepositoryRecord> records = schoolWorkbookQueryService.querySchoolWorkbooks(query,
+				page);
+		//result.addDatas("records", records);
+		page.setDataList(records);
+		result.addDatas("page", page);
+		return result;
+	}
+	
+	
+	@RequestMapping("league/list")
+	public void leagueList(Long leagueId, Model model) {
+		model.addAttribute("leagueId", leagueId);
+	}
+
+	@RequestMapping("league/details")
+	@ResponseBody
+	public JsonResult leagueDetails(RepositoryWorkbookQuery query, Page page) {
+		JsonResult result = new JsonResult();
+		query.setShareScope(ShareScopes.LEAGUE);
+		query.setSchoolId(UserContext.user.getCurrentSchoolId());
+		List<RepositoryRecord> records = workbookService.queryLeagueWorkbooks(query, page);
+		//result.addDatas("records", records);
+		page.setDataList(records);
+		result.addDatas("page", page);
+		return result;
+	}
+	
+
+
+}

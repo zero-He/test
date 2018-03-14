@@ -1,0 +1,97 @@
+<div style="margin-top: 30px;" data-bind="visible: loading">
+	<div style="margin: 0 auto;" class="loading"></div>
+	<div style="margin: 5px auto; text-align: center;">加载中...</div>
+</div>
+<!-- ko if: !loading() -->
+<div class="m-search-box f-fr" data-bind="visible: mode === 'edit'">
+	<a class="u-btn u-btn-nm u-btn-bg-orange f-mr10" target="_blank"
+		data-bind="attr: {
+			href: urlAddNormal
+		}">添加试卷</a>
+	<a class="u-btn u-btn-nm u-btn-bg-orange f-mr10" target="_blank"
+		data-bind="attr: {
+			href: urlAddAnswerSheet
+		}">添加答题卡</a>
+	<a class="u-btn u-btn-auto u-btn-bg-orange f-mr10"
+		data-bind="click: openPaperSelect">添加已有试卷</a>
+	<a class="u-btn u-btn-nm u-btn-bg-orange"
+		data-bind="click: load">刷新</a>
+</div>
+
+<!-- ko if: papers().length > 0 -->
+<div class="m-table">
+<table>
+	<tr>
+		<th data-bind="i18n: 'pap.paper.searchItem.paperTitle'">试卷名称</th>
+		<th data-bind="i18n: 'pap.paper.searchItem.paperType'">试卷类型</th>
+		<!-- ko if: $component.mode === 'edit' -->
+		<th>创建时间</th>
+		<th data-bind="i18n: 'pap.paper.th.status'">状态</th>
+		<!-- /ko -->
+		<th>节点名称</th>
+		<th data-bind="i18n: 'pap.paper.th.actions'">操作</th>
+	</tr>
+	<tbody data-bind="foreach: papers">
+		<tr>
+			<td class="operation">
+				<a target="_blank"
+					data-bind="attr: {
+						href: urlView,
+						title: $data.title
+					}, text: $data.title"></a>
+			</td>
+			<td data-bind="text: $data.paperType == 1 ? '试卷' : '答题卡'"></td>
+			<!-- ko if: $component.mode === 'edit' -->
+			<td data-bind="text: $data.createdOnStr"></td>
+			<td data-bind="text: $data.paperStatus == 0 ? '草稿' : '正常'"></td>
+			<!-- /ko -->
+			<td data-bind="text: $data.workbookNodeName, attr: {
+				title: $data.path
+			}"></td>
+			<td class="operation">
+				<a target="_blank"
+					data-bind="attr: {
+						href: urlView
+					}, i18n: 'pap.paper.btn.view'">查看</a>
+				<!-- ko if: $component.mode === 'edit' -->
+				<a href="#" 
+					data-bind="click: function() {
+						$component.toMove($data);
+					}, i18n: 'pap.paper.btn.movePath'">移动位置</a>
+				<a target="_blank" 
+					data-bind="attr: {
+						href: urlEdit
+					}, i18n: 'pap.paper.btn.edit'">编辑</a>
+				<a href="#" 
+					data-bind="click: function() {
+						$component.doRemove($data);
+					}, i18n: 'pap.paper.btn.disable'">删除</a>
+				<!-- /ko -->
+				<!-- ko if: $component.mode === 'view' -->
+				<!-- ko if: Leke.user.currentRoleId == 101 -->
+				<a target="_blank" 
+					data-bind="attr: {
+						href: urlAssign
+					}, i18n: 'pap.paper.btn.arrangeHomework'">布置作业</a>
+				<a href="#"
+					data-bind="click: function() {
+						$component.pushToBeike($data);
+					}, i18n: 'pap.quecart.btn.toFastBeike'">推送到备课</a>
+				<!-- /ko -->
+				<!-- /ko -->
+			</td>
+			
+		</tr>
+	</tbody>
+</table>
+</div>
+<!-- /ko -->
+
+<!-- ko if: papers().length == 0 -->
+<p class="m-tips">
+	<i></i>
+	<span>当前章节没有相关试卷!</span>
+</p>
+<!-- /ko -->
+
+<!-- /ko -->

@@ -1,0 +1,131 @@
+package cn.strong.leke.homework.service.impl;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import javax.annotation.Resource;
+
+import org.springframework.stereotype.Service;
+
+import cn.strong.leke.context.base.SchoolContext;
+import cn.strong.leke.context.paper.PaperContext;
+import cn.strong.leke.framework.page.jdbc.Page;
+import cn.strong.leke.homework.dao.mybatis.AssignLogDao;
+import cn.strong.leke.homework.model.AssignLogDO;
+import cn.strong.leke.homework.model.AssignLogDTO;
+import cn.strong.leke.homework.model.AssignLogTeaHw;
+import cn.strong.leke.homework.model.Homework;
+import cn.strong.leke.homework.model.HomeworkGroupForm;
+import cn.strong.leke.homework.model.HomeworkType;
+import cn.strong.leke.homework.model.query.AssignLogQueryDTO;
+import cn.strong.leke.homework.service.HomeworkService;
+import cn.strong.leke.homework.service.IAssignLogService;
+import cn.strong.leke.homework.service.IHomeworkGroupService;
+import cn.strong.leke.model.user.User;
+import cn.strong.leke.remote.model.homework.HomeworkRemote;
+
+@Service
+public class AssignLogServiceImpl implements IAssignLogService {
+
+	@Resource
+	private AssignLogDao assignLogDao;
+	@Resource
+	private HomeworkService homeworkServiceImpl;
+	@Resource
+	private IHomeworkGroupService homeworkGroupServiceImpl;
+	
+	@Override
+	public void addAssignLog(AssignLogDTO assignLogDTO) {
+		//保存作业
+		List<HomeworkRemote>  hwr = saveHomework(assignLogDTO);
+		//保存批量布置作业Log 
+		List<AssignLogDO> assignLogDOList = buildAssignLog(assignLogDTO);
+		assignLogDOList.forEach(log->{
+			String[] homeworkIds = hwr.stream().filter(h -> h.getPaperId().equals(log.getPaperId()))
+					.map(h -> h.getHomeworkId().toString()).collect(Collectors.toList()).toArray(new String[0]);
+			log.setHomeworkIdJson(String.join(",", homeworkIds));
+		});
+		assignLogDao.addAssignLog(assignLogDOList);
+
+	}
+	
+	private List<HomeworkRemote> saveHomework(AssignLogDTO assignLogDTO) {
+		Date startTime = assignLogDTO.getStartTime();
+		Date closeTime = assignLogDTO.getCloseTime();
+		List<HomeworkRemote> homeworks = new ArrayList<HomeworkRemote>();
+		for (AssignLogTeaHw teaHw : assignLogDTO.getAssignLogTeaHw()) {
+			HomeworkGroupForm item = new HomeworkGroupForm();
+			item.setCloseTime(closeTime);
+			item.setStartTime(startTime);
+			item.setHomeworkType(HomeworkType.HOME.value);
+			item.setPaperIds(assignLogDTO.getPaperIds());
+			item.setStudentGroupsJson(teaHw.getStudentGroupsJson());
+			User teacherUser = teaHw.getTeacherUser();
+			teacherUser.setCurrentSchool(SchoolContext.getSchoolBySchoolId(assignLogDTO.getSchoolId()));
+			homeworks.addAll(homeworkGroupServiceImpl.saveHomeworks(Arrays.asList(item), teacherUser));
+		}
+		return homeworks;
+	}
+	private List<AssignLogDO> buildAssignLog(AssignLogDTO assignLogDTO) {
+		Long[] paperIdS = assignLogDTO.getPaperIds();
+		Date startTime = assignLogDTO.getStartTime();
+		Date closeTime = assignLogDTO.getCloseTime();
+		List<AssignLogDO> list = new ArrayList<AssignLogDO>();
+		for (Long paperId : paperIdS) {
+			AssignLogDO item = new AssignLogDO();
+			item.setCloseTime(closeTime);
+			item.setStartTime(startTime);
+			item.setCreatedBy(assignLogDTO.getCreatedBy());
+			item.setHomeworkName(PaperContext.getPaperDTO(paperId).getTitle());
+			item.setPaperId(paperId);
+			List<String> paperTeacherClass = new ArrayList<String>();
+			assignLogDTO.getAssignLogTeaHw().forEach(s->{
+				paperTeacherClass.add(s.getTeacherClassName());
+			});
+			item.setClassInfo(String.join("；", paperTeacherClass));
+			list.add(item);
+		}
+		
+		return list;
+	}
+
+	@Override
+	public void modifyCloseTime(AssignLogDO assignLog) {
+		assignLogDao.modifyCloseTime(assignLog);
+		String homeworkIds = assignLogDao.getAssignLog(assignLog.getAssignId()).getHomeworkIdJson();
+		String[] homeworkIdArray = homeworkIds.split(",");
+		for (String hwId : homeworkIdArray) {
+			homeworkServiceImpl.updateHomeworkDate(Long.parseLong(hwId), assignLog.getStartTime(), assignLog.getCloseTime());
+		}
+	}
+
+	@Override
+	public void invalid(AssignLogDO assignLog) {
+		assignLogDao.updateStatus(assignLog);
+		String homeworkIds = assignLogDao.getAssignLog(assignLog.getAssignId()).getHomeworkIdJson();
+		String[] homeworkIdArray = homeworkIds.split(",");
+		for (String hwId : homeworkIdArray) {
+			Homework hw = homeworkServiceImpl.getHomeworkById(new Long(hwId));
+			if(!hw.getStatus().equals(2)){
+				homeworkServiceImpl.updateHomeworkInvalid(Long.parseLong(hwId));
+			}
+		}
+	}
+
+	@Override
+	public List<AssignLogDO> findAssignLogList(AssignLogQueryDTO query, Page page) {
+		return assignLogDao.findAssignLogList(query, page);
+	}
+
+	/**获取assignLog
+	 * @param assignId
+	 * @return
+	 */
+	@Override
+	public AssignLogDO getAssignLog(Long assignId){
+		return assignLogDao.getAssignLog(assignId);
+	}
+}

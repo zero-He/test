@@ -1,0 +1,30 @@
+<div class="f-bfc f-pr" style="padding:10px;"
+	data-bind="component: {
+		name: 'que-word-form',
+		params: {
+			ticket: $data.ticket,
+			refreshList: function() {
+				$data.curPage(1);
+				$data.loadRecords();
+			}
+		}
+	}"></div>
+	
+<div>
+	<div style="margin: 10px;border-bottom: 1px solid #e5e6e8;">处理进度：</div>
+	
+	<!-- ko foreach: records -->
+	<div style="padding:10px;" data-bind="component: {
+		name: 'que-word-record-progress',
+		params: $data
+	}"></div>
+	<!-- /ko -->
+	
+	<div data-bind="component: {
+		name: 'leke-page',
+		params: {
+			curPage: curPage,
+			totalSize: totalSize
+		}
+	}"></div>
+</div>

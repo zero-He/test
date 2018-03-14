@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.question.dao.mybatis.question.ISchoolQuestionDao">
+	<insert id="add" useGeneratedKeys="true" keyProperty="schoolQuestionId"
+		parameterType="cn.strong.leke.question.model.question.SchoolQuestion">
+		INSERT INTO que_school_question(
+			questionId, schoolId, addType, status, editLog,
+			isDeleted, createdBy, createdOn, modifiedBy, modifiedOn
+		) VALUES (
+			#{questionId}, #{schoolId}, #{addType}, #{status}, #{editLog},
+			0, #{createdBy}, now(), #{modifiedBy}, now()
+		)
+	</insert>
+	
+	<insert id="insertBatchSchoolQuestion" parameterType="map">
+		INSERT INTO que_school_question (
+			questionId, schoolId, addType, status, editLog,
+			isDeleted, createdBy, createdOn, modifiedBy, modifiedOn
+		) VALUES 
+		<foreach collection="assocs" item="data" separator=",">
+		(
+			#{data.questionId}, #{data.schoolId}, #{data.addType}, #{data.status}, #{data.editLog},
+			0, #{data.createdBy}, NOW(), #{data.modifiedBy}, NOW()
+		)
+		</foreach>
+	</insert>
+	
+	<update id="remove" parameterType="cn.strong.leke.question.model.question.SchoolQuestion">
+		UPDATE que_school_question
+		<set>
+			isDeleted = 1,
+			<if test="modifiedBy != null">
+			modifiedBy = #{modifiedBy},
+			</if>
+			modifiedOn = now()
+		</set>
+		<where>
+			AND questionId = #{questionId}
+			AND schoolId = #{schoolId}
+			AND isDeleted = 0
+		</where>
+	</update>
+	
+	<select id="getByQuestionAndSchool" parameterType="map" 
+		resultType="cn.strong.leke.question.model.question.SchoolQuestion">
+		SELECT a.*
+		FROM que_school_question a
+		<where>
+			AND questionId = #{questionId}
+			AND schoolId = #{schoolId}
+			AND isDeleted = 0
+		</where>
+	</select>
+	
+	<update id="updateStatus" parameterType="cn.strong.leke.question.model.question.SchoolQuestion">
+		UPDATE que_school_question
+		<set>
+			status = #{status},
+			editLog = #{editLog},
+			<if test="modifiedBy != null">
+			modifiedBy = #{modifiedBy},
+			</if>
+			modifiedOn = now()
+		</set>
+		<where>
+			AND questionId = #{questionId}
+			AND schoolId = #{schoolId}
+			AND isDeleted = 0
+		</where>
+	</update>
+	
+	<select id="countSchoolQuestion" resultType="_int"
+		 parameterType="cn.strong.leke.question.model.question.SchoolQuestion">
+		SELECT count(*)
+		FROM que_school_question
+		<where>
+			questionId = #{questionId}
+			AND schoolId = #{schoolId}
+			AND isDeleted = 0
+		</where>
+	</select>
+	
+	<select id="findByQuestionIds" parameterType="map" 
+		resultType="cn.strong.leke.question.model.question.SchoolQuestion">
+		SELECT a.*
+		FROM que_school_question a
+		<where>
+			AND questionId IN
+			<foreach collection="questionIds" item="questionId" open="(" close=")" separator=",">
+				#{questionId}
+			</foreach>
+			AND schoolId = #{schoolId}
+			AND isDeleted = 0
+		</where>
+	</select>
+	
+	<select id="queryMyAgencySchoolQuestions" resultType="long"
+		 parameterType="cn.strong.leke.question.model.question.query.AgencySchoolQuestionQuery">
+		SELECT DISTINCT a.questionId
+		FROM que_school_question sq
+		JOIN que_question a
+		ON sq.questionId = a.questionId
+		<if test="content != null and content != ''">
+			LEFT JOIN que_question_stem c
+			ON c.questionId = sq.questionId
+			AND c.isDeleted = 0
+		</if>
+		<where>
+			AND sq.schoolId = #{schoolId}
+			AND sq.isDeleted = 0
+			AND a.isDeleted = 0
+			AND a.isDisabled = 0
+			AND a.createdBy = #{userId}
+			AND sq.addType IN (0, 1)
+			<if test="status != null">
+			AND sq.status = #{status}
+			</if>
+			<if test="minCreatedOn != null">
+			<![CDATA[
+			AND sq.createdOn >= #{minCreatedOn}
+			]]>
+			</if>
+			<if test="maxCreatedOn != null">
+			<![CDATA[
+			AND sq.createdOn <= #{maxCreatedOn}
+			]]>
+			</if>
+			<if test="schoolStageId != null">
+			AND a.schoolStageId = #{schoolStageId}
+			</if>
+			<if test="subjectId != null">
+			AND a.subjectId = #{subjectId}
+			</if>
+			<if test="questionTypeId != null">
+			AND a.questionTypeId = #{questionTypeId}
+			</if>
+			<if test="content != null and content != ''">
+			AND (
+				a.source LIKE CONCAT('%', #{content}, '%')
+				OR c.stemContent LIKE CONCAT('%', #{content}, '%')
+			)
+			</if>
+		</where>
+		ORDER BY sq.createdOn DESC
+	</select>
+	
+	<select id="querySchoolQuestionForCheck" resultType="long"
+		 parameterType="cn.strong.leke.question.model.question.query.SchoolQuestionCheckQuery">
+		SELECT DISTINCT a.questionId
+		FROM que_school_question sq
+		JOIN que_question a
+		ON sq.questionId = a.questionId
+		<if test="status != null and status != 0">
+		LEFT JOIN que_school_question_check_log c
+		ON sq.questionId = c.questionId
+		AND sq.schoolId = c.schoolId
+		</if>
+		<if test="content != null and content != ''">
+		LEFT JOIN que_question_stem qs
+			ON sq.questionId = qs.questionId
+			AND qs.isDeleted = 0
+		</if>
+		<where>
+			AND sq.schoolId = #{schoolId}
+			AND sq.isDeleted = 0
+			AND a.isDeleted = 0
+			AND a.isDisabled = 0
+			<if test="status != null">
+			AND sq.status = #{status}
+			</if>
+			<if test="status != null and status != 0">
+				<if test="minCheckedOn != null">
+				<![CDATA[
+				AND c.createdOn >= #{minCheckedOn}
+				]]>
+				</if>
+				<if test="maxCheckedOn != null">
+				<![CDATA[
+				AND c.createdOn <= #{maxCheckedOn}
+				]]>
+				</if>
+			</if>
+			<if test="schoolStageId != null">
+			AND a.schoolStageId = #{schoolStageId}
+			</if>
+			<if test="subjectId != null">
+			AND a.subjectId = #{subjectId}
+			</if>
+			<if test="questionTypeId != null">
+			AND a.questionTypeId = #{questionTypeId}
+			</if>
+			<if test="content != null and content != ''">
+				AND (
+					a.source LIKE CONCAT('%', #{content}, '%')
+					OR qs.stemContent LIKE CONCAT('%', #{content}, '%')
+				)
+			</if>
+		</where>
+		<if test="status == null or status == 0">
+		ORDER BY sq.createdOn DESC
+		</if>
+		<if test="status != null and status != 0">
+		ORDER BY sq.modifiedOn DESC
+		</if>
+	</select>
+
+</mapper>

@@ -1,0 +1,157 @@
+package cn.strong.leke.homework.controller;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import javax.annotation.Resource;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.ResponseBody;
+
+import cn.strong.leke.common.serialize.support.json.JsonUtils;
+import cn.strong.leke.common.utils.CollectionUtils;
+import cn.strong.leke.common.utils.StringUtils;
+import cn.strong.leke.context.paper.PaperContext;
+import cn.strong.leke.context.user.UserContext;
+import cn.strong.leke.context.user.cst.RoleCst;
+import cn.strong.leke.core.business.incentive.DynamicHelper;
+import cn.strong.leke.framework.web.JsonResult;
+import cn.strong.leke.homework.model.HomeworkGroupForm;
+import cn.strong.leke.homework.service.IHomeworkGroupService;
+import cn.strong.leke.model.incentive.Award;
+import cn.strong.leke.model.incentive.DynamicInfo;
+import cn.strong.leke.model.incentive.DynamicTypes;
+import cn.strong.leke.model.incentive.IncentiveTypes;
+import cn.strong.leke.model.paper.PaperDTO;
+import cn.strong.leke.model.user.User;
+import cn.strong.leke.remote.model.homework.HomeworkRemote;
+import cn.strong.leke.remote.model.user.ClazzGroupRemote;
+import cn.strong.leke.remote.service.lesson.IStudentGroupRemoteService;
+
+/**
+ *
+ * 描述:
+ *
+ * @author raolei
+ * @created 2016年3月11日 下午3:23:32
+ * @since v1.0.0
+ */
+@Controller
+@RequestMapping("/auth/teacher/batch/*")
+public class HomeworkBatchController {
+	@Resource
+	private IHomeworkGroupService homeworkGroupService;
+	@Resource
+	private IStudentGroupRemoteService studentGroupRemoteService;
+
+	/**
+	 *
+	 * 描述: 老师批量布置作业
+	 *
+	 * @author raolei
+	 * @created 2016年3月9日 下午3:35:49
+	 * @since v1.0.0
+	 * @return void
+	 */
+	@RequestMapping(value = "distribute", method = RequestMethod.GET)
+	public void distribute(Long[] paperIds, Integer homeworkType, Model model) throws Exception {
+		List<PaperDTO> papers = new ArrayList<PaperDTO>();
+		if (CollectionUtils.isNotEmpty(paperIds)) {
+			for (Long paperId : paperIds) {
+				PaperDTO paper = PaperContext.getPaperDTO(paperId);
+				papers.add(paper);
+			}
+		}
+		model.addAttribute("papers", JsonUtils.toJSON(papers));
+		model.addAttribute("homeworkType", homeworkType);
+	}
+
+	@RequestMapping("doDistribute")
+	@ResponseBody
+	public JsonResult doDistribute(String dataJson) {
+		JsonResult json = new JsonResult();
+		List<HomeworkGroupForm> homeworks = JsonUtils.readList(dataJson, HomeworkGroupForm.class);
+		User user = UserContext.user.get();
+		List<HomeworkRemote> list = homeworkGroupService.saveHomeworks(homeworks, user);
+		for (HomeworkRemote homework : list) {
+			// 激励
+			DynamicInfo dynamicInfo = new DynamicInfo();
+			dynamicInfo.setTypeId(IncentiveTypes.TEACHER.BK_HW_AFTER);
+			dynamicInfo.setDynamicType(DynamicTypes.BK_HW_AFTER);
+			dynamicInfo.setTitle(homework.getHomeworkName());
+			dynamicInfo.setUserId(user.getId());
+			dynamicInfo.setUserName(user.getUserName());
+			dynamicInfo.setRoleId(RoleCst.TEACHER);
+			dynamicInfo.setSchoolId(user.getCurrentSchool().getId());
+			Award award = DynamicHelper.publish(dynamicInfo);
+			if (award.getSucc() && award.getHave()) {
+				Map<String, Object> map = new HashMap<String, Object>();
+				map.put("type", dynamicInfo.getTypeId());
+				map.put("leke", award.getLekeVal());
+				map.put("exp", award.getExpVal());
+				json.addDatas("tips", map);
+			}
+		}
+		return json;
+	}
+
+	@RequestMapping("homeworkSuccess")
+	public void homeworkSuccess() {
+	}
+
+	/**
+	 *
+	 * 描述:选择分组
+	 *
+	 * @author raolei
+	 * @created 2016年3月10日 下午3:50:22
+	 * @since v1.0.0
+	 * @param type  1 表示统一布置作业
+	 * @return void
+	 */
+	@RequestMapping("popStudentGroup")
+	public void popStudentGroup(String studentGroupIds,Integer type, Model model) {
+		model.addAttribute("studentGroupIds", studentGroupIds);
+		model.addAttribute("bsType", type);
+	}
+
+	@RequestMapping("loadStudentGroup")
+	@ResponseBody
+	public JsonResult loadStudentGroup(Integer type) {
+		JsonResult jResult = new JsonResult();
+		User user = UserContext.user.get();
+		Long userId = user.getId();
+		List<ClazzGroupRemote> groups = null;
+		if (type != null && type.intValue() == 1) {
+			groups = studentGroupRemoteService.findClazzGroupBySchoolId(user.getCurrentSchool().getId());
+		} else {
+			groups = studentGroupRemoteService.findClazzGroupByTeacherId(userId);
+		}
+		Map<String,List<ClazzGroupRemote>> grades=groups.stream().filter(v->StringUtils.isNotEmpty(v.getGradeName())).collect(Collectors.groupingBy(ClazzGroupRemote::getGradeName));
+		List<Map<String, Object>> lst =new ArrayList<Map<String, Object>>();
+		grades.entrySet()
+		.stream()
+		.forEach(en -> {
+			Map<String, Object> map =new HashMap<String, Object>();
+			map.put("gradeName", en.getKey());
+			map.put("grades", en.getValue());
+			lst.add(map);
+		});	
+		//没有年级的，默认是其他班级
+		List<ClazzGroupRemote>  noGrade = groups.stream().filter(v->StringUtils.isEmpty(v.getGradeName())).collect(Collectors.toList());
+		if(CollectionUtils.isNotEmpty(noGrade)){
+			Map<String, Object> map =new HashMap<String, Object>();
+			map.put("gradeName", "其他");
+			map.put("grades", noGrade);
+			lst.add(map);
+		}
+		jResult.addDatas("groups", lst);
+		return jResult;
+	}
+}

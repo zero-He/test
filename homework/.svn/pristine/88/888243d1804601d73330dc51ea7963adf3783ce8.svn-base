@@ -1,0 +1,140 @@
+/*
+ * Copyright (c) 2014 Strong Group - 版权所有
+ * 
+ * This software is the confidential and proprietary information of
+ * Strong Group. You shall not disclose such confidential information 
+ * and shall use it only in accordance with the terms of the license 
+ * agreement you entered into with www.cnstrong.cn.
+ */
+package cn.strong.leke.homework.util;
+
+import java.math.BigDecimal;
+import java.util.Calendar;
+import java.util.Date;
+
+import javax.servlet.http.HttpServletRequest;
+
+import cn.strong.leke.common.utils.DateUtils;
+import cn.strong.leke.common.utils.StringUtils;
+
+/**
+ * 
+ * 描述:
+ * 
+ * @author DuanYanming
+ * @created 2014年6月24日 下午5:17:26
+ * @since v1.0.0
+ */
+public class CommUtils {
+
+	
+	public static final String FILE_SERVERNAME = "fileServerName";
+	public static final String STATIC_SERVERNAME = "staticServerName";
+	/**
+	 * 得到本周周一
+	 * 
+	 * @return yyyy-MM-dd
+	 */
+	public static Date getMondayOfThisWeek() {
+		Calendar c = Calendar.getInstance();
+		int dayofweek = c.get(Calendar.DAY_OF_WEEK) - 1;
+		if (dayofweek == 0)
+			dayofweek = 7;
+		c.add(Calendar.DATE, -dayofweek + 1);
+		return c.getTime();
+	}
+
+	/**
+	 * 得到本周周日
+	 * 
+	 * @return yyyy-MM-dd
+	 */
+	public static Date getSundayOfThisWeek() {
+		Calendar c = Calendar.getInstance();
+		int dayofweek = c.get(Calendar.DAY_OF_WEEK) - 1;
+		if (dayofweek == 0)
+			dayofweek = 7;
+		c.add(Calendar.DATE, -dayofweek + 7);
+		return c.getTime();
+	}
+
+	/**
+	 * 
+	 * 描述:上下周周一
+	 * 
+	 * @author DuanYanming
+	 * @created 2014年6月24日 下午5:19:27
+	 * @since v1.0.0
+	 * @return
+	 * @return Calendar
+	 */
+	public static Date getNextWeekFirstDay(int mubs) {
+		Calendar cal = Calendar.getInstance();
+		cal.add(Calendar.WEEK_OF_MONTH, mubs);
+		cal.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY);
+		return cal.getTime();
+	}
+
+	/**
+	 * 
+	 * 描述:上下周周日
+	 * 
+	 * @author DuanYanming
+	 * @created 2014年6月24日 下午5:19:29
+	 * @since v1.0.0
+	 * @return
+	 * @return Calendar
+	 */
+	public static Date getNextWeekLastDay(int mubs) {
+		Calendar cal = Calendar.getInstance();
+		cal.setFirstDayOfWeek(Calendar.MONDAY);
+		cal.add(Calendar.WEEK_OF_MONTH, mubs);
+		cal.set(Calendar.DAY_OF_WEEK, Calendar.SUNDAY);
+		return cal.getTime();
+	}
+
+	public static Date changeDate(Date date) {
+		String timeStr = DateUtils.formatDate(date) + " 23:59:59";
+		Date time = DateUtils.parseDate(timeStr, "yyyy-MM-dd HH:mm:ss");
+		return time;
+	}
+	
+	/**
+	 * 根据性别获取默认头像
+	 * @param sex
+	 * @return
+	 */
+	public static String getAbsolutePhoto(String photo, Integer sex, HttpServletRequest request) {
+		if (StringUtils.isEmpty(photo)) {
+			if(sex == null){
+				sex = 3;
+			}
+			switch (sex) {
+			case 1:
+				photo = "/images/home/photo-man.png";
+				break;
+			case 2:
+				photo = "/images/home/photo-female.png";
+				break;
+			default:
+				photo = "/images/home/photo.png";
+			}
+			return request.getServletContext().getInitParameter(STATIC_SERVERNAME) + photo;
+		} else {
+			return request.getServletContext().getInitParameter(FILE_SERVERNAME) + "/" + photo;
+		}
+	}
+	
+	/**
+	 * 转换百分比例，
+	 * 有小数保留1位，小数部分
+	 * @param value
+	 * @return
+	 */
+	public static Long getPercentValue(BigDecimal value) {
+		if (value == null) {
+			return null;
+		}
+		return Math.round(value.doubleValue() * 100);
+	}
+}

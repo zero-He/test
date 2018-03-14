@@ -1,0 +1,27 @@
+package cn.strong.leke.dwh.controller;
+
+import javax.annotation.Resource;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
+
+import cn.strong.leke.dwh.model.diag.AchievementQuery;
+import cn.strong.leke.dwh.service.AchievementService;
+
+@Controller
+@RequestMapping
+public class AchievementController {
+
+	@Resource
+	private AchievementService achievementService;
+
+	@ResponseBody
+	@RequestMapping("/achievement/teacher")
+	public Object getKlassAchievementForTeacher() {
+		AchievementQuery query = new AchievementQuery();
+		// TODO init query.
+		return this.achievementService.getKlassAchievementForTeacher(query);
+	}
+
+}

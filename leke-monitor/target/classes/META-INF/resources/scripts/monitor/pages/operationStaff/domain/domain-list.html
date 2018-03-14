@@ -1,0 +1,63 @@
+<div class="m-table">
+<table>
+	<tbody>
+		<tr>
+			<th style="width: 6%;"></th>
+			<th style="width: 44%;">子域名</th>
+			<th style="width: 42%;">系统名称</th>
+			<th style="width: 8%;">操作</th>
+		</tr>
+	
+		<!-- ko foreach: domains -->
+		<tr>
+			<td>
+				<i class="icon iconfont f-csp s-c-r" title="移除"
+					data-bind="click: function() {
+						$component.remove($data);
+					}">&#xf013f;</i>
+			</td>
+			<td>
+				<!-- ko if: status() == 'init' -->
+				<input name="subdomain" class="u-ipt u-ipt-nm"
+					data-bind="value: subdomain"/>
+				<!-- /ko -->
+				<!-- ko if: status() != 'init' -->
+				<span data-bind="text: subdomain"></span>
+				<!-- /ko -->
+			</td>
+			<td>
+				<!-- ko if: status() == 'saved' -->
+				<span data-bind="text: name"></span>
+				<!-- /ko -->
+				<!-- ko if: status() != 'saved' -->
+				<input name="name" class="u-ipt u-ipt-nm"
+					data-bind="value: name"/>
+				<!-- /ko -->
+			</td>
+			<td>
+				<!-- ko if: status() == 'saved' -->
+				<i class="icon iconfont f-csp" title="编辑"
+					data-bind="click: function() {
+						$data.status('edit');
+					}">&#xf014f;</i>
+				<!-- /ko -->
+				<!-- ko if: status() != 'saved' -->
+				<i class="icon iconfont f-csp" title="保存"
+					data-bind="click: function() {
+						$component.save($data);
+					}">&#xf0131;</i>
+				<!-- /ko -->
+			</td>
+		</tr>
+		<!-- /ko -->
+		
+		<tr>
+			<td>
+				<i class="icon iconfont f-csp" title="添加"
+					data-bind="click: add">&#xf0154;</i>
+			</td>
+			<td colspan="3"></td>
+		</tr>
+	</tbody>
+</table>
+</div>

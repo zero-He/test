@@ -1,0 +1,48 @@
+<div class="detail">
+	<div id="listContext">
+		<!-- ko if: tasks().length > 0 -->
+		<!-- ko foreach:tasks -->
+		<div class="quesApply">
+			<dl class="quesLoad">
+				<dd class="quesLoadnum"><i data-bind="text: $data.gradeName + ' ' + $data.subjectName"></i></dd>
+				<dd class="quesLoad-num">未审核题量：<em data-bind="text: $data.surplusCount"></em>题</dd>
+				<dd class="quesLoad-num">历史领取量：<em data-bind="text: $data.taskCount"></em>题</dd>
+				<dd name="task" data-bind="css: {
+									'f-dn': !$parent.disable(),
+									'quesLoad-num': $parent.disable()
+									}">
+					<span>请输入题量：</span>
+					<input type="text" name="count" data-bind="value: $data.count">
+				</dd>
+				<dd name="taskButton" data-bind="css: {
+										'f-dn': !$parent.disable(),
+										'quesLoad-num': $parent.disable()
+										}">
+					<a href="javascript:void(0);" class="quesTest"
+						 data-bind="click: function() {
+						 	$parent.questionTask($data);
+						 	}">领取习题<em>&gt;&gt;</em></a></dd>
+				<dd name="check">
+					<a data-bind="css: {
+							'quesTest': !$parent.disable(), 'f-dn': $parent.disable()
+							}, click: function() {
+							$parent.check();
+							}">审核习题
+					<em>&gt;&gt;</em></a>
+				</dd>
+			</dl>
+		</div>
+		<!-- /ko -->
+		<!-- /ko -->
+		<!-- ko if: tasks().length == 0 -->
+		<div  id="noneDiv">
+			
+		</div>
+		<div class="m-tips">
+			<i></i>
+			<span>对不起，没有您要查询的结果！</span><br/>
+			<span>请确定您是否有被设置年级科目</span>
+		</div>
+		<!-- /ko -->
+	</div>
+</div>

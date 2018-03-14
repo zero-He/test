@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.diag.dao.teachingMonitor.EvaluateXDao">
+
+	<sql id="baseSql">
+		<if test="subjectId != null and subjectId != -1">
+			AND EXISTS (SELECT 1 FROM lesson.ls_klass_subject ks WHERE ks.classSubjId = l.classSubjId AND ks.subjectId = #{subjectId})
+		</if>
+		AND EXISTS (
+			SELECT 1 FROM lesson.ls_klass k WHERE k.classId = l.classId AND k.isExpired = 0 AND k.isDeleted = 0
+			<if test="gradeId != null and gradeId != -1">
+				AND k.gradeId = #{gradeId}
+			</if>
+		)
+		AND EXISTS (
+			SELECT 1 FROM lesson.ls_klass k, lesson.ls_klass_teacher kt
+			WHERE kt.userId = l.teacherId
+			AND k.classId = kt.classId
+			AND k.isExpired = 0
+			AND k.isDeleted = 0
+			AND k.type = 1
+			AND kt.roleId = 101
+			AND k.schoolId = #{schoolId}
+			<if test="gradeId != null and gradeId != -1">
+				AND k.gradeId = #{gradeId}
+			</if>
+			<if test="subjectId != null and subjectId != -1">
+				AND kt.subjectId = #{subjectId}
+			</if>
+		)
+	</sql>
+
+	<!--获取所有的评价数据-->
+	<select id="selectEvaluateData" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo" resultType="cn.strong.leke.diag.model.teachingMonitor.evaluate.EvaluateBean">
+		SELECT
+			e.evaluateId,
+			e.summary,
+			e.professionalLevel,
+			e.rhythmLevel,
+			e.interactionLevel,
+			e.content,
+			e.createdBy,
+			e.createdName,
+			e.createdOn,
+			e.owner AS teacherId,
+			e.ownerName AS teacherName,
+			e.courseSingleId,
+			ks.subjectId,
+			ks.subjectName,
+			k.gradeId,
+			k.gradeName,
+			k.classId,
+			k.className,
+			l.startTime,
+			l.endTime
+		FROM
+			lesson.ls_lesson l
+			INNER JOIN lesson.ls_evaluate e ON l.courseSingleId = e.courseSingleId
+			LEFT JOIN lesson.ls_attendance_lesson al ON al.scId = l.courseSingleId
+			LEFT JOIN lesson.ls_klass_subject ks ON ks.classSubjId = l.classSubjId
+			LEFT JOIN lesson.ls_klass k ON k.classId = ks.classId
+		WHERE
+			l.isDeleted = 0
+			AND al.isDeleted = 0
+			AND e.isDeleted = 0
+			AND l.schoolId = #{schoolId}
+			<![CDATA[
+				AND l.startTime >= DATE(#{startDate})
+				AND l.endTime < DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+			]]>
+			<include refid="baseSql"/>
+	</select>
+
+	<!--根据筛选条件查询课堂评价的明细数据-->
+	<select id="selectEvaluateDetailPartData" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo" resultType="cn.strong.leke.diag.model.teachingMonitor.evaluate.EvaluateDetailBean">
+		SELECT
+			e.owner AS teacherId,
+			e.ownerName AS teacherName,
+			ks.subjectId,
+			ks.subjectName,
+			COUNT(DISTINCT e.courseSingleId) AS lessonNum,
+			IFNULL((CONVERT(ROUND((SUM(e.professionalLevel)+SUM(e.rhythmLevel)+SUM(e.interactionLevel))/(3*COUNT(1)),1),DECIMAL(4,1))),0) AS totalLevel,
+			SUM(IF(e.summary=2,1,0)) AS good,
+			CONVERT((SUM(IF(e.summary=2,1,0))/COUNT(e.evaluateId))*100, DECIMAL(4,1)) AS goodPro,
+			SUM(IF(e.summary=1,1,0)) AS center,
+			CONVERT((SUM(IF(e.summary=1,1,0))/COUNT(e.evaluateId))*100, DECIMAL(4,1)) AS centerPro,
+			SUM(IF((e.summary!=1 AND e.summary!=2),1,0)) AS poor,
+			CONVERT((SUM(IF((e.summary!=1 AND e.summary!=2),1,0))/COUNT(e.evaluateId))*100, DECIMAL(4,1)) AS poorPro
+		FROM
+			lesson.ls_lesson l,
+			lesson.ls_attendance_lesson al,
+			lesson.ls_evaluate e,
+			lesson.ls_klass_subject ks
+		WHERE al.scId = l.courseSingleId
+			AND e.courseSingleId = l.courseSingleId
+			AND ks.classSubjId = l.classSubjId
+			AND l.isDeleted = 0
+			AND al.isDeleted = 0
+			AND e.isDeleted = 0
+			AND l.schoolId = #{schoolId}
+			<![CDATA[
+				AND l.startTime >= DATE(#{startDate})
+				AND l.endTime < DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+			]]>
+			<if test="'' != teacherName and null != teacherName">
+				AND e.ownerName LIKE concat(concat('%', #{teacherName}), '%')
+			</if>
+			<include refid="baseSql"/>
+			GROUP BY e.owner,ks.subjectId;
+	</select>
+
+	<!--根据schoolId、gradeId查该校该年级的老师ids-->
+	<select id="selectTeacherIdsBySchoolIdGradeId" parameterType="java.lang.Long" resultType="java.lang.Long">
+		SELECT
+		kt.userId AS teacherId
+		FROM
+		lesson.ls_klass k,
+		lesson.ls_klass_teacher kt
+		WHERE kt.classId = k.classId
+		AND k.schoolId = #{schoolId}
+		AND k.gradeId = #{gradeId}
+		AND k.isDeleted = 0
+		AND k.isExpired = 0
+		AND k.type = 1
+		AND kt.isDeleted = 0
+		AND kt.roleId = 101
+		GROUP BY kt.userId;
+	</select>
+
+	<!--根据schoolId、gradeId、subjectId查teacherIds-->
+	<select id="selectTeacherIdsBySchoolIdGradeIdSubjectId" parameterType="cn.strong.leke.diag.model.teachingMonitor.evaluate.QueryEvaluate" resultType="java.lang.Long">
+		SELECT
+			DISTINCT(sg.teacherId)
+		FROM tutor.tutor_user_teacher_subject_grade sg,
+			(
+				SELECT
+					kt.userId AS teacherId
+				FROM
+					lesson.ls_klass k,
+					lesson.ls_klass_teacher kt
+				WHERE kt.classId = k.classId
+					AND k.schoolId = #{schoolId}
+					<if test="gradeId != null and gradeId != -1">
+						AND k.gradeId = #{gradeId}
+					</if>
+					AND k.isDeleted = 0
+					AND k.isExpired = 0
+					AND k.type = 1
+					AND kt.isDeleted = 0
+					AND kt.roleId = 101
+					GROUP BY kt.userId
+			)p
+		WHERE sg.schoolId = #{schoolId}
+			AND sg.teacherId = p.teacherId
+			<if test="subjectId != null and subjectId != -1">
+				AND sg.subjectId = #{subjectId}
+			</if>
+	</select>
+
+	<select id="selectIsLessonClazz" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo" resultType="cn.strong.leke.diag.model.teachingMonitor.ClassBean">
+		SELECT
+		DISTINCT(a.classId) AS classId,
+		f.className
+		FROM
+		lesson.ls_lesson a, lesson.ls_klass_subject b, lesson.ls_attendance_lesson c, lesson.ls_klass f
+		WHERE a.classSubjId = b.classSubjId
+		AND a.classId = f.classId
+		AND a.courseSingleId = c.scId
+		AND a.isDeleted = 0
+		AND f.isExpired = 0
+		AND f.isDeleted = 0
+		AND a.startTime <![CDATA[>=]]> DATE(#{startDate})
+		AND a.startTime <![CDATA[<]]> DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+		AND a.schoolId = #{schoolId}
+		<if test="gradeId != null and gradeId != -1">
+			AND f.gradeId = #{gradeId}
+		</if>
+		<if test="subjectId != null and subjectId != -1">
+			AND b.subjectId = #{subjectId}
+		</if>
+		AND EXISTS (
+		SELECT 1 FROM lesson.ls_klass f, lesson.ls_klass_teacher t
+		WHERE t.userId = a.teacherId
+		AND f.classId = t.classId
+		AND f.isExpired = 0
+		AND f.isDeleted = 0
+		AND f.type = 1
+		AND t.roleId = 101
+		AND f.schoolId = #{schoolId}
+		<if test="gradeId != null and gradeId != -1">
+			AND f.gradeId = #{gradeId}
+		</if>
+		<if test="subjectId != null and subjectId != -1">
+			AND t.subjectId = #{subjectId}
+		</if>
+		)
+	</select>
+</mapper>

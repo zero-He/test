@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8" ?>   
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.question.dao.mybatis.IQuestionUserResGroupDao">
+	
+	<sql id="all_coll">
+		assocId,questionId,userResGroupId,isDeleted,createdBy,createdOn,modifiedBy,modifiedOn
+	</sql>
+	
+	<insert id="addBatchQuestionUserResGroup" parameterType="cn.strong.leke.question.model.QuestionUserResGroup">
+		INSERT INTO que_question_user_res_group
+			(<include refid="all_coll"/>)
+		VALUES
+		<foreach collection="questionIds" separator=","  item="value">
+			(NULL,#{value},#{qUserResGroup.userResGroupId},0,#{qUserResGroup.createdBy},NOW(),#{qUserResGroup.modifiedBy},NOW())
+		</foreach>
+	</insert>
+	
+	<update id="moveBatchQuestionUserResGroup"  parameterType="map">
+		UPDATE 
+			que_question_user_res_group
+		SET 
+			userResGroupId = #{userResGroupDTO.newUserResGroupId},
+			modifiedBy = #{userResGroupDTO.userId},
+			modifiedOn = NOW()
+		WHERE
+			isDeleted = 0
+		AND
+			userResGroupId = #{userResGroupDTO.oldUserResGroupId}
+		AND
+			createdBy = #{userResGroupDTO.userId}
+		AND
+			questionId 
+		IN
+		<foreach collection="questionIds" open="(" separator="," close=")" item="value">
+			#{value}
+		</foreach>
+	</update>
+	
+	
+	
+	<update id="deleteBatchQuestionUserResGroup" parameterType="map" >
+		UPDATE 
+			que_question_user_res_group
+		SET 
+			isDeleted = 1,
+			modifiedBy = #{qUserResGroup.modifiedBy},
+			modifiedOn = NOW()
+		WHERE
+			userResGroupId = #{qUserResGroup.userResGroupId}
+		AND
+			createdBy = #{qUserResGroup.createdBy}
+		AND
+			isDeleted = 0
+		AND 
+			questionId
+		IN 
+		<foreach collection="questionIds" open="(" separator="," close=")" item="value">
+			#{value}
+		</foreach>
+	</update>
+	
+	<update id="deleteQURGroupByUserResGroupId" parameterType="cn.strong.leke.question.model.QuestionUserResGroup">
+		UPDATE 
+			que_question_user_res_group
+		SET 
+			isDeleted = 1,
+			modifiedBy = #{modifiedBy},
+			modifiedOn = NOW()
+		WHERE
+			userResGroupId = #{userResGroupId}
+		AND
+			createdBy = #{createdBy}
+		AND
+			isDeleted = 0
+	</update>
+	
+	<select id="queryCount" parameterType="map" resultType="int">
+		SELECT	count(assocId)
+		FROM	que_question_user_res_group
+		WHERE	userResGroupId = #{userResGroupId}
+		AND	questionId = #{questionId}
+		AND	createdBy = #{userId}
+		AND	isDeleted = 0 
+	</select>
+	
+	<select id="queryQURGroupByUserResGroupId" parameterType="long" resultType="cn.strong.leke.question.model.QuestionUserResGroup">
+		SELECT
+			<include refid="all_coll"/> 
+		FROM
+			que_question_user_res_group
+		WHERE
+			userResGroupId = #{userResGroupId}
+		AND
+			isDeleted = 0 
+	</select>
+	
+</mapper>

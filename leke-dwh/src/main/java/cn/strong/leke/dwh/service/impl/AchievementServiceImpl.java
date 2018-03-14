@@ -1,0 +1,51 @@
+package cn.strong.leke.dwh.service.impl;
+
+
+import javax.annotation.Resource;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
+
+import cn.strong.leke.common.serialize.support.json.JsonUtils;
+import cn.strong.leke.dwh.common.SSHCommandExecutor;
+import cn.strong.leke.dwh.model.diag.AchievementQuery;
+import cn.strong.leke.dwh.model.diag.AchievementResult;
+import cn.strong.leke.dwh.service.AchievementService;
+import cn.strong.leke.dwh.storage.SparkRepoStorage;
+import cn.strong.leke.remote.service.lesson.ILessonRemoteService;
+
+@Component
+public class AchievementServiceImpl implements AchievementService {
+	
+	private static Logger logger = LoggerFactory.getLogger(AchievementServiceImpl.class);
+
+	@Resource
+	private SparkRepoStorage sparkRepoStorage;
+	@Resource
+	private ILessonRemoteService lessonRemoteService;
+
+
+	@Override
+	public AchievementResult getKlassAchievementForTeacher(AchievementQuery query) {
+
+		// 把提交spark任务的参数存入mongodb返回
+		String taskId = sparkRepoStorage.storageQuery(query);
+		
+		//远程执行spark集群上提交spark任务的shell脚本
+        SSHCommandExecutor sshExecutor = new SSHCommandExecutor("192.168.20.81", 
+        		"root", "16888$Strong#AdminRoot@sqrj");  
+        int execute = sshExecutor.execute("./test.sh "+taskId); 
+		
+		logger.info(JsonUtils.toJSON(execute));
+		
+		//获取最近一个时间周期的周期名称
+		AchievementResult achievementResult = sparkRepoStorage
+				.getResult(taskId, AchievementResult.class);
+		 
+		// return calculate result.
+		return achievementResult;
+	}
+	
+
+}

@@ -1,0 +1,19 @@
+package cn.strong.leke.homework.model;
+
+public class SheetOpenedRule extends SheetRangeRule {
+
+	private Integer maxScore;
+
+	public Integer getMaxScore() {
+		return maxScore;
+	}
+
+	public void setMaxScore(Integer maxScore) {
+		this.maxScore = maxScore;
+	}
+
+	@Override
+	public String getRangeType() {
+		return "11";
+	}
+}

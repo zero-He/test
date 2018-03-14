@@ -1,0 +1,41 @@
+define(function(require, exports, module) {
+	var $ = require('jquery');
+	var swfobject = require('common/swfobject');
+	var win = {
+		init : function(id, userId, fileSuffix, filePath, taskId,holidayId,microId) {
+			this.loadMediaPlayer(id, userId, fileSuffix, filePath, taskId);
+			this.updateState(holidayId,microId);
+		},
+		loadMediaPlayer : function(id, userId, fileSuffix, filePath, taskId) {
+			var flashvars = {
+				"rtmpIp" : 'rtmp://vod1.leke.cn/vod',
+				"rtmpPath" : fileSuffix + ":" + filePath,
+				"userId" : userId,
+				"taskId" : taskId
+			};
+			var swfUrl = assets
+					+ "/flashs/common/ui/ui-videoclass/preview/MediaApplication.swf";
+			swfobject.embedSWF(swfUrl, id, "100%", "473", "10.2.0",
+					"playerProductInstall.swf", flashvars, {
+						quality : "high",
+						bgcolor : "#ffffff",
+						allowscriptaccess : "sameDomain",
+						allowfullscreen : "true",
+						wmode : "transparent"
+					}, {
+						id : 'MediaApplication',
+						name : 'MediaApplication',
+						align : "middle"
+					});
+			swfobject.createCSS("#" + id, "display:block; text-align:left;");
+		},
+		updateState : function(holidayId,microId) {
+			$.post('/auth/common/holiday/ajax/updateMicroState.htm', {
+				id : holidayId,
+				microId : microId
+			});
+		}
+
+	};
+	module.exports = win;
+});

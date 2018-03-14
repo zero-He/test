@@ -1,0 +1,107 @@
+<div class="m-tab">
+<ul>
+	<li>
+		<a href="./daily.htm">日期统计</a>
+	</li>
+	<li class="active">
+		<a href="#">范围统计</a>
+	</li>
+</ul>
+</div>
+
+<div class="m-search-box">
+	<label class="title">访问日期：</label>
+	<input type="text" id="startDate" name="startDate" class="u-ipt u-ipt-nm"
+		data-bind="datepicker: {
+			value: query.startDate,
+			dateFmt: 'yyyy-MM-dd',
+			maxDate: '#F{$dp.$D(\'endDate\') || \'%y-%M-%d\'}'
+		}"/>
+	<span>-</span>
+	<input type="text" id="endDate" name="endDate" class="u-ipt u-ipt-nm"
+		data-bind="datepicker: {
+			value: query.endDate,
+			dateFmt: 'yyyy-MM-dd',
+			minDate: '#F{$dp.$D(\'startDate\')}',
+			maxDate: '%y-%M-%d'
+		}"/>
+	<label class="title">应用名：</label>
+	<select name="serverName" class="u-select u-select-nm"
+		data-bind="options: domains,
+				   optionsText: 'name',
+				   optionsValue: 'subdomain',
+				   optionsCaption: '==请选择==',
+				   value: query.serverName,
+				   valueAllowUnset: true"></select>
+	<input type="submit" value="查询" class="u-btn u-btn-nm u-btn-bg-turquoise"
+		data-bind="click: doSearch"/>
+</div>
+
+<div class="m-table">
+<table>
+	<tbody>
+		<tr>
+			<th>URL</th>
+			<th>应用</th>
+			<!-- ko foreach: sortThs -->
+			<th>
+				<label class="f-csp" title="点击排序"
+					data-bind="click: function() {
+						$component.orderBy($data.prop);
+					}">
+				<span data-bind="text: name">&nbsp;</span>
+				<i class="icon iconfont"
+					data-bind="css: {
+						's-c-gray': $component.orderBy() != $data.prop
+					}">&#xf0170;</i>
+				</label>
+			</th>
+			<!-- /ko -->
+			<th style="width: 150px;">功能名称</th>
+		</tr>
+	
+		<!-- ko foreach: visibleStats -->
+		<tr>
+			<td data-bind="text: servletPath"></td>
+			<td data-bind="text: serverName"></td>
+			<td data-bind="text: avgExecuteTime"></td>
+			<td data-bind="text: maxExecuteTime"></td>
+			<td data-bind="text: count"></td>
+			<td>
+				<!-- ko if: !editing() -->
+				<span data-bind="text: name"></span>
+				<i class="icon iconfont f-csp f-fr" title="编辑"
+					data-bind="click: function() {
+						$data.editing(true);
+					}">&#xf014f;</i>
+				<!-- /ko -->
+				<!-- ko if: editing -->
+				<input name="name" class="u-ipt u-ipt-nm"
+					data-bind="value: name"/>
+				<i class="icon iconfont f-csp f-fr" title="保存"
+					data-bind="click: function() {
+						$component.saveName($data);
+					}">&#xf0131;</i>
+				<!-- /ko -->
+			</td>
+		</tr>
+		<!-- /ko -->
+	</tbody>
+</table>
+</div>
+<div data-bind="component: {
+	name: 'leke-page',
+	params: {
+		curPage: curPage,
+		totalSize: totalSize,
+		pageSize: pageSize
+	}
+}"></div>
+<!-- ko if: visibleStats().length == 0 -->
+<p class="m-tips">
+	<i></i>
+	<span>
+	当前没有相关数据!
+	</span>
+</p>
+<!-- /ko -->

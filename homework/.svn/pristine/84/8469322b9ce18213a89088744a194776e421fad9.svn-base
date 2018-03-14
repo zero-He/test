@@ -1,0 +1,255 @@
+package cn.strong.leke.homework.service.impl;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import javax.annotation.Resource;
+
+import org.apache.commons.lang.ArrayUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+
+import cn.strong.leke.common.serialize.support.json.JsonUtils;
+import cn.strong.leke.common.utils.CollectionUtils;
+import cn.strong.leke.common.utils.ListUtils;
+import cn.strong.leke.context.base.UserBaseContext;
+import cn.strong.leke.context.paper.PaperContext;
+import cn.strong.leke.core.business.notice.NoticeHelper;
+import cn.strong.leke.framework.exceptions.ValidateException;
+import cn.strong.leke.framework.mq.MessageSender;
+import cn.strong.leke.homework.dao.mybatis.HomeworkDao;
+import cn.strong.leke.homework.model.Homework;
+import cn.strong.leke.homework.model.HomeworkDtl;
+import cn.strong.leke.homework.model.HomeworkGroupForm;
+import cn.strong.leke.homework.model.HomeworkGroupJson;
+import cn.strong.leke.homework.model.HomeworkType;
+import cn.strong.leke.homework.model.mongo.HomeworkProgress;
+import cn.strong.leke.homework.model.mongo.HomeworkProgress.StudentTs;
+import cn.strong.leke.homework.service.HomeworkDtlService;
+import cn.strong.leke.homework.service.IHomeworkGroupService;
+import cn.strong.leke.homework.service.IHomeworkProgressService;
+import cn.strong.leke.homework.util.HomeworkUtils;
+import cn.strong.leke.lesson.model.StudentGroup;
+import cn.strong.leke.model.common.StuTreeModel;
+import cn.strong.leke.model.paper.PaperDTO;
+import cn.strong.leke.model.user.User;
+import cn.strong.leke.model.user.UserBase;
+import cn.strong.leke.notice.model.todo.HwAssignEvent;
+import cn.strong.leke.notice.model.todo.TodoEvent;
+import cn.strong.leke.remote.model.homework.HomeworkDtlRemote;
+import cn.strong.leke.remote.model.homework.HomeworkRemote;
+import cn.strong.leke.remote.service.lesson.IStudentGroupRemoteService;
+
+/**
+ *
+ * 描述:
+ *
+ * @author raolei
+ * @created 2016年3月8日 上午10:42:47
+ * @since v1.0.0
+ */
+@Service
+public class HomeworkGroupServiceImpl implements IHomeworkGroupService {
+	private static final Logger logger = LoggerFactory.getLogger(HomeworkGroupServiceImpl.class);
+	@Resource
+	private HomeworkDao homeworkDao;
+	@Resource
+	private HomeworkDtlService homeworkDtlService;
+	@Resource
+	private MessageSender paperArrangeTimesSender;
+	@Resource
+	private IHomeworkProgressService homeworkProgressService;
+	@Resource
+	private IStudentGroupRemoteService studentGroupRemoteService;
+
+	@Override
+	public List<HomeworkRemote> saveHomeworks(List<HomeworkGroupForm> homeworks, User user) {
+		if (CollectionUtils.isEmpty(homeworks)) {
+			throw new ValidateException("homeworks should not be null.");
+		}
+		List<HomeworkRemote> homeworkRemotes = new ArrayList<HomeworkRemote>();
+		for (HomeworkGroupForm homework : homeworks) {
+			if (ArrayUtils.isEmpty(homework.getPaperIds())) {
+				throw new ValidateException("paperIds should not be null.");
+			}
+			homework.setTeacherId(user.getId());
+			homework.setTeacherName(user.getUserName());
+			homework.setSchoolId(user.getCurrentSchool().getId());
+			homework.setHomeworkType(HomeworkType.HOME.value);
+			// 发送Paper消息
+			logger.debug("send message to paper. " + Arrays.toString(homework.getPaperIds()));
+			paperArrangeTimesSender.send(Arrays.asList(homework.getPaperIds()));
+			for (Long paperId : homework.getPaperIds()) {
+				PaperDTO paperDTO = PaperContext.getPaperDTO(paperId);
+				Homework thHomework = new Homework();
+				thHomework.setTeacherId(homework.getTeacherId());
+				thHomework.setTeacherName(homework.getTeacherName());
+				thHomework.setSchoolId(homework.getSchoolId());
+				thHomework.setPaperId(paperDTO.getPaperId());
+				thHomework.setSubjectId(paperDTO.getSubjectId());
+				thHomework.setSubjectName(paperDTO.getSubjectName());
+				thHomework.setSubjective(paperDTO.getSubjective());
+				thHomework.setPaperType(paperDTO.getPaperType());
+				thHomework.setHomeworkName(paperDTO.getTitle());
+				thHomework.setHomeworkType(homework.getHomeworkType());
+				thHomework.setStartTime(homework.getStartTime());
+				thHomework.setCloseTime(homework.getCloseTime());
+				thHomework.setFinishNum(0);
+				thHomework.setDelayNum(0);
+				thHomework.setCorrectNum(0);
+				thHomework.setCreatedBy(homework.getTeacherId());
+				thHomework.setCreatedOn(new Date());
+				thHomework.setModifiedBy(homework.getTeacherId());
+				thHomework.setModifiedOn(new Date());
+				thHomework.setIsDeleted(false);
+				if (thHomework.getStartTime() == null) {
+					thHomework.setStartTime(new Date());
+				}
+				homeworkRemotes.addAll(insertHomeworkGroupClassId(thHomework,
+						homework.getStudentGroupsJson()));
+			}
+		}
+		return homeworkRemotes;
+	}
+
+	private List<HomeworkRemote> insertHomeworkGroupClassId(Homework thHomework,
+			String studentGroupsJson) {
+		List<HomeworkRemote> homeworkRemotes = new ArrayList<HomeworkRemote>();
+		List<HomeworkGroupJson> homeworkGroupJsons = JsonUtils.readList(studentGroupsJson, HomeworkGroupJson.class);
+		if (CollectionUtils.isEmpty(homeworkGroupJsons)) {
+			throw new ValidateException("homeworkGroupJsons should not be null.");
+		}
+		for (HomeworkGroupJson hgj : homeworkGroupJsons) {
+			// 获取学生
+			List<StuTreeModel> students = getStudents(hgj);
+			// 根据分组信息获取班级信息
+			thHomework.setClassId(hgj.getClassId());
+			thHomework.setClassType(hgj.getClassType().intValue());
+			thHomework.setClassName(hgj.getClassName());
+			thHomework.setCourseSetId(hgj.getCourseSetId());
+			thHomework.setTotalNum(students.size());
+			thHomework.setStudentGroupsJson(toJsonString(hgj.getGroups()));
+			// 保存每个班级的教师作业
+			homeworkDao.insertHomework(thHomework);
+			// 学生布置作业和发送代办
+			sendEvent(thHomework, students);
+			// 老师作业对象
+			HomeworkRemote homeworkRemote = HomeworkUtils.copy(HomeworkRemote.class, thHomework);
+			// 学生作业对象
+			List<HomeworkDtl> homeworkDtlList = homeworkDtlService
+					.findHomeworkDtlListByHomeworkId(thHomework.getHomeworkId());
+			homeworkRemote.setHomeworkDtlList(HomeworkUtils.copy(HomeworkDtlRemote.class,
+					homeworkDtlList));
+			homeworkRemotes.add(homeworkRemote);
+		}
+		return homeworkRemotes;
+	}
+
+	private List<StuTreeModel> getStudents(HomeworkGroupJson hgj) {
+		List<Long> userIds;
+		// 过滤分组里面的重复学生
+		if (CollectionUtils.isNotEmpty(hgj.getGroups())) {
+			// 选择分组
+			List<Long> groupIds = hgj.getGroups().stream().map(StudentGroup::getGroupId).collect(Collectors.toList());
+			userIds = studentGroupRemoteService.findStudentByGroupList(groupIds.toArray(new Long[0]));
+		} else {
+			// 选择班级
+			userIds = studentGroupRemoteService.findStudentByClassId(hgj.getClassId());
+		}
+		if (CollectionUtils.isEmpty(userIds)) {
+			return Collections.emptyList();
+		}
+		List<UserBase> users = UserBaseContext.findUserBaseByUserId(userIds.toArray(new Long[0]));
+		return users.stream().map(user -> {
+			StuTreeModel stu = new StuTreeModel();
+			stu.setStuId(user.getUserId());
+			stu.setStuName(user.getUserName());
+			return stu;
+		}).collect(Collectors.toList());
+	}
+
+	private void sendEvent(Homework homework, List<StuTreeModel> stuList) {
+		List<TodoEvent> events = new ArrayList<TodoEvent>();
+		// 保存学生作业，班级没有学生时不写入学生作业
+		if (CollectionUtils.isNotEmpty(stuList)) {
+			homeworkDtlService.saveHomeworkDtl(homework, stuList);
+			// 发送 布置作业待办集合（非随堂作业）
+			if (homework.getHomeworkType() != HomeworkType.CLASS.value) {
+				events.add(createHwAssignEvent(homework, stuList));
+			}
+			insertHomeworkProgress(homework, stuList);
+			// 发送 布置作业待办
+			NoticeHelper.todo(events);
+		}
+	}
+
+	/**
+	 * 布置作业 发送待办
+	 * 
+	 * @param homework
+	 * @param homeworkAllStudentIds
+	 */
+	private HwAssignEvent createHwAssignEvent(Homework homework,
+			List<StuTreeModel> homeworkAllStudentIds) {
+		HwAssignEvent event = new HwAssignEvent();
+		event.setTeacherId(homework.getTeacherId());
+		event.setCourseSingleId(homework.getCourseSingleId());
+		event.setHomeworkId(homework.getHomeworkId());
+		event.setHomeworkName(homework.getHomeworkName());
+		event.setStartTime(homework.getStartTime());
+		event.setCloseTime(homework.getCloseTime());
+		List<Long> studentIds = new ArrayList<Long>();
+		for (StuTreeModel item : homeworkAllStudentIds) {
+			if (!studentIds.contains(item.getStuId())) {
+				studentIds.add(item.getStuId());
+			}
+		}
+		event.setHomeworkType(homework.getHomeworkType());
+		event.setStudentIds(studentIds);
+		return event;
+	}
+
+	/**
+	 * 布置作业 初次记录作业动态
+	 * 
+	 * @param homework
+	 * @param homeworkAllStudentIds
+	 */
+	private void insertHomeworkProgress(Homework homework, List<StuTreeModel> homeworkAllStudentIds) {
+		HomeworkProgress record = new HomeworkProgress();
+		record.setHomeworkId(homework.getHomeworkId());
+		record.setStartTime(homework.getStartTime());
+		record.setCloseTime(homework.getCloseTime());
+
+		List<StudentTs> unfinished = ListUtils.map(homeworkAllStudentIds, s -> {
+			StudentTs st = new StudentTs();
+			st.setStudentId(s.getStuId());
+			st.setTs(new Date(0));
+			st.setUsed(0);
+			return st;
+		});
+		record.setUnfinished(unfinished);
+		record.setTotalNum(unfinished.size());
+		homeworkProgressService.insert(record);
+	}
+
+	private String toJsonString(List<StudentGroup> groups) {
+		if (CollectionUtils.isEmpty(groups)) {
+			return "[]";
+		}
+		StringBuilder sb = new StringBuilder();
+		sb.append("[");
+		for (StudentGroup sg : groups) {
+			sb.append("{");
+			sb.append("groupId:" + sg.getGroupId());
+			sb.append(",groupName:'" + sg.getGroupName() + "'");
+			sb.append("},");
+		}
+		return sb.toString().substring(0, sb.length() - 1) + "]";
+	}
+}

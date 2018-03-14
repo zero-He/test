@@ -1,0 +1,51 @@
+<%@ page pageEncoding="UTF-8"%>
+<%@ include file="/pages/common/tags.jsp"%>
+<!DOCTYPE html>
+<html>
+<head>
+<title><locale:message code="homework.dowork.success.title" /></title>
+<%@ include file="/pages/common/meta.jsp"%>
+</head>
+<body class="m-middlepage">
+<div class="g-head">
+		<%@ include file="/pages/header/header.jsp"%>
+	</div>
+	<div class="con">
+		<div class="msg">
+			<div class="m-tiptext m-tiptext-block m-tiptext-success">
+				<i class="iconfont icon">󰅂 </i>
+				<div class="msg">
+					<h6>作业提交成功！</h6>
+					<p> 您是全班第${count}个提交${type}的学生,用时${homeworkDtl.usedTime }分钟。</p>
+			            <p>
+				            <c:if test="${homeworkDtl.correctTime != null}">
+					            <locale:message code="homework.dowork.suctext.divtext" />：
+					            <span><fmt:formatNumber value="${homeworkDtl.score }" pattern="0.#" />
+					            <locale:message code="homework.dowork.suctext.points" /></span>
+							 </c:if>
+						</p>
+		           		 <p class="special">
+			            	<c:if test="${homeworkDtl.correctTime != null}">
+				            	<c:if test="${leke!= null && leke gt 0}">乐豆+${leke}</c:if><c:if test="${exp != null && exp gt 0}">，经验+${exp}</c:if>
+			            	</c:if>
+			            	<c:if test="${homeworkDtl.correctTime == null}">
+			            		（<locale:message code="homework.dowork.suctext.special" />）
+			            	</c:if>
+	            		 </p>
+	            		 <p>
+							<a href="${initParam.homeworkServerName }/auth/student/homework/viewWork.htm?homeworkDtlId=${homeworkDtl.homeworkDtlId}">查看作业</a>
+							<c:if test="${isShow }">
+							| <a href="${initParam.homeworkServerName }/auth/student/exercise/homework/myHomeworkList.htm">我的作业</a>
+							</c:if>
+							| <a href="${initParam.lessonServerName }/auth/student/home/student.htm">返回我的乐课</a>
+					    </p>
+				</div>
+			</div>
+		</div>
+	</div>
+    <div class="g-foot">
+	<%@ include file="/pages/common/foot.jsp"%>
+	</div>
+
+</body>
+</html>

@@ -1,0 +1,83 @@
+define(function(require, exports, module) {
+	var $ = require('jquery');
+	var questionFilter = {
+			type : 'error',//显示类型,error:只显示错题，bugfix：只显示待订正  review:只显示待复批,correct:待批改
+			init : function(domId,type){
+				if(type != undefined && type != null){
+					this.type = type;
+				}
+			  this.addBtn(domId);
+			  this.bindEvent();
+			  this.filter(true);
+			  $('.j-only-error-chk').attr('checked','checked');
+			},
+			filter: function(isFilter){
+				var _this = this;
+				if(isFilter){
+					//只显示错题，待订正，待复批
+					$('.j-sheet li').each(function(){
+						var $li = $(this);
+						var questions = $li.find('.p-group-detail').find('.p-group-body > .j-question');
+						var hideCount = 0;
+						$.each(questions,function(i,n){
+							if(_this.type == 'error'){
+								if($(n).find('.p-right-error , .p-right-half').length == 0){
+									$(n).slideUp();
+									hideCount++;
+								}
+							}else if(_this.type == 'bugfix'){
+								if(!$(n).data('editabled')){
+									$(n).slideUp();
+									hideCount++;
+								}
+							}else if(_this.type == 'review'){
+								if($(n).find('.j-review').length == 0){
+									$(n).slideUp();
+									hideCount++;
+								}
+							}else if(_this.type == 'correct'){
+								if($(n).find('.j-correctresult').length == 0){
+									$(n).slideUp();
+									hideCount++;
+								}
+							}
+						});
+						if(hideCount == questions.length){
+							$li.find('.p-group-detail').slideUp();
+							$li.find('.p-group-title').slideUp();
+						}
+					});
+				}else{
+					$('.p-group-title').slideDown();
+					$('.p-group-detail').slideDown();
+					$('.p-group-detail').css('visibility','visible');
+					$('.j-question').slideDown();
+				}
+			},
+			bindEvent : function(){
+				var _this = this;
+				$(document).on('change','.j-only-error-chk',function(){
+
+					if(this.checked){
+						_this.filter(true);
+					}else{
+						_this.filter();
+					}
+				});
+			},
+			addBtn : function(domId){
+				var _this = this;
+				var $dom ;
+				if(domId == '' || domId == undefined || domId == null){
+					$dom = $('.p-exam-head .p-props');
+				}else{
+					$dom = $('#'+domId);
+				}
+				var btnName= {error:'错题',bugfix:'待订正',review:'待复批',correct:'待批改'};
+				var chk ='<span style="font-size: 12px;color: #0ba299;display: inline-block;margin-left: 150px;height: 20px;line-height: 20px;font-weight: bold;"><input type="checkbox" class="j-only-error-chk" id="j-only-error" style="vertical-align: middle; margin-right: 5px;"><label for="j-only-error">只看'+btnName[_this.type]+'</label></span>';
+				$dom.append(chk);
+			}
+	}	
+
+	module.exports = questionFilter;
+});

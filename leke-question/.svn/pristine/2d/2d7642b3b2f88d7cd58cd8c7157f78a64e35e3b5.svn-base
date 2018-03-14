@@ -1,0 +1,72 @@
+<div class="m-search-box">
+	<label class="title">范围：</label>
+	<select name="shareScope" class="u-select u-select-nm"
+		data-bind="options: shareScopes,
+				   optionsValue: 'scope',
+				   optionsText: 'name',
+				   value: query.shareScope">
+	</select>
+	
+	<!-- ko if: userResGrps().length -->
+	<label class="title">分组：</label>
+	<select name="userResGroupId" class="u-select u-select-nm"
+		data-bind="options: userResGrps,
+				   optionsValue: 'userResGroupId',
+				   optionsText: 'groupName',
+				   optionsCaption: '==请选择==',
+				   value: query.userResGroupId">
+	</select>
+	<!-- /ko -->
+	
+	<span class="f-fr">
+		<input type="text" class="u-ipt u-ipt-lg" name="title" placeholder="请输入试卷名称"
+			data-bind="value: query.title"/>
+		<button type="button" class="u-btn u-btn-nm u-btn-bg-turquoise" 
+			data-bind="click: doSearch">查询</button>
+	</span>
+</div>
+<div class="m-table" style="height:340px;overflow: auto;">
+	<table>
+		<thead>
+			<tr>
+				<th width="4%"></th>
+				<th width="10%">学段学科</th>
+				<th width="25%">试卷名称</th>
+				<th width="15%">组卷人</th>
+				<th width="12%">试卷类型</th>
+				<th width="8%">主观题</th>
+				<th width="8%">手写题</th>
+				<th width="9%">引用次数</th>
+				<th width="10%">操作区</th>
+			</tr>
+		</thead>
+		<tbody data-bind="foreach: records">
+			<tr>
+				<td><input type="checkbox" name="selected" data-bind="checked: selected"></td>
+				<td>
+					<span data-bind="text: $data.schoolStageName">&nbsp;</span>
+					<span data-bind="text: $data.subjectName">&nbsp;</span>
+				</td>
+				<td data-bind="text: title"></td>
+				<td data-bind="text: creatorName"></td>
+				<td data-bind="text: typeStr"></td>
+				<td data-bind="text: subjectiveStr"></td>
+				<td data-bind="text: handwrittenStr"></td>
+				<td data-bind="text: usedCount"></td>
+				<td class="operation">
+					<a target="_blank"
+						data-bind="attr: {
+							href: $data.viewUrl
+						}">预览</a>
+				</td>
+			</tr>
+		</tbody>
+	</table>
+</div>
+<div data-bind="component: {
+	name: 'leke-page',
+	params: {
+		curPage: curPage,
+		totalSize: totalSize
+	}
+}"></div>

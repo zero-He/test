@@ -1,0 +1,55 @@
+<div class="m-search-box f-mt20">
+	<div class="j-search-box">
+		<label class="title j-area-label">地区范围：</label>
+		<input type="hidden" name="area" class="j-area-select"/>
+		<label class="title">学校：</label>
+		<input type="text" name="school"  class="u-ipt u-ipt-nm j-school-select"/>
+	</div>
+	<div class="item">
+		<label class="title">统计期间：</label>
+		<input type="text" class="Wdate u-ipt u-ipt-nm" id="startDay" name="startDay" 
+			data-bind="datepicker: {value: query.startDay,dateFmt: 'yyyy-MM-dd',minDate:'#F{$dp.$D(\'endDay\',{M:-6});}',maxDate:'#F{$dp.$D(\'endDay\');}'}"  />至
+		<input type="text" class="u-ipt u-ipt-nm" id="endDay" name="endDay" 
+			data-bind="datepicker: {value: query.endDay,dateFmt: 'yyyy-MM-dd',maxDate:'#F{$dp.$D(\'startDay\',{M:6});}'}"  />
+		<button class="u-btn u-btn-nm u-btn-bg-turquoise" data-bind="click: load">查询</button>
+	</div>
+</div>
+<div id="totalMap" style="height:500px;">
+</div>
+<div class="m-search-box f-mt20">
+	<div>
+		<div class="operation"><input type="button" class="f-fr u-btn u-btn-nm u-btn-bg-orange" data-bind="click: exportExcel" value="导出"></div>
+	</div>
+</div>
+<div class="m-table m-table-center">
+	<table>
+		<tr><th>日期</th><th>人数(实到/应到)</th><th>人次(实到/应到)</th><th>到课率(人次)</th><th>操作区</th></tr>
+		<tr><td>合计</td>
+			<td><em data-bind="text: actualCountsTotal"></em>/<em data-bind="text: expectCountsTotal"></em></td>
+			<td><em data-bind="text: actualTimesTotal"></em>/<em data-bind="text: expectTimesTotal"></em></td>
+			<td><em data-bind="text: ratioTimesTotal"></em></td><td>--</td></tr>
+		<!-- ko foreach:list-->
+		<tr>
+			<td data-bind="text:dayStr"></td>
+			<td>(<em data-bind="text: actualStuCount"></em>/<em data-bind="text: expectStuCount"></em>)</td>
+			<td>(<em data-bind="text: actualStuTimes"></em>/<em data-bind="text: expectStuTimes"></em>)</td>
+			<td data-bind="text:ratioTimes"></td>
+			<td class="operation">
+			<!-- ko if: $parent.query.school()!=undefined -->
+				<!-- ko if: $parent.query.schoolId()!=undefined -->
+					<a target="_bank" data-bind="attr:{href:ctx+$parent.options.urlView+'?day='+day+'&schoolId='+$parent.query.schoolId()}">查看详情</a>
+				<!-- /ko -->
+			<!-- /ko -->
+			<!-- ko if: $parent.query.school()==undefined -->
+			<!-- ko if: $parent.isPresident -->
+					<a target="_bank" data-bind="attr:{href:ctx+$parent.options.urlView+'?day='+day}">查看详情</a>
+			<!-- /ko -->
+			<!-- ko if: $parent.isPresident==false -->
+					--
+			<!-- /ko -->
+			<!-- /ko -->
+			</td>
+		</tr>
+		<!-- /ko-->
+	</table>
+</div>

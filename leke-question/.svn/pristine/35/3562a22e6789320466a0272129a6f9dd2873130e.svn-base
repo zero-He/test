@@ -1,0 +1,16 @@
+<div class="m-table">
+	<table>
+		<tr><th>序号</th><th>教材版本</th><th>操作</th></tr>
+		<!-- ko foreach: presses -->
+		<tr>
+			<td>
+				<label>
+				<input type="checkbox" data-bind="value: pressId,checked: checked" name="pressId" >
+				<input type="text" class="u-ipt u-ipt-mn" data-bind="value: ord"></label>
+			</td>
+			<td data-bind="text: pressName"></td>
+			<td><input type="checkbox" data-bind="checked: isMain">设为主版本</td>
+		</tr>
+		<!-- /ko -->
+	</table>
+</div>

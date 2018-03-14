@@ -1,0 +1,392 @@
+package cn.strong.leke.diag.model;
+
+import java.math.BigDecimal;
+import java.util.Date;
+
+import cn.strong.leke.common.utils.DateUtils;
+import cn.strong.leke.model.BaseModel;
+
+/**
+ * 实体对象：老师作业表
+ */
+public class Homework extends BaseModel {
+
+	private static final long serialVersionUID = 7506913150446689948L;
+
+	// 作业ID
+	private Long homeworkId;
+	// 老师ID
+	private Long teacherId;
+	// 老师ID
+	private String teacherName;
+	// 备课GUID
+	private String beikeGuid;
+	// 使用阶段
+	private Integer usePhase;
+	// 试卷ID
+	private Long paperId;
+	// 主观性
+	private Boolean subjective;
+	// 学科ID
+	private Long subjectId;
+	// 学科名称
+	private String subjectName;
+	// 班级ID
+	private Long classId;
+	// 班级类型
+	private Integer classType;
+	// 班级名称
+	private String className;
+	// 套课ID
+	private Long courseSetId;
+	// 单课ID
+	private Long courseSingleId;
+	// 作业名称
+	private String homeworkName;
+	// 作业类型
+	private Integer homeworkType;
+	// 开始时间
+	private Date startTime;
+	// 截止时间
+	private Date closeTime;
+	// 作业状态，1：正常，2：作废
+	private Integer status;
+	// 完成人数
+	private Integer finishNum;
+	// 迟交人数
+	private Integer delayNum;
+	// 批改人数
+	private Integer correctNum;
+	// 总人数
+	private Integer totalNum;
+	// 已订正人数
+	private Integer bugFixNum;
+	// 总订正人数
+	private Integer totalFixNum;
+	// 已复批人数
+	private Integer reviewNum;
+	// 最高得分
+	private BigDecimal maxScore;
+	// 最低得分
+	private BigDecimal minScore;
+	// 平均得分
+	private BigDecimal avgScore;
+	// 平均得分率
+	private BigDecimal avgScoreRate;
+	// 分析状态
+	private Integer statsStatus;
+	// 是否开放答案
+	private Boolean isOpenAnswer;
+	// 是否自行校对
+	private Boolean isSelfCheck;
+	// 学校ID
+	private Long schoolId;
+
+	public Long getHomeworkId() {
+		return homeworkId;
+	}
+
+	public void setHomeworkId(Long homeworkId) {
+		this.homeworkId = homeworkId;
+	}
+
+	public Long getTeacherId() {
+		return teacherId;
+	}
+
+	public void setTeacherId(Long teacherId) {
+		this.teacherId = teacherId;
+	}
+
+	public String getTeacherName() {
+		return teacherName;
+	}
+
+	public void setTeacherName(String teacherName) {
+		this.teacherName = teacherName;
+	}
+
+	public String getBeikeGuid() {
+		return beikeGuid;
+	}
+
+	public void setBeikeGuid(String beikeGuid) {
+		this.beikeGuid = beikeGuid;
+	}
+
+	public Integer getUsePhase() {
+		return usePhase;
+	}
+
+	public void setUsePhase(Integer usePhase) {
+		this.usePhase = usePhase;
+	}
+
+	public Long getPaperId() {
+		return paperId;
+	}
+
+	public void setPaperId(Long paperId) {
+		this.paperId = paperId;
+	}
+
+	public Boolean getSubjective() {
+		return subjective;
+	}
+
+	public void setSubjective(Boolean subjective) {
+		this.subjective = subjective;
+	}
+
+	public Long getSubjectId() {
+		return subjectId;
+	}
+
+	public void setSubjectId(Long subjectId) {
+		this.subjectId = subjectId;
+	}
+
+	public String getSubjectName() {
+		return subjectName;
+	}
+
+	public void setSubjectName(String subjectName) {
+		this.subjectName = subjectName;
+	}
+
+	public Long getClassId() {
+		return classId;
+	}
+
+	public void setClassId(Long classId) {
+		this.classId = classId;
+	}
+
+	public Integer getClassType() {
+		return classType;
+	}
+
+	public void setClassType(Integer classType) {
+		this.classType = classType;
+	}
+
+	public String getClassName() {
+		return className;
+	}
+
+	public void setClassName(String className) {
+		this.className = className;
+	}
+
+	public Long getCourseSetId() {
+		return courseSetId;
+	}
+
+	public void setCourseSetId(Long courseSetId) {
+		this.courseSetId = courseSetId;
+	}
+
+	public Long getCourseSingleId() {
+		return courseSingleId;
+	}
+
+	public void setCourseSingleId(Long courseSingleId) {
+		this.courseSingleId = courseSingleId;
+	}
+
+	public String getHomeworkName() {
+		return homeworkName;
+	}
+
+	public void setHomeworkName(String homeworkName) {
+		this.homeworkName = homeworkName;
+	}
+
+	public Integer getHomeworkType() {
+		return homeworkType;
+	}
+
+	public void setHomeworkType(Integer homeworkType) {
+		this.homeworkType = homeworkType;
+	}
+
+	public Date getStartTime() {
+		return startTime;
+	}
+
+	public void setStartTime(Date startTime) {
+		this.startTime = startTime;
+	}
+
+	public Date getCloseTime() {
+		return closeTime;
+	}
+
+	public void setCloseTime(Date closeTime) {
+		this.closeTime = closeTime;
+	}
+
+	public Integer getStatus() {
+		return status;
+	}
+
+	public void setStatus(Integer status) {
+		this.status = status;
+	}
+
+	public Integer getFinishNum() {
+		return finishNum;
+	}
+
+	public void setFinishNum(Integer finishNum) {
+		this.finishNum = finishNum;
+	}
+
+	public Integer getDelayNum() {
+		return delayNum;
+	}
+
+	public void setDelayNum(Integer delayNum) {
+		this.delayNum = delayNum;
+	}
+
+	public Integer getCorrectNum() {
+		return correctNum;
+	}
+
+	public void setCorrectNum(Integer correctNum) {
+		this.correctNum = correctNum;
+	}
+
+	public Integer getTotalNum() {
+		return totalNum;
+	}
+
+	public void setTotalNum(Integer totalNum) {
+		this.totalNum = totalNum;
+	}
+
+	public Integer getBugFixNum() {
+		return bugFixNum;
+	}
+
+	public void setBugFixNum(Integer bugFixNum) {
+		this.bugFixNum = bugFixNum;
+	}
+
+	public Integer getTotalFixNum() {
+		return totalFixNum;
+	}
+
+	public void setTotalFixNum(Integer totalFixNum) {
+		this.totalFixNum = totalFixNum;
+	}
+
+	public Integer getReviewNum() {
+		return reviewNum;
+	}
+
+	public void setReviewNum(Integer reviewNum) {
+		this.reviewNum = reviewNum;
+	}
+
+	public BigDecimal getMaxScore() {
+		return maxScore;
+	}
+
+	public void setMaxScore(BigDecimal maxScore) {
+		this.maxScore = maxScore;
+	}
+
+	public BigDecimal getMinScore() {
+		return minScore;
+	}
+
+	public void setMinScore(BigDecimal minScore) {
+		this.minScore = minScore;
+	}
+
+	public BigDecimal getAvgScore() {
+		return avgScore;
+	}
+
+	public void setAvgScore(BigDecimal avgScore) {
+		this.avgScore = avgScore;
+	}
+
+	public BigDecimal getAvgScoreRate() {
+		return avgScoreRate;
+	}
+
+	public void setAvgScoreRate(BigDecimal avgScoreRate) {
+		this.avgScoreRate = avgScoreRate;
+	}
+
+	public Integer getStatsStatus() {
+		return statsStatus;
+	}
+
+	public void setStatsStatus(Integer statsStatus) {
+		this.statsStatus = statsStatus;
+	}
+
+	public Boolean getIsOpenAnswer() {
+		return isOpenAnswer;
+	}
+
+	public void setIsOpenAnswer(Boolean isOpenAnswer) {
+		this.isOpenAnswer = isOpenAnswer;
+	}
+
+	public Boolean getIsSelfCheck() {
+		return isSelfCheck;
+	}
+
+	public void setIsSelfCheck(Boolean isSelfCheck) {
+		this.isSelfCheck = isSelfCheck;
+	}
+
+	public Long getSchoolId() {
+		return schoolId;
+	}
+
+	public void setSchoolId(Long schoolId) {
+		this.schoolId = schoolId;
+	}
+
+	public String getHomeworkTypeStr() {
+		Integer homeworkType = this.getHomeworkType();
+		if (homeworkType.equals(1)) {
+			return "预习作业";
+		} else if (homeworkType.equals(2)) {
+			return "随堂作业";
+		} else if (homeworkType.equals(3)) {
+			return "课后作业";
+		} else if (homeworkType.equals(4)) {
+			return "阶段作业";
+		}else if (homeworkType.equals(5)) {
+			return "点播作业";
+		}
+		return "";
+	}
+
+	public String getFinishNumStr() {
+		return this.getFinishNum() == null ? "0" : this.getFinishNum().toString();
+	}
+
+	public String getCorrectNumStr() {
+		return this.getCorrectNum() == null ? "0" : this.getCorrectNum().toString();
+	}
+
+	public String getCreatedOnStr() {
+		return DateUtils.formatTime(this.getCreatedOn());
+	}
+
+	public String getStartTimeStr() {
+		return DateUtils.formatTime(this.getStartTime());
+	}
+
+	public String getCloseTimeStr() {
+		return DateUtils.formatTime(this.getCloseTime());
+	}
+}

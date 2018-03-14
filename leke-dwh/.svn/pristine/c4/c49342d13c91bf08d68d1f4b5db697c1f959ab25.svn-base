@@ -1,0 +1,17 @@
+package cn.strong.leke.dwh.service.impl;
+
+import java.util.List;
+
+import cn.strong.leke.dwh.service.DemoService;
+import cn.strong.leke.remote.service.lesson.IKlassRemoteService;
+
+public class DemoServiceImpl implements DemoService {
+
+	private IKlassRemoteService klassRemoteService;
+
+	public Integer test(Long classId, Long subjectId) {
+		List<Long> studentIds = this.klassRemoteService.findStudentIdsByClassId(classId);
+		// 查询每个学生的
+		return 0;
+	}
+}

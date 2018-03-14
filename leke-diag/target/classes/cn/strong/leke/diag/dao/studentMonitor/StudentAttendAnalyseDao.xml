@@ -1,0 +1,545 @@
+<?xml version="1.0" encoding="UTF-8" ?>   
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.diag.dao.studentMonitor.StudentAttendAnalyseDao">
+
+	<select id="findStudentAttendByLesson" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.studentMonitor.StudentAttend">
+		SELECT z.* FROM
+		(SELECT b.csAttenId,
+		       CONCAT(DATE_FORMAT(a.startTime,'%Y-%m-%d %k时%i分'), '—', DATE_FORMAT(a.endTime,'%k时%i分')) startTime,
+		       a.time duration, 
+		       c.className, 
+		       d.subjectName, 
+		       a.teacherName,
+		       COUNT(IF(e.attendTime is null, null, 1)) realCount,
+			   COUNT(e.csAttenId) totalCount,
+		       IF(COUNT(e.csAttenId) = 0, 0, ROUND(COUNT(IF(e.attendTime is null, null, 1)) / COUNT(e.csAttenId) * 100, 1)) attendCountRate,
+		       b.lateCount,
+		       b.earlyCount,
+		       COUNT(IF(e.attendState = 3, 1, NULL)) lateAndEarlyCount,
+		       COUNT(IF(e.attendState = 4, 1, NULL)) absentCount,
+		       COUNT(IF(e.attendState = 0, 1, NULL)) normalCount
+		FROM lesson.ls_lesson a, 
+		     lesson.ls_attendance_lesson b, 
+		     lesson.ls_klass c, 
+		     lesson.ls_klass_subject d, 
+		     lesson.ls_attendance_student e
+		WHERE a.courseSingleId = b.scId
+		AND a.classId = c.classId
+		AND a.classSubjId = d.classSubjId
+		AND b.csAttenId = e.csAttenId
+		AND a.schoolId = #{schoolId}
+		AND a.isDeleted = 0
+		AND b.isDeleted = 0
+		AND c.isDeleted = 0
+		AND c.isExpired = 0
+		<if test="classId != null and classId != -1">
+		AND c.classId = #{classId}
+		</if>
+		<if test="gradeId != null and gradeId != -1">
+		AND c.gradeId = #{gradeId}
+		</if>
+		AND a.startTime <![CDATA[>=]]> DATE(#{startDate})
+		AND a.startTime <![CDATA[<]]> DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+		GROUP BY b.csAttenId)z
+		<if test="orderAttr != null and orderAttr != ''">
+		ORDER BY ${orderAttr} ${orderType}
+		</if>
+	</select>
+	
+	<select id="findStudentAttendAggregateByLesson" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.studentMonitor.StudentAttend">
+		SELECT SUM(realCount) realCount,
+		       SUM(totalCount) totalCount,
+		       IF(SUM(totalCount) = 0, 0, ROUND(SUM(realCount) / SUM(totalCount) * 100, 1)) attendCountRate,
+		       SUM(lateCount) lateCount,
+		       SUM(earlyCount) earlyCount,
+		       SUM(lateAndEarlyCount) lateAndEarlyCount,
+		       SUM(absentCount) absentCount,
+		       SUM(normalCount) normalCount 
+		FROM
+		  (SELECT  COUNT(IF(e.attendTime is null, null, 1)) realCount,
+			       COUNT(e.csAttenId) totalCount,
+			       b.lateCount,
+			       b.earlyCount,
+			       COUNT(IF(e.attendState = 3, 1, NULL)) lateAndEarlyCount,
+			       COUNT(IF(e.attendState = 4, 1, NULL)) absentCount,
+			       COUNT(IF(e.attendState = 0, 1, NULL)) normalCount
+			FROM lesson.ls_lesson a, 
+			     lesson.ls_attendance_lesson b, 
+			     lesson.ls_klass c, 
+			     lesson.ls_klass_subject d, 
+			     lesson.ls_attendance_student e
+			WHERE a.courseSingleId = b.scId
+			AND a.classId = c.classId
+			AND a.classSubjId = d.classSubjId
+			AND b.csAttenId = e.csAttenId
+			AND a.schoolId = #{schoolId}
+			AND a.isDeleted = 0
+			AND b.isDeleted = 0
+			AND c.isDeleted = 0
+			AND c.isExpired = 0
+			<if test="classId != null and classId != -1">
+			AND c.classId = #{classId}
+			</if>
+			<if test="gradeId != null and gradeId != -1">
+			AND c.gradeId = #{gradeId}
+			</if>
+			AND a.startTime <![CDATA[>=]]> DATE(#{startDate})
+			AND a.startTime <![CDATA[<]]> DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+			GROUP BY b.csAttenId)z
+	</select>
+	
+	<select id="findStudentAttendDtlByLesson" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.studentMonitor.StudentAttend">
+		SELECT * FROM
+		(SELECT a.userName studentName,
+		       a.className,
+		       CONCAT(DATE_FORMAT(a.attendTime,'%k:%i'), '—', DATE_FORMAT(a.exitTime,'%k:%i')) startTime,
+		       a.online duration,
+		       CASE 
+		         WHEN a.attendState = 0 THEN
+		           '全勤'
+		         WHEN a.attendState = 1 THEN
+		           '迟到'
+		         WHEN a.attendState = 2 THEN
+		           '早退'
+		         WHEN a.attendState = 3 THEN
+		           '迟到且早退'
+		         WHEN a.attendState = 4 THEN
+		           '缺勤' 
+		       END attendState,
+		       a.calledNum,       
+		       SUBSTR(a.called, 3, INSTR(a.called, '次') - INSTR(a.called, '名') - 1) totalCalled
+		FROM lesson.ls_attendance_student a
+		WHERE a.csAttenId = #{csAttenId}) p
+		<if test="orderAttr != null and orderAttr != ''">
+		ORDER BY ${orderAttr} ${orderType}
+		</if>
+	</select>
+	
+	<select id="findStudentAttendByStudent" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.studentMonitor.StudentAttend">
+		SELECT z.* FROM
+		(SELECT p.*,
+		       CONVERT(IF(p.lessonCount = 0, 0, ROUND(p.attendCount / p.lessonCount * 100, 1)), DECIMAL(4,1)) attendCountRate,
+		       CONVERT(IF(p.lessonCount = 0, 0, ROUND(p.normalCount / p.lessonCount * 100, 1)), DECIMAL(4,1)) normalCountRate,
+		       CONVERT(IF(p.lessonCount = 0, 0, ROUND(p.lateCount / p.lessonCount * 100, 1)), DECIMAL(4,1)) lateCountRate,
+		       CONVERT(IF(p.lessonCount = 0, 0, ROUND(p.earlyCount / p.lessonCount * 100, 1)), DECIMAL(4,1)) earlyCountRate,
+		       CONVERT(IF(p.lessonCount = 0, 0, ROUND(p.lateAndEarlyCount / p.lessonCount * 100, 1)), DECIMAL(4,1)) lateAndEarlyCountRate,
+		       CONVERT(IF(p.lessonCount = 0, 0, ROUND(p.absentCount / p.lessonCount * 100, 1)), DECIMAL(4,1)) absentCountRate
+		FROM(
+			SELECT e.userId studentId,
+			       e.userName studentName, 
+			       g.depName className,
+			       COUNT(a.courseSingleId) lessonCount,
+			       COUNT(IF(e.attendTime IS NULL, NULL, 1)) attendCount,
+			       COUNT(IF(e.attendState = 0, 1, NULL)) normalCount,
+			       COUNT(IF(e.attendState = 1, 1, NULL)) lateCount,
+			       COUNT(IF(e.attendState = 2, 1, NULL)) earlyCount,
+			       COUNT(IF(e.attendState = 3, 1, NULL)) lateAndEarlyCount,
+			       COUNT(IF(e.attendState = 4, 1, NULL)) absentCount
+			FROM lesson.ls_lesson a, 
+			     lesson.ls_attendance_lesson b, 
+			     lesson.ls_klass c,
+			     lesson.ls_attendance_student e,
+			     tutor.tutor_user_struct f,
+		     	 tutor.tutor_struct g
+			WHERE a.courseSingleId = b.scId
+			AND a.classId = c.classId
+			AND b.csAttenId = e.csAttenId
+			AND f.userId = e.userId
+		    AND f.depId = g.depId
+			AND a.schoolId = #{schoolId}
+			AND a.isDeleted = 0
+			AND b.isDeleted = 0
+			AND c.isDeleted = 0
+			AND f.isDeleted = 0
+			AND g.isDeleted = 0
+			AND c.isExpired = 0
+			<if test="classId != null and classId != -1">
+			AND c.classId = #{classId}
+			</if>
+			<if test="gradeId != null and gradeId != -1">
+			AND c.gradeId = #{gradeId}
+			</if>
+			<if test="studentName != null and studentName != ''">
+			AND e.userName like CONCAT('%', #{studentName}, '%')
+			</if>
+			AND a.startTime <![CDATA[>=]]> DATE(#{startDate})
+		    AND a.startTime <![CDATA[<]]> DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+			GROUP BY e.userId) p)z
+			<if test="orderAttr != null and orderAttr != ''">
+			ORDER BY ${orderAttr} ${orderType}
+			</if>
+	</select>
+	
+	<select id="findStudentAttendAggregateByStudent" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.studentMonitor.StudentAttend">
+		SELECT SUM(p.lessonCount) lessonCount,
+		       SUM(p.attendCount) attendCount,
+		       SUM(p.lateCount) lateCount,
+		       SUM(p.earlyCount) earlyCount,
+		       SUM(p.lateAndEarlyCount) lateAndEarlyCount,
+		       SUM(p.absentCount) absentCount,
+		       SUM(p.normalCount) normalCount,
+		       CONVERT(IF(SUM(p.lessonCount) = 0, 0, ROUND(SUM(p.attendCount) / SUM(p.lessonCount) * 100, 1)), DECIMAL(4,1)) attendCountRate,
+		       CONVERT(IF(SUM(p.lessonCount) = 0, 0, ROUND(SUM(p.normalCount) / SUM(p.lessonCount) * 100, 1)), DECIMAL(4,1)) normalCountRate,
+		       CONVERT(IF(SUM(p.lessonCount) = 0, 0, ROUND(SUM(p.lateCount) / SUM(p.lessonCount) * 100, 1)), DECIMAL(4,1)) lateCountRate,
+		       CONVERT(IF(SUM(p.lessonCount) = 0, 0, ROUND(SUM(p.earlyCount) / SUM(p.lessonCount) * 100, 1)), DECIMAL(4,1)) earlyCountRate,
+		       CONVERT(IF(SUM(p.lessonCount) = 0, 0, ROUND(SUM(p.lateAndEarlyCount) / SUM(p.lessonCount) * 100, 1)), DECIMAL(4,1)) lateAndEarlyCountRate,
+		       CONVERT(IF(SUM(p.lessonCount) = 0, 0, ROUND(SUM(p.absentCount) / SUM(p.lessonCount) * 100, 1)), DECIMAL(4,1)) absentCountRate 
+		FROM(
+			SELECT e.userId studentId,
+			       COUNT(a.courseSingleId) lessonCount,
+			       COUNT(IF(e.attendTime IS NULL, NULL, 1)) attendCount,
+			       COUNT(IF(e.attendState = 0, 1, NULL)) normalCount,
+			       COUNT(IF(e.attendState = 1, 1, NULL)) lateCount,
+			       COUNT(IF(e.attendState = 2, 1, NULL)) earlyCount,
+			       COUNT(IF(e.attendState = 3, 1, NULL)) lateAndEarlyCount,
+			       COUNT(IF(e.attendState = 4, 1, NULL)) absentCount
+			FROM lesson.ls_lesson a, 
+			     lesson.ls_attendance_lesson b, 
+			     lesson.ls_klass c,
+			     lesson.ls_attendance_student e
+			WHERE a.courseSingleId = b.scId
+			AND a.classId = c.classId
+			AND b.csAttenId = e.csAttenId
+			AND a.schoolId = #{schoolId}
+			AND a.isDeleted = 0
+			AND b.isDeleted = 0
+			AND c.isDeleted = 0
+			AND c.isExpired = 0
+			<if test="classId != null and classId != -1">
+			AND c.classId = #{classId}
+			</if>
+			<if test="gradeId != null and gradeId != -1">
+			AND c.gradeId = #{gradeId}
+			</if>
+			<if test="studentName != null and studentName != ''">
+			AND e.userName like CONCAT('%', #{studentName}, '%')
+			</if>
+			AND a.startTime <![CDATA[>=]]> DATE(#{startDate})
+		    AND a.startTime <![CDATA[<]]> DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+			GROUP BY e.userId) p
+	</select>
+	
+	<sql id="byTeacher">
+			SELECT a.teacherId,
+			       a.teacherName, 
+			       d.subjectId,
+			       d.subjectName,
+			       COUNT(IF(e.attendTime is null, null, 1)) realCount,
+			       COUNT(e.csAttenId) totalCount,
+			       COUNT(DISTINCT a.courseSingleId) lessonCount,
+			       COUNT(IF(e.attendState = 0, 1, NULL)) normalCount,
+			       COUNT(IF(e.attendState = 1, 1, NULL)) lateCount,
+			       COUNT(IF(e.attendState = 2, 1, NULL)) earlyCount,
+			       COUNT(IF(e.attendState = 3, 1, NULL)) lateAndEarlyCount,
+			       COUNT(IF(e.attendState = 4, 1, NULL)) absentCount
+			FROM lesson.ls_lesson a, 
+			     lesson.ls_attendance_lesson b, 
+			     lesson.ls_klass c,
+			     lesson.ls_klass_subject d,
+			     lesson.ls_attendance_student e
+			WHERE a.courseSingleId = b.scId
+			AND a.classId = c.classId
+			AND a.classSubjId = d.classSubjId
+			AND b.csAttenId = e.csAttenId
+			AND a.schoolId = #{schoolId}
+			AND a.isDeleted = 0
+			AND b.isDeleted = 0
+			AND c.isDeleted = 0
+			AND c.isExpired = 0
+			<if test="classId != null and classId != -1">
+			AND c.classId = #{classId}
+			</if>
+			<if test="gradeId != null and gradeId != -1">
+			AND c.gradeId = #{gradeId}
+			</if>
+			<if test="teacherName != null and teacherName != ''">
+			AND a.teacherName like CONCAT('%', #{teacherName}, '%')
+			</if>
+			AND a.startTime <![CDATA[>=]]> DATE(#{startDate})
+		    AND a.startTime <![CDATA[<]]> DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+			GROUP BY a.teacherId, d.subjectId
+	</sql>
+	
+	<select id="findStudentAttendByTeacher" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.studentMonitor.StudentAttend">
+		SELECT z.* FROM
+		(SELECT p.*,
+		       CONVERT(IF(p.totalCount = 0, 0, ROUND(p.realCount / p.totalCount * 100, 1)), DECIMAL(4,1)) attendCountRate,
+		       CONVERT(IF(p.totalCount = 0, 0, ROUND(p.normalCount / p.totalCount * 100, 1)), DECIMAL(4,1)) normalCountRate,
+		       CONVERT(IF(p.totalCount = 0, 0, ROUND(p.lateCount / p.totalCount * 100, 1)), DECIMAL(4,1)) lateCountRate,
+		       CONVERT(IF(p.totalCount = 0, 0, ROUND(p.earlyCount / p.totalCount * 100, 1)), DECIMAL(4,1)) earlyCountRate,
+		       CONVERT(IF(p.totalCount = 0, 0, ROUND(p.lateAndEarlyCount / p.totalCount * 100, 1)), DECIMAL(4,1)) lateAndEarlyCountRate,
+		       CONVERT(IF(p.totalCount = 0, 0, ROUND(p.absentCount / p.totalCount * 100, 1)), DECIMAL(4,1)) absentCountRate
+		FROM(
+			<include refid="byTeacher"/>
+			) p)z
+			<if test="orderAttr != null and orderAttr != ''">
+			ORDER BY ${orderAttr} ${orderType}
+			</if>
+	</select>
+	
+	<select id="findStudentAttendAggregateByTeacher" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.studentMonitor.StudentAttend">
+		SELECT SUM(p.lessonCount) lessonCount,
+		       SUM(p.realCount) realCount,
+		       SUM(p.totalCount) totalCount,
+		       SUM(p.lateCount) lateCount,
+		       SUM(p.earlyCount) earlyCount,
+		       SUM(p.lateAndEarlyCount) lateAndEarlyCount,
+		       SUM(p.absentCount) absentCount,
+		       SUM(p.normalCount) normalCount,
+		       CONVERT(IF(SUM(p.totalCount) = 0, 0, ROUND(SUM(p.realCount) / SUM(p.totalCount) * 100, 1)), DECIMAL(4,1)) attendCountRate,
+		       CONVERT(IF(SUM(p.totalCount) = 0, 0, ROUND(SUM(p.normalCount) / SUM(p.totalCount) * 100, 1)), DECIMAL(4,1)) normalCountRate,
+		       CONVERT(IF(SUM(p.totalCount) = 0, 0, ROUND(SUM(p.lateCount) / SUM(p.totalCount) * 100, 1)), DECIMAL(4,1)) lateCountRate,
+		       CONVERT(IF(SUM(p.totalCount) = 0, 0, ROUND(SUM(p.earlyCount) / SUM(p.totalCount) * 100, 1)), DECIMAL(4,1)) earlyCountRate,
+		       CONVERT(IF(SUM(p.totalCount) = 0, 0, ROUND(SUM(p.lateAndEarlyCount) / SUM(p.totalCount) * 100, 1)), DECIMAL(4,1)) lateAndEarlyCountRate,
+		       CONVERT(IF(SUM(p.totalCount) = 0, 0, ROUND(SUM(p.absentCount) / SUM(p.totalCount) * 100, 1)), DECIMAL(4,1)) absentCountRate
+		FROM(
+			<include refid="byTeacher"/>
+			) p
+	</select>
+	
+	<sql id="byClass">
+			SELECT 
+		       c.classId,
+		       c.className,
+		       (SELECT d.userName FROM lesson.ls_klass_teacher d
+		        WHERE a.classId = d.classId
+		        AND d.isDeleted = 0
+	  	        AND d.roleId = 103) teacherName,
+		       c.headCount studentCount,
+		       COUNT(DISTINCT a.courseSingleId) lessonCount,
+		       COUNT(IF(e.attendTime is null, null, 1)) realCount,
+	           COUNT(e.csAttenId) totalCount,
+	           COUNT(IF(e.attendState = 0, 1, NULL)) normalCount,
+		       COUNT(IF(e.attendState = 1, 1, NULL)) lateCount,
+		       COUNT(IF(e.attendState = 2, 1, NULL)) earlyCount,
+		       COUNT(IF(e.attendState = 3, 1, NULL)) lateAndEarlyCount,
+		       COUNT(IF(e.attendState = 4, 1, NULL)) absentCount
+		FROM lesson.ls_lesson a, 
+		     lesson.ls_attendance_lesson b, 
+		     lesson.ls_klass c,
+		     lesson.ls_attendance_student e
+		WHERE a.courseSingleId = b.scId
+		AND a.classId = c.classId
+		AND e.csAttenId = b.csAttenId
+		AND a.schoolId = #{schoolId}
+		AND a.isDeleted = 0
+		AND b.isDeleted = 0
+		AND c.isDeleted = 0
+		AND c.isExpired = 0
+		<if test="classId != null and classId != -1">
+		AND c.classId = #{classId}
+		</if>
+		<if test="gradeId != null and gradeId != -1">
+		AND c.gradeId = #{gradeId}
+		</if>
+		AND a.startTime <![CDATA[>=]]> DATE(#{startDate})
+    	AND a.startTime <![CDATA[<]]> DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+		GROUP BY c.classId
+	</sql>
+	
+	<select id="findStudentAttendByClass" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.studentMonitor.StudentAttend">
+		SELECT z.* FROM
+		(SELECT p.*,
+		       CONVERT(IF(p.totalCount = 0, 0, ROUND(p.realCount / p.totalCount * 100, 1)), DECIMAL(4,1)) attendCountRate,
+		       CONVERT(IF(p.totalCount = 0, 0, ROUND(p.normalCount / p.totalCount * 100, 1)), DECIMAL(4,1)) normalCountRate,
+		       CONVERT(IF(p.totalCount = 0, 0, ROUND(p.lateCount / p.totalCount * 100, 1)), DECIMAL(4,1)) lateCountRate,
+		       CONVERT(IF(p.totalCount = 0, 0, ROUND(p.earlyCount / p.totalCount * 100, 1)), DECIMAL(4,1)) earlyCountRate,
+		       CONVERT(IF(p.totalCount = 0, 0, ROUND(p.lateAndEarlyCount / p.totalCount * 100, 1)), DECIMAL(4,1)) lateAndEarlyCountRate,
+		       CONVERT(IF(p.totalCount = 0, 0, ROUND(p.absentCount / p.totalCount * 100, 1)), DECIMAL(4,1)) absentCountRate
+		FROM(
+			<include refid="byClass"/>
+			) p
+		)z
+			<if test="orderAttr != null and orderAttr != ''">
+			ORDER BY ${orderAttr} ${orderType}
+			</if>
+	</select>
+	
+	<select id="findStudentAttendAggregateByClass" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.studentMonitor.StudentAttend">
+		SELECT SUM(p.studentCount) studentCount,
+		       SUM(p.lessonCount) lessonCount,
+		       SUM(p.realCount) realCount,
+		       SUM(p.totalCount) totalCount,
+		       SUM(p.lateCount) lateCount,
+		       SUM(p.earlyCount) earlyCount,
+		       SUM(p.lateAndEarlyCount) lateAndEarlyCount,
+		       SUM(p.absentCount) absentCount,
+		       SUM(p.normalCount) normalCount,
+		       CONVERT(IF(SUM(p.totalCount) = 0, 0, ROUND(SUM(p.realCount) / SUM(p.totalCount) * 100, 1)), DECIMAL(4,1)) attendCountRate,
+		       CONVERT(IF(SUM(p.totalCount) = 0, 0, ROUND(SUM(p.normalCount) / SUM(p.totalCount) * 100, 1)), DECIMAL(4,1)) normalCountRate,
+		       CONVERT(IF(SUM(p.totalCount) = 0, 0, ROUND(SUM(p.lateCount) / SUM(p.totalCount) * 100, 1)), DECIMAL(4,1)) lateCountRate,
+		       CONVERT(IF(SUM(p.totalCount) = 0, 0, ROUND(SUM(p.earlyCount) / SUM(p.totalCount) * 100, 1)), DECIMAL(4,1)) earlyCountRate,
+		       CONVERT(IF(SUM(p.totalCount) = 0, 0, ROUND(SUM(p.lateAndEarlyCount) / SUM(p.totalCount) * 100, 1)), DECIMAL(4,1)) lateAndEarlyCountRate,
+		       CONVERT(IF(SUM(p.totalCount) = 0, 0, ROUND(SUM(p.absentCount) / SUM(p.totalCount) * 100, 1)), DECIMAL(4,1)) absentCountRate
+		FROM(
+			<include refid="byClass"/>
+			) p
+	</select>
+	
+	<select id="findStudentAttendDtlByClass" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.studentMonitor.StudentAttend">
+		SELECT p.*,
+		       CONVERT(IF(p.lessonCount = 0, 0, ROUND(p.attendCount / p.lessonCount * 100, 1)), DECIMAL(4,1)) attendCountRate,
+		       CONVERT(IF(p.lessonCount = 0, 0, ROUND(p.normalCount / p.lessonCount * 100, 1)), DECIMAL(4,1)) normalCountRate,
+		       CONVERT(IF(p.lessonCount = 0, 0, ROUND(p.lateCount / p.lessonCount * 100, 1)), DECIMAL(4,1)) lateCountRate,
+		       CONVERT(IF(p.lessonCount = 0, 0, ROUND(p.earlyCount / p.lessonCount * 100, 1)), DECIMAL(4,1)) earlyCountRate,
+		       CONVERT(IF(p.lessonCount = 0, 0, ROUND(p.lateAndEarlyCount / p.lessonCount * 100, 1)), DECIMAL(4,1)) lateAndEarlyCountRate,
+		       CONVERT(IF(p.lessonCount = 0, 0, ROUND(p.absentCount / p.lessonCount * 100, 1)), DECIMAL(4,1)) absentCountRate
+		FROM(
+			SELECT e.userId studentId,
+			       e.userName studentName, 
+			       COUNT(DISTINCT a.courseSingleId) lessonCount,
+			       SUM(b.totalCount) totalCount,
+			       COUNT(IF(e.attendTime IS NULL, NULL, 1)) attendCount,
+			       COUNT(IF(e.attendState = 0, 1, NULL)) normalCount,
+			       COUNT(IF(e.attendState = 1, 1, NULL)) lateCount,
+			       COUNT(IF(e.attendState = 2, 1, NULL)) earlyCount,
+			       COUNT(IF(e.attendState = 3, 1, NULL)) lateAndEarlyCount,
+			       COUNT(IF(e.attendState = 4, 1, NULL)) absentCount
+			FROM lesson.ls_lesson a, 
+			     lesson.ls_attendance_lesson b, 
+			     lesson.ls_klass c,
+			     lesson.ls_attendance_student e
+			WHERE a.courseSingleId = b.scId
+			AND a.classId = c.classId
+			AND b.csAttenId = e.csAttenId
+			AND a.schoolId = #{schoolId}
+			AND a.isDeleted = 0
+			AND b.isDeleted = 0
+			AND c.isDeleted = 0
+			AND c.isExpired = 0
+			AND c.classId = #{classId}
+			AND a.startTime <![CDATA[>=]]> DATE(#{startDate})
+		    AND a.startTime <![CDATA[<]]> DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+			GROUP BY e.userId) p
+			<if test="orderAttr != null and orderAttr != ''">
+			ORDER BY ${orderAttr} ${orderType}
+			</if>
+	</select>
+	
+	<sql id="bySubject">
+		SELECT d.subjectId,
+		       d.subjectName,
+		       COUNT(DISTINCT a.teacherId) teacherCount,
+		       COUNT(DISTINCT a.courseSingleId) lessonCount,
+		       COUNT(IF(e.attendState = 0, 1, NULL)) normalCount,
+		       COUNT(IF(e.attendState = 1, 1, NULL)) lateCount,
+		       COUNT(IF(e.attendState = 2, 1, NULL)) earlyCount,
+		       COUNT(IF(e.attendState = 3, 1, NULL)) lateAndEarlyCount,
+		       COUNT(IF(e.attendState = 4, 1, NULL)) absentCount,
+		       COUNT(IF(e.attendTime is null, null, 1)) realCount,
+	           COUNT(e.csAttenId) totalCount
+			FROM lesson.ls_lesson a, 
+			     lesson.ls_attendance_lesson b, 
+			     lesson.ls_klass c,
+			     lesson.ls_klass_subject d,
+			     lesson.ls_attendance_student e
+			WHERE a.courseSingleId = b.scId
+			AND a.classId = c.classId
+			AND a.classSubjId = d.classSubjId
+			AND b.csAttenId = e.csAttenId
+			AND a.schoolId = #{schoolId}
+			AND a.isDeleted = 0
+			AND b.isDeleted = 0
+			AND c.isDeleted = 0
+			AND c.isExpired = 0
+			<if test="classId != null and classId != -1">
+			AND c.classId = #{classId}
+			</if>
+			<if test="gradeId != null and gradeId != -1">
+			AND c.gradeId = #{gradeId}
+			</if> 
+			AND a.startTime <![CDATA[>=]]> DATE(#{startDate})
+		    AND a.startTime <![CDATA[<]]> DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+			GROUP BY d.subjectId
+	</sql>
+	
+	<select id="findStudentAttendBySubject" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.studentMonitor.StudentAttend">
+		SELECT z.* FROM
+		(SELECT p.*,
+		       CONVERT(IF(p.totalCount = 0, 0, ROUND(p.realCount / p.totalCount * 100, 1)), DECIMAL(4,1)) attendCountRate,
+		       CONVERT(IF(p.totalCount = 0, 0, ROUND(p.normalCount / p.totalCount * 100, 1)), DECIMAL(4,1)) normalCountRate,
+		       CONVERT(IF(p.totalCount = 0, 0, ROUND(p.lateCount / p.totalCount * 100, 1)), DECIMAL(4,1)) lateCountRate,
+		       CONVERT(IF(p.totalCount = 0, 0, ROUND(p.earlyCount / p.totalCount * 100, 1)), DECIMAL(4,1)) earlyCountRate,
+		       CONVERT(IF(p.totalCount = 0, 0, ROUND(p.lateAndEarlyCount / p.totalCount * 100, 1)), DECIMAL(4,1)) lateAndEarlyCountRate,
+		       CONVERT(IF(p.totalCount = 0, 0, ROUND(p.absentCount / p.totalCount * 100, 1)), DECIMAL(4,1)) absentCountRate
+		FROM(
+			<include refid="bySubject"/>
+			) p)z
+			<if test="orderAttr != null and orderAttr != ''">
+			ORDER BY ${orderAttr} ${orderType}
+			</if>
+	</select>
+	
+	<select id="findStudentAttendAggregateBySubject" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.studentMonitor.StudentAttend">
+		SELECT SUM(p.teacherCount) teacherCount,
+		       SUM(p.lessonCount) lessonCount,
+		       SUM(p.realCount) realCount,
+		       SUM(p.totalCount) totalCount,
+		       SUM(p.lateCount) lateCount,
+		       SUM(p.earlyCount) earlyCount,
+		       SUM(p.lateAndEarlyCount) lateAndEarlyCount,
+		       SUM(p.absentCount) absentCount,
+		       SUM(p.normalCount) normalCount,
+		       CONVERT(IF(SUM(p.totalCount) = 0, 0, ROUND(SUM(p.realCount) / SUM(p.totalCount) * 100, 1)), DECIMAL(4,1)) attendCountRate,
+		       CONVERT(IF(SUM(p.totalCount) = 0, 0, ROUND(SUM(p.normalCount) / SUM(p.totalCount) * 100, 1)), DECIMAL(4,1)) normalCountRate,
+		       CONVERT(IF(SUM(p.totalCount) = 0, 0, ROUND(SUM(p.lateCount) / SUM(p.totalCount) * 100, 1)), DECIMAL(4,1)) lateCountRate,
+		       CONVERT(IF(SUM(p.totalCount) = 0, 0, ROUND(SUM(p.earlyCount) / SUM(p.totalCount) * 100, 1)), DECIMAL(4,1)) earlyCountRate,
+		       CONVERT(IF(SUM(p.totalCount) = 0, 0, ROUND(SUM(p.lateAndEarlyCount) / SUM(p.totalCount) * 100, 1)), DECIMAL(4,1)) lateAndEarlyCountRate,
+		       CONVERT(IF(SUM(p.totalCount) = 0, 0, ROUND(SUM(p.absentCount) / SUM(p.totalCount) * 100, 1)), DECIMAL(4,1)) absentCountRate
+		FROM(
+			<include refid="bySubject"/>
+			)p
+	</select>
+	
+	<select id="findStudentAttendByDay" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.studentMonitor.StudentAttend">
+		SELECT z.* FROM
+		(SELECT g.depName className,
+		        e.userName studentName,
+		        COUNT(1) absentCount
+		FROM lesson.ls_lesson a, 
+		     lesson.ls_attendance_lesson b, 
+		     lesson.ls_klass c,
+		     tutor.tutor_user_struct f,
+		     tutor.tutor_struct g,
+		     lesson.ls_attendance_student e
+		WHERE a.courseSingleId = b.scId
+		AND a.classId = c.classId
+		AND b.csAttenId = e.csAttenId
+		AND f.userId = e.userId
+		AND f.depId = g.depId
+		AND a.schoolId = #{schoolId}
+		AND a.isDeleted = 0
+		AND b.isDeleted = 0
+		AND c.isDeleted = 0
+		AND f.isDeleted = 0
+		AND g.isDeleted = 0
+		AND c.isExpired = 0
+		AND e.attendState = 4
+		<if test="classId != null and classId != -1">
+		AND c.classId = #{classId}
+		</if>
+		<if test="gradeId != null and gradeId != -1">
+		AND c.gradeId = #{gradeId}
+		</if> 
+		AND a.startTime <![CDATA[>=]]> DATE(#{startDate})
+	    AND a.startTime <![CDATA[<]]> DATE_ADD(#{startDate}, INTERVAL 1 DAY)
+		GROUP BY e.userId)z
+		<if test="orderAttr != null and orderAttr != ''">
+		ORDER BY ${orderAttr} ${orderType}
+		</if>
+	</select>
+	
+</mapper>   

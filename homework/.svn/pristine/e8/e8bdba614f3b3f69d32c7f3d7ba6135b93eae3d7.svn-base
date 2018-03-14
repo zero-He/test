@@ -1,0 +1,22 @@
+define(function(require, exports, module) {
+	var $ = require('jquery');
+	var win = {
+		init : function(id, userId, fileSuffix, filePath, taskId,holidayId,microId) {
+			this.loadMediaPlayer(id, userId, fileSuffix, filePath, taskId);
+			this.updateState(holidayId,microId);
+		},
+		loadMediaPlayer : function(id, userId, fileSuffix, filePath, taskId) {
+			//SewisePlayer.toPlay(Leke.domain.fileLeke.cn + filePath+"."+fileSuffix,"","",true);
+		},
+		updateState : function(holidayId,microId) {
+			$.post('/auth/common/holiday/ajax/updateMicroState.htm', {
+				id : holidayId,
+				microId : microId
+			});
+		}
+
+	};
+	module.exports = win;
+});
+
+	

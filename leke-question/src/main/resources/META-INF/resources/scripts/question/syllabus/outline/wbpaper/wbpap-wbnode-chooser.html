@@ -1,0 +1,23 @@
+<div class="operation">
+<!-- ko if: mode == 'edit' -->
+	<h5>章节设置</h5>
+	<div class="f-tac f-mb10">
+		<button class="u-btn u-btn-nm u-btn-bg-turquoise"
+			data-bind="click: addSubSection">添加子章节</button>
+		<button class="u-btn u-btn-nm u-btn-bg-turquoise"
+			data-bind="click: editSection">修改</button>
+		<button class="u-btn u-btn-nm u-btn-bg-turquoise"
+			data-bind="click: deleteSection">删除</button>
+		<button class="u-btn u-btn-nm u-btn-bg-turquoise"
+		 	data-bind="click: moveUpSection">上移</button>
+		<button class="u-btn u-btn-nm u-btn-bg-turquoise"
+		 	data-bind="click: moveDownSection">下移</button>
+	</div>
+<!-- /ko -->
+<!-- ko if: mode != 'edit' -->
+	<h5 data-bind="text: outlineName"></h5>
+<!-- /ko -->
+</div> 
+<div class="catalog j-book">
+	<ul class="ztree"></ul>
+</div>

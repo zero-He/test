@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="UTF-8" ?>   
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.diag.dao.diag.mybatis.ExamReportDao">
+	
+	<insert id="insertExamReport" parameterType="cn.strong.leke.diag.dao.diag.model.ExamReport">
+		<![CDATA[
+		INSERT INTO hw_exam_report (
+			examReportName,
+			filePath,
+			greatings,
+			schoolId,
+			schoolName,
+			createdBy,
+			createdUser,
+			createdOn
+		) VALUES (
+			#{examReportName, jdbcType=VARCHAR},
+			#{filePath, jdbcType=VARCHAR},
+			#{greatings, jdbcType=VARCHAR},
+			#{schoolId, jdbcType=INTEGER},
+			#{schoolName, jdbcType=VARCHAR},
+			#{createdBy, jdbcType=INTEGER},
+			#{createdUser, jdbcType=VARCHAR},
+			now()
+		)
+		]]>
+		<selectKey keyProperty="examReportId" order="AFTER" resultType="long">
+			SELECT LAST_INSERT_ID() as examReportId
+		</selectKey>
+	</insert>
+	
+	<insert id="insertExamReportDtl" parameterType="cn.strong.leke.diag.dao.diag.model.ExamReportDtl">
+		<![CDATA[
+		INSERT INTO hw_exam_report_dtl (
+		   	examReportDtlId,
+		   	examReportId,
+		   	studentId,
+		   	studentName,
+		   	loginName,
+		   	subjectId,
+		   	subjectName,
+		   	classId,
+		   	className,
+		   	score
+		) VALUES
+		]]>
+		<foreach item="examReportDtl" collection="examReportDtlList" separator=",">
+		<![CDATA[
+		(
+			#{examReportDtl.examReportDtlId, jdbcType=INTEGER},
+			#{examReportDtl.examReportId, jdbcType=INTEGER},
+			#{examReportDtl.studentId, jdbcType=INTEGER},
+			#{examReportDtl.studentName, jdbcType=VARCHAR},
+			#{examReportDtl.loginName, jdbcType=INTEGER},
+			#{examReportDtl.subjectId, jdbcType=INTEGER},
+			#{examReportDtl.subjectName, jdbcType=VARCHAR},
+			#{examReportDtl.classId, jdbcType=INTEGER},
+			#{examReportDtl.className, jdbcType=VARCHAR},
+			#{examReportDtl.score, jdbcType=DECIMAL}
+		)
+		]]>
+		</foreach>
+	</insert>
+
+	<select id="queryExamReportByProvost" parameterType="long" resultType="cn.strong.leke.diag.dao.diag.model.ExamReport">
+		<![CDATA[
+		SELECT examReportId,
+		       examReportName, 
+		       date_format(createdOn,'%Y-%m-%d %H:%i:%s') createdOn, 
+		       createdUser,
+		       case when status = 1 then '待发布' when status = 2 then '已发布' END as status,
+		       status statusCd,
+		       if(createdBy = #{provostId}, 1, '') isCreatedBySelf
+		  FROM hw_exam_report
+		 WHERE schoolId = #{schoolId, jdbcType=INTEGER}
+		   AND status in (1, 2)
+		   order by createdOn desc
+		]]>
+	</select>
+	
+	<select id="queryExamReportByTeacher" parameterType="long" resultType="cn.strong.leke.diag.dao.diag.model.ExamReport">
+		<![CDATA[
+		SELECT examReportId,
+		       examReportName, 
+		       date_format(createdOn,'%Y-%m-%d %H:%i:%s') createdOn, 
+		       case when status = 1 then '待发布' when status = 2 then '已发布' END as status,
+		       status statusCd,
+		       if(createdBy = #{teacherId}, 1, '') isCreatedBySelf
+		  FROM hw_exam_report
+		 WHERE schoolId = #{schoolId, jdbcType=INTEGER}
+		   AND createdBy = #{teacherId, jdbcType=INTEGER}
+		   AND status in (1, 2)
+		   order by createdOn desc
+		]]>
+	</select>
+	
+	<select id="querySchoolSubjects" resultType="map">
+		<![CDATA[
+		SELECT c.schoolStageName, 
+		       GROUP_CONCAT(b.subjectName order by b.subjectId) subjectName
+		  from tutor.tutor_schoolStage_subject a, tutor.tutor_subject b, tutor.tutor_schoolStage c 
+		 where a.schoolStageId = c.schoolStageId
+		   and a.subjectId = b.subjectId
+		   and a.isDeleted = 0
+		  group by c.schoolStageId
+		  order by a.schoolStageId
+		]]>
+	</select>
+	
+	<select id="querySchoolSubjectsList" resultType="map">
+		<![CDATA[
+		SELECT distinct b.subjectId,
+		       b.subjectName
+		  from tutor.tutor_schoolStage_subject a, tutor.tutor_subject b
+		 where a.subjectId = b.subjectId
+		   and a.isDeleted = 0
+		]]>
+	</select>
+	
+	<select id="isStudentExists" resultType="int">
+		<![CDATA[
+		SELECT COUNT(1)
+		  FROM tutor.tutor_user
+		 WHERE loginName = #{loginName, jdbcType=INTEGER}
+		   and userName = #{userName, jdbcType=VARCHAR}
+		]]>
+	</select>
+	
+	
+	<select id="queryExamReportDtlByRptId" parameterType="long" resultType="cn.strong.leke.diag.dao.diag.model.ExamReportDtl">
+		<![CDATA[
+		SELECT loginName,
+		       studentName,
+		       className,
+		       subjectName,
+		       score,
+		       maxScore,
+		       minScore,
+		       avgScore
+		  FROM hw_exam_report_dtl
+		 WHERE examReportId = #{examReportId, jdbcType=INTEGER}
+		]]>
+	</select>
+	
+	<select id="queryExamReportByStudentId" parameterType="long" resultType="cn.strong.leke.diag.dao.diag.model.ExamReport">
+		<![CDATA[
+		SELECT A.examReportId,
+		       A.examReportName,
+		       DATE_FORMAT(A.modifiedOn,'%Y年%m月%d日') modifiedOn,
+		       #{studentId, jdbcType=INTEGER} studentId
+		  FROM hw_exam_report A
+		 WHERE A.status = 2
+		   AND EXISTS (SELECT 1 FROM hw_exam_report_dtl B
+		                WHERE B.examReportId = A.examReportId
+		                  AND B.studentId = #{studentId, jdbcType=INTEGER})
+		   order by A.modifiedOn desc
+		]]>
+	</select>
+	
+	<select id="queryExamReportDtlByStudentId" parameterType="long" resultType="cn.strong.leke.diag.dao.diag.model.ExamReportDtl">
+		<![CDATA[
+		SELECT A.studentName,
+		       A.subjectName,
+		       A.score,
+		       A.maxScore,
+		       A.minScore,
+		       A.avgScore,
+		       B.examReportName,
+		       B.greatings,
+		       B.schoolName,
+		       DATE_FORMAT(B.modifiedOn,'%Y年%m月%d日') createdOn
+		  FROM hw_exam_report_dtl A, hw_exam_report B
+		 WHERE A.examReportId = B.examReportId
+		   AND A.examReportId = #{examReportId, jdbcType=INTEGER}
+		   AND A.studentId = #{studentId, jdbcType=INTEGER}
+		]]>
+	</select>
+	
+	<update id="updateExamReportStatus" parameterType="long">
+		<![CDATA[
+			UPDATE hw_exam_report
+			   SET status = #{status, jdbcType=INTEGER}, modifiedOn = now(), modifiedBy = #{modifiedBy, jdbcType=INTEGER}
+			 WHERE examReportId = #{examReportId, jdbcType=INTEGER}
+		]]>
+	</update>
+	
+	<update id="updateExamReportDtlScore" parameterType="long">
+		<![CDATA[
+			update hw_exam_report_dtl t 
+			left join (
+			select a.examReportId, a.classId, a.subjectId, max(score) maxScore, min(score) minScore, avg(score) avgScore 
+			  from hw_exam_report_dtl a 
+			 where a.examReportId = #{examReportId, jdbcType=INTEGER}
+			   and a.classId is not null
+			 group by a.examReportId, a.classId, a.subjectId) b
+			 on (t.classId = b.classId and t.subjectId = b.subjectId)
+			 set t.maxScore = b.maxScore, t.minScore = b.minScore, t.avgScore = b.avgScore
+			 where t.examReportId = #{examReportId, jdbcType=INTEGER}
+			   and t.classId is not null
+		]]>
+	</update>
+	
+</mapper>   

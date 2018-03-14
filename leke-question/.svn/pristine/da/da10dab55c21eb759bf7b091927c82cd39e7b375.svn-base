@@ -1,0 +1,179 @@
+package cn.strong.leke.question.controller.question;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.annotation.Resource;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.ui.freemarker.FreeMarkerTemplateUtils;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.servlet.view.freemarker.FreeMarkerConfig;
+
+import cn.strong.leke.common.serialize.support.json.JsonUtils;
+import cn.strong.leke.common.utils.CollectionUtils;
+import cn.strong.leke.context.question.QuestionContext;
+import cn.strong.leke.context.user.UserContext;
+import cn.strong.leke.framework.exceptions.Validation;
+import cn.strong.leke.framework.page.jdbc.Page;
+import cn.strong.leke.framework.web.JsonResult;
+import cn.strong.leke.model.base.School;
+import cn.strong.leke.model.question.QuestionDTO;
+import cn.strong.leke.model.question.querys.RepositoryQuestionQuery;
+import cn.strong.leke.model.repository.RepositoryRecord;
+import cn.strong.leke.model.user.User;
+import cn.strong.leke.question.core.question.cmd.store.IQuestionLevelHandler;
+import cn.strong.leke.question.core.question.cmd.store.IQuestionShareLogHandler;
+import cn.strong.leke.question.core.question.query.IQuestionLogQueryService;
+import cn.strong.leke.question.core.question.query.IQuestionQueryService;
+import cn.strong.leke.question.model.InputStatisQuery;
+import cn.strong.leke.question.model.question.QuestionTotal;
+import cn.strong.leke.question.model.question.dto.PapQue;
+import cn.strong.leke.question.model.question.query.AmountQuestionQuery;
+import freemarker.template.Template;
+
+@Controller
+@RequestMapping("/auth/common/question")
+public class CommonQuestionController {
+	@Resource
+	private IQuestionShareLogHandler questionShareLogHandler;
+	@Resource
+	private IQuestionQueryService questionQueryService;
+	@Resource
+	private IQuestionLogQueryService questionLogQueryService;
+	@Resource
+	private IQuestionLevelHandler questionLevelHandler;
+	@Resource
+	private FreeMarkerConfig freeMarkerConfig;
+
+
+	@RequestMapping("removeShareLog")
+	@ResponseBody
+	public JsonResult removeShareLog(Long shareLogId) {
+		User user = UserContext.user.get();
+		questionShareLogHandler.remove(shareLogId, user);
+		return new JsonResult();
+	}
+
+	/**
+	 *
+	 * 描述: 录入量统计
+	 *
+	 * @author raolei
+	 * @created 2016年8月4日 上午10:08:16
+	 * @since v1.0.0
+	 * @return void
+	 */
+	@RequestMapping("/amount/input")
+	public void input() {
+	}
+
+	@ResponseBody
+	@RequestMapping("/amount/inputAmount")
+	public JsonResult inputAmount(AmountQuestionQuery query) {
+		JsonResult jResult = new JsonResult();
+		User user = UserContext.user.get();
+		Long userId = user.getId();
+		query.setUserId(userId);
+		QuestionTotal total = questionQueryService.countInputQuestion(query);
+		jResult.addDatas("total", total);
+		return jResult;
+	}
+
+	/**
+	 *
+	 * 描述: 审核量统计
+	 *
+	 * @author raolei
+	 * @created 2016年8月4日 上午10:08:25
+	 * @since v1.0.0
+	 * @return void
+	 */
+	@RequestMapping("/amount/check")
+	public void check() {
+	}
+
+	@ResponseBody
+	@RequestMapping("/amount/checkAmount")
+	public JsonResult checkAmount(String dataJson) {
+		AmountQuestionQuery query = JsonUtils.fromJSON(dataJson, AmountQuestionQuery.class);
+		JsonResult jResult = new JsonResult();
+		InputStatisQuery isQuery = new InputStatisQuery();
+		Long userId = UserContext.user.getUserId();
+		isQuery.setUserId(userId);
+		isQuery.setStartDate(query.getMinCreatedOn());
+		isQuery.setEndDate(query.getMaxCreatedOn());
+		long unchecked = questionQueryService.countUnCheckedQuestionOfLekeBoutique(query);
+		long checked = questionLogQueryService.countCheckAmount(isQuery);
+		jResult.addDatas("unchecked", unchecked);
+		jResult.addDatas("checked", checked);
+		return jResult;
+	}
+
+	@ResponseBody
+	@RequestMapping("setQuestionPrime")
+	public JsonResult setQuestionPrime(Long questionId) {
+		questionLevelHandler.setQuestionPrime(questionId, UserContext.user.get());
+		return new JsonResult();
+	}
+
+	@ResponseBody
+	@RequestMapping("setQuestionGeneral")
+	public JsonResult setQuestionGeneral(Long questionId) {
+		questionLevelHandler.setQuestionGeneral(questionId, UserContext.user.get());
+		return new JsonResult();
+	}
+	
+	@RequestMapping({ "repoQues/webDetails", "papQues/webDetails" })
+	public void queryRepoQuestions(RepositoryQuestionQuery query, Page page, Model model) {
+		List<RepositoryRecord> records = doQueryRepoQuestions(query, page, UserContext.user.get());
+		model.addAttribute("records", records);
+		model.addAttribute("page", page);
+	}
+
+	@RequestMapping("papQues/padDetails")
+	@ResponseBody
+	public JsonResult queryPapQuestions(RepositoryQuestionQuery query, Page page) throws Exception {
+		List<RepositoryRecord> records = doQueryRepoQuestions(query, page, UserContext.user.get());
+		String html = "";
+		if (CollectionUtils.isNotEmpty(records)) {
+			Map<String, Object> model = new HashMap<>();
+			model.put("records", records);
+			Template tpl = freeMarkerConfig.getConfiguration().getTemplate("p-paper-que-details.ftl");
+			html = FreeMarkerTemplateUtils.processTemplateIntoString(tpl, model);
+		}
+
+		JsonResult result = new JsonResult();
+		result.addDatas("html", html);
+		result.addDatas("page", page);
+		return result;
+	}
+
+	@RequestMapping("papQues/padPapQue")
+	@ResponseBody
+	public JsonResult getPapQue(Long questionId) throws Exception {
+		QuestionDTO que = QuestionContext.getQuestionDTO(questionId);
+		Validation.notNull(que, "无法找到指定习题信息");
+		Map<String, Object> model = new HashMap<>();
+		model.put("que", que);
+		Template tpl = freeMarkerConfig.getConfiguration().getTemplate("p-paper-que.ftl");
+		String html = FreeMarkerTemplateUtils.processTemplateIntoString(tpl, model);
+
+		JsonResult result = new JsonResult();
+		result.addDatas("html", html);
+		result.addDatas("que", PapQue.toPapQue(que));
+		return result;
+	}
+
+	private List<RepositoryRecord> doQueryRepoQuestions(RepositoryQuestionQuery query, Page page, User user) {
+		query.setUserId(user.getId());
+		School school = user.getCurrentSchool();
+		if (school != null) {
+			query.setSchoolId(school.getId());
+		}
+		return questionQueryService.queryRepoQuestions(query, page);
+	}
+}

@@ -1,0 +1,88 @@
+
+/**
+ * 复批
+ */
+define(function(require, exports, module) {
+	var $ = require('jquery');
+	var Utils = require('utils');
+	var Dialog = require('dialog');
+	var Tools = require("./sheet.tools");
+
+	function parseReviewResult(question) {
+		var isPass = 0;
+		if($(question).attr('class').indexOf('rectify-ok') > -1){
+			isPass = 1;
+		}
+		var comments = question.find('.j-comment').data('comments');
+		if (typeof comments === 'string' && comments == '') {
+			comments = null;
+		}
+		return {
+			questionId : question.data('question-id'),
+			isPassedFix : isPass,
+			correctComments : comments
+		}
+	}
+
+	var Correct = {
+		initBindEvent : function() {
+			var _this = this;
+			$('.j-comment>span>span').each(function() {
+				$(this).click(function() {
+					var type = $(this).data('type');
+					Tools.comment(type, $(this).closest('.j-comment'));
+				});
+			});
+			$('.j-comment').each(function() {
+				Tools.renderComment($(this));
+			});
+			$('.j-review').each(function() {
+				Tools.review($(this));
+			});
+			$('.j-review').on('click','i',function(){
+				if($(this).data('pass') != 1){
+					$(this).offsetParent('.q-container').addClass('rectify-ok').removeClass('rectify-no');
+				}else{
+					$(this).offsetParent('.q-container').addClass('rectify-no').removeClass('rectify-ok');
+				}
+			})
+		},
+		parseSheet : function() {
+			var questionResultList = [];
+			$.each($('.p-group-detail>ul>li>.j-question'), function() {
+				var question = $(this);
+				var questionId = question.data('question-id');
+				var hasSub = question.data('has-sub');
+				if (hasSub) {
+					var subs = [];
+					$.each(question.find('.j-question'), function() {
+						var cquestion = $(this);
+						var result = Correct.getQuestionResult(cquestion);
+						if (result != null) {
+							subs.push(result);
+						}
+					});
+					if (subs.length > 0) {
+						questionResultList.push({
+							questionId : questionId,
+							subs : subs
+						});
+					}
+				} else {
+					var result = Correct.getQuestionResult(question);
+					if (result) {
+						questionResultList.push(result);
+					}
+				}
+			});
+			return {
+				questionResultList : questionResultList
+			};
+		},
+		getQuestionResult : function(question) {
+			return parseReviewResult(question);
+		}
+	}
+
+	module.exports = Correct;
+});

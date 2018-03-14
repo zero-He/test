@@ -1,0 +1,62 @@
+var stuDecList =function(){	
+	decList.call(this);		//继承 /homework/vacationWork/DecList.js 
+	this.RowBind=function(data){
+	//data.url=data.homeworkDtlId;
+	var flag ="answer";
+	if(typeof(data.submitStatus)!="undefined"&&data.submitStatus>0)
+	{
+		if(typeof(data.bugFixStage)=="undefined"||data.bugFixStage==null||data.bugFixStage==0||data.bugFixStage==3){
+	           flag="view";
+		}
+		else
+		{
+			flag="correct";
+		}
+	}
+	
+	data.msg="提交状态："+data.submitStatus+"订正进度："+data.bugFixStage;
+	data.btnClass=flag;
+	if(flag =="view")//
+	{	
+		data.btnName="查看";
+	}
+	if(flag =="answer"){	
+		data.btnName="答题";
+	}
+	if(flag =="correct")	
+		data.btnName="订正";
+	};
+	//答题
+	$(".answer").live("click",function(){
+	
+		var homeworkDtlId =$(this).data("hdid");
+		var homeworkId =$(this).data("hwid");
+		//alert("window.homework.answer(homeworkDtlId),homeworkDtlId:"+homeworkDtlId+"homeworkId:"+homeworkId);
+		//window.homework.answerStuVacationHomework(homeworkDtlId,homeworkId);
+		LeKeBridge.sendMessage2Native('answerStuVacationHomework',JSON.stringify({'homeworkDtlId':homeworkDtlId,'homeworkId':homeworkId}));
+	});
+	
+	//订正
+	
+	$(".correct").live("click",function(){
+		
+		var homeworkDtlId =$(this).data("hdid");
+		//alert("window.homework.answer(homeworkDtlId),homeworkDtlId:"+homeworkDtlId);
+		//window.homework.correctStuVacationHomework(homeworkDtlId);
+		LeKeBridge.sendMessage2Native('correctStuVacationHomework',JSON.stringify({'homeworkDtlId':homeworkDtlId}));
+	});
+	
+	 //查看
+	$(".view").live("click",function(){
+	
+		var id =$(this).data("hdid");
+		//alert("window.homework.stuWatch(homeworkDtlId);homeworkDtlId:"+id);
+		//window.homework.watchStuVacationHomework(id);
+		LeKeBridge.sendMessage2Native('watchStuVacationHomework',JSON.stringify({'homeworkDtlId':id}));
+	});	
+
+	 
+};
+stuDecList.prototype =new decList();
+var c =new stuDecList();
+c.init();

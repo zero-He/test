@@ -1,0 +1,157 @@
+package cn.strong.leke.diag.dao.homework.mongo;
+
+import static com.mongodb.client.model.Filters.and;
+import static com.mongodb.client.model.Filters.elemMatch;
+import static com.mongodb.client.model.Filters.eq;
+import static com.mongodb.client.model.Filters.in;
+import static com.mongodb.client.model.Projections.include;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import javax.annotation.Resource;
+
+import org.bson.Document;
+import org.bson.conversions.Bson;
+import org.springframework.beans.factory.InitializingBean;
+import org.springframework.stereotype.Repository;
+
+import com.mongodb.client.MapReduceIterable;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
+
+import cn.strong.leke.common.utils.CollectionUtils;
+import cn.strong.leke.diag.model.MapReduceResult;
+import cn.strong.leke.diag.model.StuKnoRate;
+import cn.strong.leke.diag.model.StuQueStat;
+import cn.strong.leke.diag.model.StudentAnswer;
+import cn.strong.leke.diag.model.WorkDetail;
+import cn.strong.leke.diag.model.WorkStats;
+import cn.strong.leke.diag.util.MapReduceUtils;
+
+@Repository
+public class WorkDetailDao implements InitializingBean {
+
+	private static final String COLL_NAME = "WorkDetail";
+
+	@Resource(name = "homeworkDb")
+	private MongoDatabase db;
+	private MongoCollection<WorkDetail> coll;
+
+	@Override
+	public void afterPropertiesSet() throws Exception {
+		this.coll = db.getCollection(COLL_NAME, WorkDetail.class);
+	}
+
+	/**
+	 * 查询作业学生作业信息
+	 * @param homeworkId 老师作业ID
+	 * @param studentId 学生ID
+	 * @return
+	 */
+	public WorkDetail getWorkDetailByHomeworkIdAndStudentId(Long homeworkId, Long studentId) {
+		Bson filter = and(eq("homeworkId", homeworkId), eq("studentId", studentId));
+		Bson project = include("questions");
+		return this.coll.find(filter).projection(project).first();
+	}
+
+	/**
+	 * 根据老师作业ID，查询学生答题信息列表
+	 * @param homeworkId
+	 * @return
+	 */
+	public List<WorkDetail> findWorkDetailByHomeworkId(Long homeworkId) {
+		Bson filter = eq("homeworkId", homeworkId);
+		Bson project = include("homeworkDtlId", "studentId", "queScores", "knoScores");
+		return this.coll.find(filter).projection(project).into(new ArrayList<>());
+	}
+
+	/**
+	 * 查询统计作业中的题目分析信息。
+	 * @param homeworkId 作业ID
+	 * @return
+	 */
+	public List<WorkStats.Sum> findSumsByHomeworkId(Long homeworkId) {
+		String key = "1001";
+		String map = MapReduceUtils.getMap(key);
+		String reduce = MapReduceUtils.getReduce(key);
+		String finalize = MapReduceUtils.getFinalize(key);
+		Bson filter = eq("homeworkId", homeworkId);
+		MapReduceIterable<Document> mri = this.coll.mapReduce(map, reduce, Document.class);
+		return mri.finalizeFunction(finalize).filter(filter).map(object -> {
+			Document value = (Document) object.get("value");
+			WorkStats.Sum sum = new WorkStats.Sum();
+			sum.setQuestionId((Long) object.get("_id"));
+			sum.setRightNum(((Number) value.get("rightNum")).intValue());
+			sum.setTotalNum(((Number) value.get("totalNum")).intValue());
+			sum.setRightRate((Double) value.get("rightRate"));
+			sum.setScoreRate((Double) value.get("scoreRate"));
+			return sum;
+		}).into(new ArrayList<>());
+	}
+
+	public List<StudentAnswer> findStudentAnswersByQuestionId(Long homeworkId, Long questionId) {
+		Bson filter = and(eq("homeworkId", homeworkId), elemMatch("questions", eq("questionId", questionId)));
+		Bson project = include("studentId", "questions.$");
+		List<WorkDetail> list = this.coll.find(filter).projection(project).into(new ArrayList<>());
+		return list.stream().map(detail -> {
+			StudentAnswer answer = new StudentAnswer();
+			answer.setStudentId(detail.getStudentId());
+			answer.setQuestionResult(detail.getQuestions().get(0));
+			return answer;
+		}).collect(Collectors.toList());
+	}
+
+	/**
+	 * 统计作业中的题量和错题数。
+	 * @param homeworkDtlIds
+	 * @return
+	 */
+	public StuQueStat getStuQueStatByHomeworkDtlIds(List<Long> homeworkDtlIds) {
+		if (CollectionUtils.isEmpty(homeworkDtlIds)) {
+			return null;
+		}
+		String key = "1006";
+		String map = MapReduceUtils.getMap(key);
+		String reduce = MapReduceUtils.getReduce(key);
+		Bson filter = in("homeworkDtlId", homeworkDtlIds);
+		MapReduceIterable<MRStuQueStat> mri = this.coll.mapReduce(map, reduce, MRStuQueStat.class);
+		MRStuQueStat first = mri.filter(filter).first();
+		if (first == null) {
+			StuQueStat stuQueStat = new StuQueStat();
+			stuQueStat.setErrNum(0D);
+			stuQueStat.setQueNum(0);
+			return stuQueStat;
+		} else {
+			return first.getValue();
+		}
+	}
+
+	public static class MRStuQueStat extends MapReduceResult<StuQueStat> {
+	}
+
+	/**
+	 * 获取一批学生的学科完成情况（分析用）
+	 * @param homeworkDtlIds
+	 * @return
+	 */
+	public List<StuKnoRate> findStuKnoRates(List<Long> homeworkDtlIds) {
+		String key = "1007";
+		String map = MapReduceUtils.getMap(key);
+		String reduce = MapReduceUtils.getReduce(key);
+		Bson filter = in("homeworkDtlId", homeworkDtlIds);
+		MapReduceIterable<Document> mri = this.coll.mapReduce(map, reduce, Document.class);
+		return mri.filter(filter).map(v -> {
+			Document _id = (Document) v.get("_id");
+			Document value = (Document) v.get("value");
+			StuKnoRate stuKnoRate = new StuKnoRate();
+			stuKnoRate.setId(_id.getLong("id"));
+			stuKnoRate.setUserId(_id.getLong("userId"));
+			stuKnoRate.setName(value.getString("name"));
+			stuKnoRate.setTotalNum(((Number) value.get("totalNum")).intValue());
+			stuKnoRate.setRightNum(value.getDouble("rightNum"));
+			return stuKnoRate;
+		}).into(new ArrayList<>());
+	}
+}

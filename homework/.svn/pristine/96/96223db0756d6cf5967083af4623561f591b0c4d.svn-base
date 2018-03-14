@@ -1,0 +1,303 @@
+define(function(require, exports, module) {
+	var $ = require('jquery');
+	var _ = require('underscore');
+	var Mustache = require('mustache');
+	var Handlebars = require("common/handlebars");
+	var Page = require('page');
+	var Utils = require("utils");
+	var Dialog = require('dialog');
+	var WdatePicker = require('date');
+	var LekeDate = require('common/base/date');
+	var I18n = require('homework/common/i18n');
+	var HomeworkType = require("homework/common/homeworkType");
+	var JSON = require('json');
+
+	var s_prepare = $.i18n.prop('homework.homework.type.prepare');
+	var s_class = $.i18n.prop('homework.homework.type.class');
+	var s_home = $.i18n.prop('homework.homework.type.home');
+	var s_phase = $.i18n.prop('homework.homework.type.phase');
+	var s_alltype = $.i18n.prop('homework.homework.type.alltype');
+	var s_noedit = $.i18n.prop('homework.homework.message.noedit');
+	var s_modify = $.i18n.prop('homework.homework.message.modify');
+	var s_confirm = $.i18n.prop('homework.homework.message.confirm');
+	var s_cancel = $.i18n.prop('homework.homework.message.cancel');
+	var s_confirmtext = $.i18n.prop('homework.homework.message.confirmtext');
+
+	var homeworkEditTpl = $('#jHomeworkEditTpl').html();
+
+	var HomeworkList = {
+		page : null,
+		init : function() {
+			var _this = this;
+			HomeworkType.render($('#jHomeworkType'));
+			this.initLoadPage();
+			this.bindEvent();
+		},
+		initLoadPage : function() {
+			this.page = Page.create({
+				id : 'divPage',
+				url : ctx + '/auth/teacher/homework/loadHomeworkList.htm',
+				curPage : 1,
+				pageSize : 10,
+				pageCount : 10,
+				buttonId : 'bHomeworkList',
+				formId : 'formPage',
+				tipsId: 'f_emptyDataContainer',
+				callback : function(datas) {
+					var page = datas.page;
+					$.each(page.dataList, function() {
+						var self = this;
+						self.avgScore = Utils.Number.toFixed(self.avgScore, 1);
+						var studentGroups = eval(self.studentGroupsJson);
+						var className = self.className == null ? "" : self.className;
+						var classNameStr = '';
+						if(studentGroups){
+							_.each(studentGroups,function(n){
+								className += ' ' + n.groupName;
+							});
+						}
+						if(className.length > 10){
+							classNameStr = className.substring(0,10) + '...';
+						}else{
+							classNameStr = className;
+						}
+						this.className = className;
+						this.classNameStr = classNameStr;
+					});
+					page.isInvalid = function() {
+						return this.status == 2 ? true : [];
+					}
+					page.isInclass = function() {
+						return this.homeworkType == 2;
+					}
+					Handlebars.render("#homeworkContext_tpl", page,'#homeworkListContext');
+				}
+			});
+			var _this = this;
+		},
+		reloadPage : function() {
+			if(arguments.length == 0){
+				this.page.options.curPage = 1;
+			}else{
+				this.page.options.curPage = arguments[0];
+			}
+			this.page.loadData();
+		},
+		bindEvent : function() {
+			$('.j_reCorrectHomework').click(function(){
+				var href = $(this).data('href');
+				var classId = $('#j_classId').val();
+				if(classId != ''){
+					var className =encodeURIComponent(encodeURIComponent($('#j_className').val()));
+					href = href +'?classId='+classId +'&className='+className;
+				}
+				window.open(href,'_blank');
+			});
+			$(document).on('click','.j_openAnswer',function(){
+				var hwId= $(this).data('homeworkid');
+				var _this = this;
+				Dialog.confirm('公布答案后，学生可以看到正确答案和解析，确定吗？').done(function(sure){
+					if(sure){
+						var url ="/auth/teacher/homework/openAnswer.htm";
+						$.post(url,{'homeworkId':hwId},function(data){
+							if(data.success){
+								Utils.Notice.alert('操作成功');
+								$(_this).replaceWith('<span class="u-state-label clicked">已公布答案</span>');
+							}else{
+								Utils.Notice.alert('操作失败');
+							}
+						});
+					}
+				});
+			});
+			$(document).on('click','.j_selfCheck',function(){
+				var hwId= $(this).data('homeworkid');
+				var _this = this;
+				Dialog.confirm('自行校对后，本次作业中未提交的和未批改的学生作业将默认不再批改，不影响已批改的学生作业批改情况，确定进行自行校对操作吗？').done(function(sure) {
+					if (sure) {
+						var url ="/auth/teacher/homework/selfCheck.htm";
+						$.post(url,{'homeworkId':hwId},function(data){
+							if(data.success){
+								Utils.Notice.alert('操作成功');
+								HomeworkList.reloadPage(HomeworkList.page.options.curPage);
+							}else{
+								Utils.Notice.alert('操作失败');
+							}
+						});
+					}
+				});
+			});
+			$('#homeworkListContext').on('click', '.jEdit', function() {
+				HomeworkEdit.edit($(this).data('id'), $(this).data('starttime'), $(this).data('closetime'));
+			});
+			$('#homeworkListContext').on('click', '.jCancel', function() {
+				var nHomeworkId = $(this).data('id');
+				Dialog.confirm(s_confirmtext).done(function(sure) {
+					if (sure) {
+						$.post('homeworkInvalid.htm', {
+							homeworkId : nHomeworkId
+						}, function(message) {
+							HomeworkList.reloadPage();
+						});
+					}
+				});
+			});
+			$('#homeworkListContext').on('click', '.jStats', function() {
+				var homeworkId = $(this).data('homeworkid');
+				var resText = $.ajax({
+					url : 'tryGenerate.htm?homeworkId=' + homeworkId,
+					async : false
+				}).responseText;
+
+				var data = $.parseJSON(resText);
+				if (data.success == false) {
+					return false;
+				}
+				if (data.success && data.datas.genFlag) {
+					//直接打开页面
+					var href = Leke.domain.diagServerName + '/auth/teacher/homework/analysis.htm?homeworkId=' + homeworkId;
+					window.open(href);
+				}else {
+					var message = $.i18n.prop('homework.diag.alert.message.success');
+					if (data.datas.isAllCorrect == false) {
+						message = $.i18n.prop('homework.diag.alert.message.correct') + message;
+					}
+					if (confirm(message)) {
+						// 打开生成页面
+						var href= Leke.domain.diagServerName + '/auth/teacher/homework/generate.htm?homeworkId='+ homeworkId + '&_t=' + Math.random();
+						window.open(href);
+					} 
+				}
+
+			});
+			//作业批改情况：
+			$('.J_homeFinish').click(function(){
+				$('.J_homeFinish').each(function(){
+					$(this).parent('li').removeClass('cur');
+				})
+				$(this).parent('li').addClass('cur');
+				$('#f_homeFinishFlag').val($(this).data("flag"));
+				//加载数据
+				$('#bHomeworkList').click();
+				
+			});
+			//作业类型change
+			$('#jHomeworkType').change(function() {
+				$('#bHomeworkList').click();//选择作业类型后，刷新数据
+			});
+			$(document).on('click','.j-btn-cuijiao',function(){
+				var hwId = $(this).data('id');
+				$.post('cuijiao.htm',{homeworkId:hwId},function(json){
+					if(!json.success){
+						return;
+					}
+					var prefix = '作业距离截止时间还有';
+					if(json.datas.past){
+						prefix ='作业已经超过截止时间';
+					}
+					var confirm_msg = prefix + json.datas.time +'，还有'+ json.datas.stuCount +'学生未提交作业，确认催交作业吗？'
+					Dialog.confirm(confirm_msg).done(function(sure) {
+						if (sure) {
+							$.post('doCuijiao.htm',{'homeworkId':hwId});
+						}
+					});
+				})
+				
+			})
+		}
+	};
+
+	var HomeworkEdit = {
+		homeworkId : null,
+		startTime : null,
+		closeTime : null,
+		edit : function(homeworkId, startTime, closeTime) {
+			if (LekeDate.of(closeTime).toDate() <= new Date()) {
+				Utils.Notice.alert(s_noedit);
+				return;
+			}
+
+			var _this = this;
+			_this.homeworkId = homeworkId;
+			_this.startTime = startTime;
+			_this.closeTime = closeTime;
+			Dialog.open({
+				title : s_modify,
+				tpl : homeworkEditTpl,
+				size : 'nm',
+				btns : [{
+					className : 'btn-ok',
+					text : s_confirm,
+					cb : function() {
+						if (_this.doComfirm()) {
+							this.close(false);
+						}
+					}
+				}, {
+					className : 'btn-cancel',
+					text : s_cancel,
+					cb : function() {
+						this.close(false);
+					}
+				}]
+			});
+			_this.bindEvent();
+		},
+		bindEvent : function() {
+			var FMT = 'yyyy-MM-dd HH:mm:ss';
+			$('#jEditStartTime').val(LekeDate.format(this.startTime, FMT));
+			$('#jEditCloseTime').val(LekeDate.format(this.closeTime, FMT));
+
+			if (LekeDate.of(this.startTime).toDate() > new Date()) {
+				$('#jEditStartTime').addClass('Wdata').on('click', function() {
+					WdatePicker({
+						dateFmt : 'yyyy-MM-dd HH:mm:00',
+						maxDate : $('#jEditCloseTime').val(),
+						readOnly : true
+					});
+				});
+			} else {
+				$('#jEditStartTime').prop('disabled', true);
+			}
+			$('#jEditCloseTime').addClass('Wdata').on('click', function() {
+				WdatePicker({
+					dateFmt : 'yyyy-MM-dd HH:mm:00',
+					minDate : $('#jEditStartTime').val(),
+					readOnly : true
+				});
+			});
+		},
+		doComfirm : function() {
+			var _this = this;
+			var FMT = 'yyyy-MM-dd HH:mm:ss';
+			var startTime = $('#jEditStartTime').val();
+			if (startTime == '') {
+				Utils.Notice.alert($.i18n.prop('homework.distribute.startTime.isnull'));
+				return false;
+			}
+			var closeTime = $('#jEditCloseTime').val();
+			if (closeTime == '') {
+				Utils.Notice.alert($.i18n.prop('homework.distribute.closeTime.isnull'));
+				return false;
+			}
+			var data = {
+				homeworkId : this.homeworkId,
+				startTime : $('#jEditStartTime').val(),
+				closeTime : $('#jEditCloseTime').val(),
+				oldCloseTime : LekeDate.format(_this.closeTime, FMT),
+				oldStartTime : LekeDate.format(_this.startTime, FMT)
+			};
+			$.post('modifyHomeworkDate.htm', data, function(json) {
+				if (json.success) {
+					Utils.Notice.alert(json.message);
+					Dialog.close();
+					HomeworkList.reloadPage();
+				}
+			}, 'json');
+
+		}
+	};
+
+	HomeworkList.init();
+
+});

@@ -1,0 +1,152 @@
+package cn.strong.leke.homework.model.query;
+
+import java.util.Date;
+import java.util.List;
+
+/**
+ * 班级作业查询条件
+ * @author Zhang Fujun
+ * @date 2016年7月21日
+ */
+public class ClassHomeworkQuery {
+
+	private Long schoolId;
+	private Integer classType;
+	private Long gradeId;
+	private Integer subjectId;
+	private List<Long> classId;
+	private String teacherName;
+	private Date startTime;
+	private Date closeTime;
+	private Integer homeworkType;
+	private String  homeworkName;
+	private Boolean isClose;
+	/**
+	 * @return the classType
+	 */
+	public Integer getClassType() {
+		return classType;
+	}
+	/**
+	 * @param classType the classType to set
+	 */
+	public void setClassType(Integer classType) {
+		this.classType = classType;
+	}
+	/**
+	 * @return the gradeId
+	 */
+	public Long getGradeId() {
+		return gradeId;
+	}
+	/**
+	 * @param gradeId the gradeId to set
+	 */
+	public void setGradeId(Long gradeId) {
+		this.gradeId = gradeId;
+	}
+	/**
+	 * @return the subjectId
+	 */
+	public Integer getSubjectId() {
+		return subjectId;
+	}
+	/**
+	 * @param subjectId the subjectId to set
+	 */
+	public void setSubjectId(Integer subjectId) {
+		this.subjectId = subjectId;
+	}
+	
+	/**
+	 * @return the teacherName
+	 */
+	public String getTeacherName() {
+		return teacherName;
+	}
+	/**
+	 * @param teacherName the teacherName to set
+	 */
+	public void setTeacherName(String teacherName) {
+		this.teacherName = teacherName;
+	}
+	/**
+	 * @return the startTime
+	 */
+	public Date getStartTime() {
+		return startTime;
+	}
+	/**
+	 * @param startTime the startTime to set
+	 */
+	public void setStartTime(Date startTime) {
+		this.startTime = startTime;
+	}
+	/**
+	 * @return the closeTime
+	 */
+	public Date getCloseTime() {
+		return closeTime;
+	}
+	/**
+	 * @param closeTime the closeTime to set
+	 */
+	public void setCloseTime(Date closeTime) {
+		this.closeTime = closeTime;
+	}
+	/**
+	 * @return the homeworkType
+	 */
+	public Integer getHomeworkType() {
+		return homeworkType;
+	}
+	/**
+	 * @param homeworkType the homeworkType to set
+	 */
+	public void setHomeworkType(Integer homeworkType) {
+		this.homeworkType = homeworkType;
+	}
+	/**
+	 * @return the schoolId
+	 */
+	public Long getSchoolId() {
+		return schoolId;
+	}
+	/**
+	 * @param schoolId the schoolId to set
+	 */
+	public void setSchoolId(Long schoolId) {
+		this.schoolId = schoolId;
+	}
+	/**
+	 * @return the classId
+	 */
+	public List<Long> getClassId() {
+		return classId;
+	}
+	/**
+	 * @param classId the classId to set
+	 */
+	public void setClassId(List<Long> classId) {
+		this.classId = classId;
+	}
+	/**
+	 * @return the homeworkName
+	 */
+	public String getHomeworkName() {
+		return homeworkName;
+	}
+	/**
+	 * @param homeworkName the homeworkName to set
+	 */
+	public void setHomeworkName(String homeworkName) {
+		this.homeworkName = homeworkName;
+	}
+	public Boolean getIsClose() {
+		return isClose;
+	}
+	public void setIsClose(Boolean isClose) {
+		this.isClose = isClose;
+	}
+	
+}

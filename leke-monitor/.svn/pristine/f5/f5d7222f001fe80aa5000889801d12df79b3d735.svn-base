@@ -1,0 +1,266 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.monitor.core.dao.mybatis.IUserActiveStatisDao">
+	<select id="getTeacherNumByClassId" resultType="int">
+		SELECT COUNT(DISTINCT(userId)) FROM lesson.ls_klass_teacher 
+		WHERE roleId=101 AND classId = #{1} AND isDeleted = 0
+	</select>
+	
+	<select id="getParentNumByClassid" resultType="int">
+		SELECT COUNT(DISTINCT(pId)) FROM lesson.ls_klass_student ks
+		JOIN tutor.tutor_user_parent_student ps 
+		ON ps.sId = ks.userId AND ps.status IN (1,2) AND ps.isDeleted = 0
+		WHERE ks.isDeleted = 0 AND classId = #{1}
+	</select>
+	
+	<select id="getTeacherClassInfo" resultType="java.util.HashMap">
+		SELECT DISTINCT(k.className),k.gradeName,ts.schoolName,k.classId,ts.schoolId,k.schoolStageId,k.classId,k.gradeId 
+		FROM lesson.ls_klass_teacher  t
+		JOIN lesson.ls_klass k
+		ON t.classId = k.classId  
+		JOIN tutor.tutor_school ts
+		ON t.schoolId = ts.schoolId
+		WHERE  ts.isDeleted = 0 AND t.isDeleted = 0
+		AND k.isExpired=0 AND k.isDeleted=0 AND k.type=1
+		AND t.userId = #{1} 
+	</select>
+	
+	<select id="getStudentClassInfo" resultType="java.util.HashMap">
+		SELECT k.className,k.classId,k.gradeName,ts.schoolId,ts.schoolName,k.headCount,k.schoolStageId,k.gradeId 
+		FROM lesson.ls_klass_student  s
+		JOIN lesson.ls_klass k
+		ON s.classId = k.classId   
+		JOIN tutor.tutor_school ts
+		ON s.schoolId = ts.schoolId
+		WHERE  s.isDeleted = 0 AND ts.isDeleted = 0 
+		AND k.isExpired=0 AND k.isDeleted=0 AND k.type=1
+		AND s.userId = #{1} 
+	</select>
+	
+	<select id="getParentClassInfo" resultType="java.util.HashMap">
+		SELECT DISTINCT(lk.className),lk.gradeName,s.schoolId,s.schoolName,lk.classId ,lk.schoolStageId,lk.gradeId 
+		FROM tutor.tutor_user_parent_student ps 
+		JOIN  lesson.ls_klass_student ks ON ps.sId = ks.userId 
+		JOIN tutor.tutor_school s ON ks.schoolId = s.schoolId 
+		JOIN lesson.ls_klass lk ON ks.classId=lk.classId 
+		WHERE ps.status IN (1,2) AND ps.isDeleted = 0 AND ks.isDeleted = 0 AND s.isDeleteD = 0
+		AND lk.isExpired=0 AND lk.isDeleted=0 AND lk.type=1
+		AND ps.pId=#{1}
+	</select>
+	
+	
+	<select id="getSchoolValidStu" resultType="_int" parameterType="long">
+		SELECT COUNT(DISTINCT(u.userId)) AS num FROM tutor.tutor_user u
+		JOIN tutor.tutor_user_role_school r ON u.userId=r.userId
+		JOIN tutor.tutor_school s ON r.schoolId=s.schoolId
+		JOIN lesson.ls_klass_student ks ON u.userId=ks.userId AND ks.isDeleted=0  
+		JOIN lesson.ls_klass lk ON ks.classId=lk.classId
+		WHERE u.isDeleted=0 AND r.isDeleted=0
+		AND r.roleId=100 
+		AND s.schoolCode IS NOT NULL AND lk.isExpired=0 AND lk.isDeleted=0 AND lk.type=1
+		AND r.schoolId = #{1} 
+	</select>
+	
+	<select id="getSchoolValidTea" resultType="_int" parameterType="long">
+		SELECT COUNT(DISTINCT a.userId) AS num 
+		FROM tutor.tutor_user_role_school a 
+		WHERE a.isDeleted = 0 
+		AND a.roleId = 101
+		AND a.schoolId = #{schoolId}
+	</select>
+	
+	<select id="getSchoolValidPar" resultType="_int" parameterType="long">
+		SELECT COUNT(DISTINCT(u.userId)) AS num
+		FROM tutor.tutor_user u 
+		JOIN tutor.tutor_user_parent_student ps ON u.userId = ps.pId  
+		JOIN  lesson.ls_klass_student ks ON ps.sId = ks.userId AND ks.isDeleted = 0
+		JOIN lesson.ls_klass lk ON ks.classId=lk.classId 
+		WHERE u.isDeleted=0 AND lk.isExpired=0 AND lk.isDeleted=0 AND lk.type=1
+		AND ps.status IN (1,2) AND ps.isDeleted = 0
+		AND ks.schoolId = #{1}
+	</select>
+	
+	
+	<select id="getSellerSchool" parameterType="cn.strong.leke.monitor.mongo.online.model.query.ActiveUserQuery" 
+	resultType="string">
+		SELECT s.schoolName 
+		FROM crm.scs_customer c 
+		JOIN tutor.tutor_school s 
+		ON s.schoolId=c.lekeId AND c.isDeleted=0 AND c.customerType=2
+		WHERE c.isDeleted=0 AND c.customerType=2  AND c.sellerId = #{userId} 
+		<if test="schoolName != null and schoolName != ''">
+			AND s.schoolName LIKE CONCAT(CONCAT('%',
+			#{schoolName}),'%')
+		</if>
+	</select>
+	
+	
+	<select id="countUsersByRole" resultType="_int" parameterType="map">
+		<if test="roleId != null and roleId != '' and roleId == 102">
+			SELECT COUNT(DISTINCT(u.userId)) AS num
+			FROM tutor.tutor_user u 
+			JOIN tutor.tutor_user_parent_student ps ON u.userId = ps.pId  
+			JOIN  tutor.tutor_user_role_school turs ON turs.userId = ps.sId 
+			WHERE u.isDeleted=0 AND turs.isDeleted = 0 AND turs.roleId = 100 
+			AND ps.status IN (1,2) AND ps.isDeleted = 0
+			AND turs.schoolId = #{schoolId}
+			<if test="createdOn != null and createdOn != ''">
+			<![CDATA[
+				AND u.createdOn < DATE_ADD(#{createdOn},INTERVAL 1 DAY)   
+			]]>
+			</if>
+		</if>
+		<if test="roleId != null and roleId != '' and roleId != 102">
+			SELECT COUNT(DISTINCT a.userId) 
+			FROM tutor.tutor_user_role_school a 
+			JOIN tutor.tutor_user b
+			ON a.userId = b.userId
+			WHERE a.isDeleted = 0 
+			AND b.isDeleted = 0
+			AND a.schoolId = #{schoolId}
+			AND a.roleId = #{roleId}
+			<if test="createdOn != null and createdOn != ''">
+			<![CDATA[
+				AND b.createdOn < DATE_ADD(#{createdOn},INTERVAL 1 DAY)   
+			]]>
+			</if>
+		</if>
+	</select>
+	
+	
+	
+	<select id="getManager" parameterType="cn.strong.leke.monitor.mongo.online.model.query.ActiveUserQuery"
+	 resultType="cn.strong.leke.monitor.mongo.online.model.query.ActiveUserQuery">
+		SELECT c.customerName schoolName,c.sellerId,c.sellerName,m.loginName 
+		FROM tutor.um_market_manager m
+		RIGHT JOIN crm.scs_customer c  
+		ON c.sellerId = m.userId AND c.isDeleted=0 AND c.customerType=2 AND c.status =1
+		WHERE m.roleId = 112 AND m.secondDptIds = (
+		SELECT mm.secondDptIds  FROM tutor.um_market_manager mm 
+		LEFT JOIN tutor.um_market um ON  mm.secondDptIds = um.marketId 
+		WHERE mm.roleId = 603 AND mm.userId = #{userId})
+		<if test="schoolName != null and schoolName != ''">
+			AND c.customerName LIKE CONCAT(CONCAT('%',
+			#{schoolName}),'%')
+		</if>
+		<if test="loginName != null and loginName != ''">
+			AND m.loginName LIKE CONCAT(CONCAT('%',
+			#{loginName}),'%')
+		</if>
+		<if test="userName != null and userName != ''">
+			AND m.userName LIKE CONCAT(CONCAT('%',
+			#{userName}),'%')
+		</if>
+	</select>
+	
+	<select id="getSchoolMarket" resultType="string" parameterType="long">
+		SELECT marketName FROM tutor.um_market WHERE marketId = 
+		(SELECT pId FROM  tutor.um_market um WHERE um.pId != 1  AND um.marketId =#{1})
+	</select>
+	
+	<select id="querySellerSchool" parameterType="cn.strong.leke.monitor.mongo.online.model.query.ActiveUserQuery"
+	resultType="cn.strong.leke.monitor.mongo.online.model.query.ActiveUserQuery">
+		SELECT
+		cc.sellerId,cc.sellerName,u.loginName,s.schoolId,s.schoolName,m.marketId,m.marketName
+		FROM crm.scs_customer cc
+		JOIN tutor.tutor_user u ON cc.sellerId=u.userId AND u.isDeleted=0
+		JOIN tutor.tutor_school s ON cc.lekeId=s.schoolId
+		JOIN tutor.um_market_manager mm ON cc.sellerId = mm.userId AND mm.roleId = 112 AND mm.isDeleted = 0
+		JOIN tutor.um_market m ON mm.secondDptIds = m.marketId
+		WHERE cc.isDeleted=0 AND s.isDeleted=0
+		AND cc.customerType=2 AND
+		mm.roleId=112 AND cc.status = 1 
+		<if test="sellerName != null and sellerName != ''">
+			AND cc.sellerName LIKE CONCAT(CONCAT('%',
+			#{sellerName}),'%')
+		</if>
+		<if test="sellerId != null and sellerId != ''">
+			AND cc.sellerId =#{sellerId}
+		</if>
+		<if test="listSeller != null and listSeller.size() > 0">
+			AND
+			cc.sellerId IN (
+			<foreach collection="listSeller" item="item" separator=",">#{item}
+			</foreach>
+			)
+		</if>
+		<if test="listMarketId != null and listMarketId.size() > 0">
+			AND
+			m.marketId IN (
+			<foreach collection="listMarketId" item="item" separator=",">#{item}
+			</foreach>
+			)
+		</if>
+		<if test="schoolId != null and schoolId != ''">
+			AND s.schoolId =#{schoolId}
+		</if>
+		<if test="loginName != null and loginName != ''">
+			AND u.loginName =#{loginName}
+		</if>
+		<if test="marketId != null and marketId != ''">
+			AND m.marketId =#{marketId}
+		</if>
+		<if test="schoolName != null and schoolName != ''">
+			AND s.schoolName LIKE CONCAT(CONCAT('%',
+			#{schoolName}),'%')
+		</if>
+		ORDER BY cc.sellerId,s.schoolId
+	
+	</select>	
+	
+	
+	<select id="getSchoolNameByUserId" parameterType="cn.strong.leke.monitor.mongo.online.model.DeviceOnlineUser" 
+	resultType="cn.strong.leke.monitor.mongo.online.model.DayActiveUser">
+		SELECT urs.schoolId,ts.schoolName
+		FROM tutor.tutor_user_role_school urs
+		JOIN tutor.tutor_school ts
+		ON urs.schoolId = ts.schoolId
+		WHERE urs.isDeleted = 0 
+		AND ts.schoolNature != 3 
+		AND urs.userId = #{userId}
+		AND urs.roleId = #{roleId}
+	</select>
+	
+	<select id="getSchoolNameByPrId" resultType="cn.strong.leke.monitor.mongo.online.model.DayActiveUser" parameterType="long">
+		SELECT s.schoolName,s.schoolId FROM  tutor.tutor_user_parent_student ps 
+		JOIN  tutor.tutor_user_role_school turs ON turs.userId = ps.sId
+		JOIN tutor.tutor_school s ON turs.schoolId = s.schoolId
+		WHERE ps.status IN (1,2) AND ps.isDeleted = 0 AND s.isDeleted = 0 
+		AND ps.pId = #{1}
+	</select>
+	
+	<select id="allValidUserCount" resultType="_int" parameterType="long">
+		<if test="roleId == 100">
+			SELECT COUNT(DISTINCT(u.userId)) FROM tutor.tutor_user  u
+			JOIN tutor.tutor_user_struct tus
+			ON tus.userId = u.userId
+			JOIN tutor.tutor_struct ts
+			ON tus.depId = ts.depId
+			WHERE u.isDeleted= 0 AND tus.isDeleted = 0 AND ts.isDeleted = 0
+			AND tus.roleId = 100
+		</if>
+		<if test="roleId != 100 and roleId != 101 and roleId != null">
+			SELECT COUNT(DISTINCT a.userId) AS num 
+			FROM  tutor.tutor_user a 
+			JOIN tutor.tutor_user_role_school b
+			ON a.userId = b.userId
+			WHERE a.isDeleted = 0 
+			AND b.isDeleted = 0
+			AND b.roleId = 102
+		</if>
+		<if test="roleId == 101">
+			SELECT COUNT(DISTINCT a.userId) AS num 
+			FROM tutor.tutor_user_role_school a 
+			JOIN tutor.tutor_user b
+			ON a.userId = b.userId
+			JOIN tutor.tutor_school c
+			ON a.schoolId = c.schoolId
+			WHERE a.isDeleted = 0 
+			AND c.schoolNature != 3 
+			AND b.isDeleted = 0
+			AND c.isDeleted = 0
+			AND a.roleId = 101
+		</if>
+	</select>
+</mapper>

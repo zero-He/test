@@ -1,0 +1,119 @@
+package cn.strong.leke.homework.controller.work;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import javax.annotation.Resource;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
+
+import cn.strong.leke.common.serialize.support.json.JsonUtils;
+import cn.strong.leke.context.user.UserContext;
+import cn.strong.leke.context.user.cst.RoleCst;
+import cn.strong.leke.core.business.incentive.DynamicHelper;
+import cn.strong.leke.framework.exceptions.Validation;
+import cn.strong.leke.framework.web.JsonResult;
+import cn.strong.leke.homework.manage.WorkDetailService;
+import cn.strong.leke.homework.model.Homework;
+import cn.strong.leke.homework.model.HomeworkDtl;
+import cn.strong.leke.homework.model.HomeworkDtlInfo;
+import cn.strong.leke.homework.model.WebWorkModel;
+import cn.strong.leke.homework.model.WorkDetail;
+import cn.strong.leke.homework.model.WorkRequest;
+import cn.strong.leke.homework.service.HomeworkDtlService;
+import cn.strong.leke.homework.service.HomeworkMainService;
+import cn.strong.leke.homework.service.HomeworkService;
+import cn.strong.leke.homework.util.HomeworkCst;
+import cn.strong.leke.model.incentive.Award;
+import cn.strong.leke.model.incentive.DynamicInfo;
+import cn.strong.leke.model.incentive.DynamicTypes;
+import cn.strong.leke.model.question.QuestionResult;
+import cn.strong.leke.model.user.User;
+import cn.strong.leke.tags.answer.ResDataModel;
+import cn.strong.leke.tags.question.prepare.PrepareHandler;
+import cn.strong.leke.tags.question.prepare.PrepareHandlerAdapter;
+
+@Controller
+@RequestMapping("/auth/teacher/homework")
+public class ReviewController {
+
+	@Resource
+	private HomeworkService homeworkService;
+	@Resource
+	private HomeworkDtlService homeworkDtlService;
+	@Resource
+	private HomeworkMainService homeworkMainService;
+	@Resource
+	private WorkDetailService workDetailService;
+
+	/**
+	 * 复批试卷信息。<br>
+	 * @param homeworkDtlId 学生试卷标识
+	 * @param model
+	 */
+	@RequestMapping("/reviewWork")
+	public String reviewWork(Long homeworkDtlId, Model model) {
+		User user = UserContext.user.get();
+		HomeworkDtl homeworkDtl = this.homeworkDtlService.getHomeworkDtlById(homeworkDtlId);
+		Validation.isPageNotFound(homeworkDtl == null);
+		Homework homework = this.homeworkService.getHomeworkById(homeworkDtl.getHomeworkId());
+		Validation.isForbidden(!RoleCst.TEACHER.equals(user.getCurrentRole().getId()));
+		Validation.isForbidden(!user.getId().equals(homework.getTeacherId()));
+		// 答题信息
+		WorkDetail workDetail = this.workDetailService.getWorkDetailByHomeworkDtlId(homeworkDtlId);
+		PrepareHandlerAdapter.doPrepare(PrepareHandler.Mode.Review, workDetail.getQuestions());
+		Map<Long, QuestionResult> questionResultMap = workDetail.getQuestions().stream()
+				.collect(Collectors.toMap(v -> v.getQuestionId(), v -> v));
+
+		ResDataModel respond = WorkSupport.buildResDataModel(user, ResDataModel.DO_REVIEW, homework, homeworkDtl);
+		respond.setQuestionResultMap(questionResultMap);
+		WebWorkModel webWorkModel = WorkSupport.buildWebWorkModel(respond, homework, homeworkDtl);
+		model.addAttribute("respond", respond);
+		model.addAttribute("workModel", JsonUtils.toJSON(webWorkModel));
+		model.addAttribute("paper", WorkSupport.getOrBuildPaperDTO(homework, homeworkDtl));
+		return "/auth/work/doReviewWork";
+	}
+
+	/**
+	 * 批改作业
+	 * @param homeworkId 老师作业ID
+	 * @param homeworkDtlId 学生作业标识
+	 * @param correctJson 学生答题信息JSON
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping("/saveReviewWork")
+	public Object saveReviewWork(Long homeworkId, Long homeworkDtlId, String commentary, String correctJson) {
+		JsonResult json = new JsonResult();
+		WorkRequest request = new WorkRequest();
+		request.setHomeworkDtlId(homeworkDtlId);
+		request.setCommentary(commentary);
+		request.setQuestionResultList(JsonUtils.readList(correctJson, QuestionResult.class));
+		request.setDataSource(HomeworkCst.HOMEWORK_DATA_SOURCE_WEBSITE);
+		HomeworkDtlInfo homeworkDtlInfo = this.homeworkMainService.saveReviewSubmit(request);
+		Long nextId = this.homeworkDtlService.getNextReviewHomeworkId(homeworkId);
+		json.addDatas("nextId", nextId);
+		// 激励发送
+		User user = UserContext.user.get();
+		DynamicInfo dynamicInfo = new DynamicInfo();
+		dynamicInfo.setDynamicType(DynamicTypes.HW_REVIEW_WORK);
+		dynamicInfo.setTitle(homeworkDtlInfo.getHomeworkName());
+		dynamicInfo.setUserId(user.getId());
+		dynamicInfo.setUserName(user.getUserName());
+		dynamicInfo.setRoleId(RoleCst.TEACHER);
+		dynamicInfo.setSchoolId(user.getCurrentSchool().getId());
+		Award award = DynamicHelper.publish(dynamicInfo);
+		if (award.getSucc() && award.getHave()) {
+			Map<String, Object> map = new HashMap<String, Object>();
+			map.put("type", dynamicInfo.getTypeId());
+			map.put("leke", award.getLekeVal());
+			map.put("exp", award.getExpVal());
+			json.addDatas("tips", map);
+		}
+		return json;
+	}
+}

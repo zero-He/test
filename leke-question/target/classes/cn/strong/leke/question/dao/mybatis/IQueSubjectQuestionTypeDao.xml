@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.1//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.question.dao.mybatis.IQueSubjectQuestionTypeDao">
+	<insert id="saveSubjectQuestion">
+		INSERT INTO
+			que_subject_question_type(subjectQueTypeId,subjectId,questionTypeId,ord)
+		VALUES
+		<foreach collection="list" item="sub" separator=",">
+		(null,#{sub.subjectId},#{sub.questionTypeId},#{sub.ord})
+		</foreach>
+	</insert>
+	<delete id="deleteSubjectQuestion">
+		DELETE FROM
+			que_subject_question_type
+		WHERE
+			subjectId=#{subjectId}
+	</delete>
+	<select id="querySubjectQuestion" resultType="cn.strong.leke.question.model.QueSubjectQuestionTypeDTO">
+		SELECT
+			subjectQueTypeId,subjectId,questionTypeId,ord
+		FROM 
+			que_subject_question_type
+		WHERE 
+			subjectId=#{subjectId}
+	</select>
+</mapper>

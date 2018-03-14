@@ -1,0 +1,358 @@
+define(function(require, exports, module){
+var React = require('common/react/react');
+var ReactDOM = require('common/react/react-dom');
+var $ = require('jquery');
+var {cx} = require('common/react/react-utils');
+var ReactChart = require('common/react/ReactChart');
+var BehaviorChartConfig = require('./BehaviorChartConfig');
+var {toFixed, toRate} = require('./helper');
+var Dialog = require('dialog');
+
+function renderLekeVal(lekeVal, typeId1, typeId2) {
+	var val1 = lekeVal[typeId1] ? lekeVal[typeId1] : 0;
+	var val2 = lekeVal[typeId2] ? lekeVal[typeId2] : 0;
+	return val1 + val2;
+}
+
+class ScoreReportQuery extends React.Component {
+	constructor(props) {
+		super(props);
+		this.state = {
+			typeIdx: 0,
+			zoneIdx: 0,
+			cycleId: props.types[0].list[0].id
+		};
+		this.handleChangeCycle = this.handleChangeCycle.bind(this);
+		this.handleChangeZone = this.handleChangeZone.bind(this);
+	}
+	handleClickType(typeIdx) {
+		if (this.state.typeIdx != typeIdx) {
+			let cycleId = this.props.types[typeIdx].list[0].id;
+			this.setState({
+				typeIdx: typeIdx,
+				cycleId: cycleId
+			});
+			this.handleChange(this.state.zoneIdx, cycleId);
+		}
+	}
+	handleChangeCycle(e) {
+		let cycleId = parseInt(e.target.value);
+		this.setState({ cycleId: cycleId });
+		this.handleChange(this.state.zoneIdx, cycleId);
+	}
+	handleChangeZone(e) {
+		let zoneIdx = parseInt(e.target.value);
+		this.setState({ zoneIdx: zoneIdx });
+		this.handleChange(zoneIdx, this.state.cycleId);
+	}
+	handleChange(zoneIdx, cycleId) {
+		if (this.props.onChange) {
+			let zone = this.props.zones[zoneIdx];
+			this.props.onChange(zone.classId, zone.subjectId, cycleId);
+		}
+	}
+	componentDidMount() {
+		let {zoneIdx, cycleId} = this.state;
+		this.handleChange(zoneIdx, cycleId);
+	}
+	render() {
+		let that = this;
+		let {typeIdx, cycleId} = this.state;
+		let {types, zones, hideZone} = this.props;
+		return (
+			<div className="m-search-box">
+				<div className="f-fl">
+					<ul>
+					{types.map((rt, i) => {
+						let handler = that.handleClickType.bind(that, i);
+						return <li key={i} className={cx({"active": i == typeIdx})}><a onClick={handler}>{rt.label}</a></li>;
+					})}
+					</ul>
+				</div>
+				<div className="f-fr">
+					<select className="u-select u-select-lg" onChange={this.handleChangeCycle}>
+						{types[typeIdx].list.map((c, i) => { return <option key={i} value={c.id} selected={c.id == cycleId}>{c.label}</option>; })}
+					</select>
+					<select className={cx("u-select u-select-lg", {"f-dn": hideZone || false})} onChange={this.handleChangeZone}>
+						{zones.map((c, i) => { return <option key={i} value={i}>{c.label}</option>; })}
+					</select>
+				</div>
+			</div>
+		);
+	}
+}
+
+function colored(value) {
+	return (<span className="colored">{value}</span>);
+}
+
+class PersonSummary extends React.Component {
+	render() {
+		let {userName, achieve} = this.props;
+		let {totalNum, attendRate, previewRate, reviewRate, submitRate, bugFixRate, achieveNum, lekeNum} = achieve;
+		return (
+			<div className="summary">
+				<p>亲爱的<span className="colored">{userName}</span>同学：</p>
+				<p className="details">
+					在此期间内，您应上课堂{colored(totalNum)}节，出勤率{colored(attendRate + '%')}；
+					预/复习比率分别为{colored(previewRate + '%')}，{colored(reviewRate + '%')}；
+					作业提交率{colored(submitRate + '%')}，订正率{colored(bugFixRate + '%')}；
+					共取得{colored(achieveNum)}项成就，获得乐豆{colored(lekeNum)}；
+					请努力学习，有付出就有收获。
+				</p>
+			</div>
+		);
+	}
+}
+
+var Achieves = [
+	['isAttend', 'allthework', '全勤'],
+	['isPreview', 'preview', '提前预习'],
+	['isListen', 'listen', '专心听讲'],
+	['isLoveAck', 'hardworking', '勤思好问'],
+	['isActive', 'active', '活跃分子'],
+	['isRanking', 'succeed', '榜上有名'],
+	['isFragrant', 'help f-ml50 f-pl50', '手有余香'],
+	['isReform', 'earnest', '及时改错'],
+	['isDiligent', 'positive', '不磨蹭'],
+	['isPractice', 'intelligent', '练习达人'],
+	['isRefresh', 'study', '温故知新']
+];
+
+class AchievementInfo extends React.Component {
+	handleHelp() {
+		Dialog.open({
+			title : '帮助',
+			url : Leke.domain.staticServerName + '/pages/help-center/achievement.html'
+		});
+	}
+	render() {
+		var ach = this.props.achieve;
+		return (
+			<div>
+				<p className="tittle">
+					<span>成就</span>
+					<span className="achievementtips"><i>*</i> 点亮表示已获得此成就，灰色表示暂未获得此成就 </span>
+					<i className="help" onClick={this.handleHelp}></i>
+				</p>
+				<div className="achievement">
+					<ul>{Achieves.map(v => <li className={v[1] + (ach[v[0]] ? '' : ' lighten')}><i></i>{v[2]}</li>)}</ul>
+				</div>
+			</div>
+		);
+	}
+}
+
+class ClassStuationInfo extends React.Component {
+	render() {
+		var attend = this.props.attendStatInfo;
+		var bi = this.props.behaviorInfo;
+		var lekeVal = this.props.lekeVal;
+		var datas = [{name: '全勤', value: attend.realNum - attend.partNum}, {name: '非全勤', value: attend.partNum}, {name: '缺勤', value: attend.missNum}];
+		return (
+			<div className="classsituation">
+				<p className="tittle">上课情况</p>
+				<div className="reportform">
+					<div className="checkingin">
+						<h3 className="title f-tac">考勤情况 {Leke.device == 'hd' ? null : <i className="help" title="在线时长T&gt;=80%,本堂课计为全勤，T&lt;80%,计为非全勤，从未上线，计为缺勤。"></i>}</h3>
+						<ReactChart style={{width: 360, height: 360}} option={BehaviorChartConfig.buildGeneralPie(`应上课堂：${attend.planNum}`, datas)} />
+						<p>
+							<span>应上课堂<span className="colored">{attend.planNum}</span>节，</span>
+							<span>全勤<span className="colored">{attend.realNum - attend.partNum}</span>次，</span>
+							<span>非全勤<span className="pointed">{attend.partNum}</span>次，</span>
+							<span>缺勤<span className="pointed">{attend.missNum}</span>次，</span>
+							<span>全勤率<span className="colored">{toRate(attend.realNum - attend.partNum, attend.planNum)}%</span></span>
+						</p>
+					</div>
+				</div>
+				<div className="reportform">
+					<div className="classroom">
+						<p className="title f-tac f-pr">课堂行为 <a href={'inclass.htm?cycleId=' + this.props.cycleId} target="_blank" className="detailslable">详情<i></i></a></p>
+						<div className="m-table m-table-center">
+							<table>
+								<tbody>
+									<tr><th>项目</th><th>数量</th><th>获得乐币</th></tr>
+									<tr><td>金榜题名</td><td>{bi.rank1}/{bi.rank2}/{bi.rank3} {Leke.device == 'hd' ? null : <i className="help f-csp" title={`”a/b/c“分别代表获得状元、榜眼、探花的课堂数`}></i>}</td><td>{renderLekeVal(lekeVal, '12302')}</td></tr>
+									<tr><td>点到</td><td>{bi.callNum1}/{bi.callNum2}</td><td>{renderLekeVal(lekeVal, '12306')}</td></tr>
+									<tr><td>举手</td><td>{bi.raised}</td><td>{renderLekeVal(lekeVal, '12103')}</td></tr>
+									<tr><td>被授权</td><td>{bi.authed}</td><td>--</td></tr>
+									<tr><td>课堂笔记</td><td>{bi.noteNum}</td><td>{renderLekeVal(lekeVal, '12105')}</td></tr>
+									<tr><td>随堂作业</td><td>{bi.examNum1}/{bi.examNum2}</td><td>--</td></tr>
+									<tr><td>快速问答</td><td>{bi.quickNum1}/{bi.quickNum2}</td><td>--</td></tr>
+									<tr><td>分组讨论</td><td>{bi.discuNum1}/{bi.discuNum2}</td><td>{renderLekeVal(lekeVal, '12307', '12308')}</td></tr>
+									<tr><td>献花</td><td>{bi.flowerNum}</td><td>{renderLekeVal(lekeVal, '12107')}</td></tr>
+									<tr><td>评价</td><td>{bi.evalNum}/{attend.realNum}</td><td>{renderLekeVal(lekeVal, '12104')}</td></tr>
+								</tbody>
+							</table>
+						</div>
+					</div>
+				</div>
+			</div>
+		);
+	}
+}
+
+class ViewFinishAnalyInfo extends React.Component {
+	render() {
+		let vfa = this.props.viewFinishAnaly;
+		var labels1 = [{name: '课件', max: vfa.totalNum}, {name: '微课', max: vfa.totalNum}, {name: '试卷', max: vfa.totalNum}];
+		var labels2 = [{name: '试卷', max: vfa.totalNum}, {name: '课件', max: vfa.totalNum}, {name: '笔记', max: vfa.totalNum}];
+		var datas1 = [{name: '应预习', value: vfa.previews1}, {name: '实预习', value: vfa.previews2}];
+		var datas2 = [{name: '应复习', value: vfa.reviews1}, {name: '实复习', value: vfa.reviews2}];
+		return (
+			<div className="classsituation">
+				<p className="tittle">预复习情况</p>
+				<div className="reportform f-pr">
+					<ReactChart style={{height: 360}} option={BehaviorChartConfig.buildGeneralRadar(labels1, datas1)} />
+				</div>
+				<div className="reportform">
+					<ReactChart style={{height: 360}} option={BehaviorChartConfig.buildGeneralRadar(labels2, datas2)} />
+				</div>
+				<div className="m-table m-table-center f-cb">
+					<table>
+						<tbody>
+							<tr>
+								<th>总课堂数</th>
+								<th>可预习课堂数</th>
+								<th>实预习(比率)</th>
+								<th>可复习课堂数</th>
+								<th>实复习(比率)</th>
+							</tr>
+							<tr>
+								<td>{vfa.totalNum}</td>
+								<td>{vfa.preview1}</td>
+								<td>{vfa.preview2}（{toRate(vfa.preview2, vfa.preview1)}%）</td>
+								<td>{vfa.review1}</td>
+								<td>{vfa.review2}（{toRate(vfa.review2, vfa.review1)}%）</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+		);
+	}
+}
+
+class WorkFinishAnalyInfo extends React.Component {
+	render() {
+		let {totalNum, normalNum, delayNum, doneBugFixNum, undoBugFixNum} = this.props.workFinishAnaly;
+		let unsubmitNum = totalNum - normalNum - delayNum, bugFixNum = doneBugFixNum + undoBugFixNum;
+		var title1 = `应交作业：${totalNum}`;
+		var datas1 = [{name: '正常提交', value: normalNum}, {name: '延迟提交', value: delayNum}, {name: '未提交', value: unsubmitNum}];
+		var title2 = `应订正作业：${bugFixNum}`;
+		var datas2 = [{name: '已订正', value: doneBugFixNum}, {name: '未订正', value: undoBugFixNum}];
+		return (
+			<div className="classsituation">
+				<p className="tittle">作业情况</p>
+				<div className="reportform">
+					<h3 className="title f-tac f-pr">完成情况 <a href={'homework.htm?cycleId=' + this.props.cycleId} target="_blank" className="detailslable">详情<i></i></a></h3>
+					<div className="f-pr">
+						<ReactChart style={{height: 360}} option={BehaviorChartConfig.buildGeneralPie(title1, datas1)} />
+					</div>
+				</div>
+				<div className="reportform">
+					<p className="title f-tac">订正情况</p>
+					<div className="f-pr">
+						<ReactChart style={{height: 360}} option={BehaviorChartConfig.buildGeneralPie(title2, datas2)} />
+					</div>
+				</div>
+			</div>
+		);
+	}
+}
+
+class OtherBehaviorInfo extends React.Component {
+	render() {
+		let lekeVal = this.props.lekeVal;
+		let {practiceNum, killWrongNum, writeNoteNum, doubtNum} = this.props.otherWiseInfo;
+		return (
+			<div>
+				<p className="tittle">其它学习行为汇总</p>
+				<div className="m-table m-table-center">
+					<table>
+						<tbody>
+							<tr>
+								<th>项目</th>
+								<th>自主练习</th>
+								<th>消灭错题</th>
+								<th>课外笔记</th>
+								<th>提问</th>
+							</tr>
+							<tr>
+								<td>数目</td>
+								<td>{practiceNum}题</td>
+								<td>{killWrongNum}题</td>
+								<td>{writeNoteNum}份</td>
+								<td>{doubtNum}次</td>
+							</tr>
+							<tr>
+								<td>获得乐豆</td>
+								<td>{renderLekeVal(lekeVal, '11301')}</td>
+								<td>{renderLekeVal(lekeVal, '11304')}</td>
+								<td>--</td>
+								<td>{renderLekeVal(lekeVal, '11302')}</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+		);
+	}
+}
+
+class PersonBehavior extends React.Component {
+	constructor(props) {
+		super(props);
+		this.state = {
+			loading: false,
+			cycleId: null,
+			view: null
+		};
+		this.handleChangeQuery = this.handleChangeQuery.bind(this);
+	}
+	handleChangeQuery(classId, subjectId, cycleId) {
+		this.setState({loading: true});
+		$.post('index2.htm', {
+			classId: classId,
+			subjectId: subjectId,
+			cycleId: cycleId
+		}).done(function(json) {
+			this.setState({
+				loading: false,
+				cycleId: cycleId,
+				view: json.datas.view
+			});
+		}.bind(this));
+	}
+	renderBody() {
+		let {cycleId, loading, view} = this.state;
+		if (view == null || loading == true) {
+			return <div className="m-mask"><div className="con"><i></i><div>数据加载中</div></div></div>;
+		} else if (view.success == false) {
+			return <div className="m-tips"><i></i><span>{view.message}</span></div>;
+		}
+		return (
+			<div className="c-syn-subj">
+				<PersonSummary achieve={view.achieveInfo} userName={ReportCst.userName} />
+				<AchievementInfo achieve={view.achieveInfo} lekeVal={view.lekeVal} />
+				<ClassStuationInfo behaviorInfo={view.behaviorInfo} attendStatInfo={view.attendStatInfo} lekeVal={view.lekeVal} cycleId={cycleId} />
+				<ViewFinishAnalyInfo viewFinishAnaly={view.viewFinishAnaly} />
+				<WorkFinishAnalyInfo workFinishAnaly={view.workFinishAnaly} cycleId={cycleId} />
+				<OtherBehaviorInfo otherWiseInfo={view.otherWiseInfo} lekeVal={view.lekeVal} />
+			</div>
+		);
+	}
+	render() {
+		let {types, zones, mode, view, userName} = ReportCst;
+		return (
+			<div className="analysis">
+				<ScoreReportQuery types={types} zones={zones} hideZone={true} onChange={this.handleChangeQuery} />
+				{this.renderBody()}
+			</div>
+		);
+	}
+}
+
+let conatiner = document.getElementById('container');
+ReactDOM.render(<PersonBehavior />, container);
+});

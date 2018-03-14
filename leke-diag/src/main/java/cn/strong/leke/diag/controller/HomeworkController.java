@@ -1,0 +1,360 @@
+package cn.strong.leke.diag.controller;
+
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.ResponseBody;
+
+import com.google.common.collect.Maps;
+
+import cn.strong.leke.common.serialize.support.json.JsonUtils;
+import cn.strong.leke.common.utils.CollectionUtils;
+import cn.strong.leke.common.utils.DateUtils;
+import cn.strong.leke.common.utils.NumberUtils;
+import cn.strong.leke.context.base.UserBaseContext;
+import cn.strong.leke.context.paper.PaperContext;
+import cn.strong.leke.context.user.UserContext;
+import cn.strong.leke.context.user.cst.RoleCst;
+import cn.strong.leke.core.dfs.FileUtils;
+import cn.strong.leke.core.office.ExportExcelForTable;
+import cn.strong.leke.core.pinyin.Pinyin;
+import cn.strong.leke.diag.manage.WorkStatsService;
+import cn.strong.leke.diag.model.Homework;
+import cn.strong.leke.diag.model.HomeworkDtl;
+import cn.strong.leke.diag.model.HomeworkInfoExcel;
+import cn.strong.leke.diag.model.WorkDetail;
+import cn.strong.leke.diag.model.WorkStats;
+import cn.strong.leke.diag.service.AnalyzeService;
+import cn.strong.leke.diag.service.HomeworkDtlService;
+import cn.strong.leke.diag.service.HomeworkService;
+import cn.strong.leke.diag.util.DiagCst;
+import cn.strong.leke.diag.util.DiagHelp;
+import cn.strong.leke.model.paper.PaperDTO;
+import cn.strong.leke.model.paper.PaperDetail;
+import cn.strong.leke.model.paper.QuestionGroup;
+import cn.strong.leke.model.paper.ScoredQuestion;
+import cn.strong.leke.model.question.QuestionResult;
+import cn.strong.leke.model.user.User;
+import cn.strong.leke.remote.model.homework.HomeworkDtlRemote;
+import cn.strong.leke.remote.service.lesson.IKlassRemoteService;
+import cn.strong.leke.tags.question.paper.PaperAttrs;
+import cn.strong.leke.tags.question.prepare.PrepareHandler;
+import cn.strong.leke.tags.question.prepare.PrepareHandlerAdapter;
+
+/**
+ * 描述：作业统计
+ * @author  andy
+ * @created 2014年7月14日 下午4:44:04
+ * @since   v1.0.0
+ */
+@Controller
+@RequestMapping({ "/auth/teacher/homework", "/auth/provost/homework", "/auth/classTeacher/homework",
+		"/auth/teacher/preview", "/auth/student/homework", "/auth/common/homework", "/auth/hd/homework" })
+public class HomeworkController {
+
+	protected static final Logger logger = LoggerFactory.getLogger(HomeworkController.class);
+
+	@Resource
+	private HomeworkService homeworkService;
+	@Resource
+	private HomeworkDtlService homeworkDtlService;
+	@Resource
+	private AnalyzeService analyzeService;
+	@Resource
+	private WorkStatsService workStatsService;
+	@Resource
+	private  IKlassRemoteService klassRemoteService;
+
+	/**
+	 * 作业成绩统计。
+	 * @param homeworkId 作业标识
+	 * @param model
+	 */
+	@RequestMapping("/statistics")
+	public String statistics(Long homeworkId, Model model) {
+		Homework homework = homeworkService.getHomeworkByHomeworkId(homeworkId);
+		PaperDTO paperDTO = PaperContext.getPaperDTO(homework.getPaperId());
+		if (paperDTO.getIsDraft()) {
+			return "/auth/homework/statistics-error";
+		}
+		BigDecimal totalScore = paperDTO.getDetail().getTotalScore();
+		// 计算分数段
+		Integer total = totalScore.intValue();
+		Integer A = this.calcScoreByRate(totalScore, paperDTO.getDetail().getRateA());
+		Integer B = this.calcScoreByRate(totalScore, paperDTO.getDetail().getRateB());
+		Integer C = this.calcScoreByRate(totalScore, paperDTO.getDetail().getRateC());
+		Map<String, Object> params = new HashMap<String, Object>();
+		params.put("homeworkId", homeworkId);
+		params.put("total", total);
+		params.put("a", A);
+		params.put("b", B);
+		params.put("c", C);
+
+		StringBuilder builder = new StringBuilder();
+		int questionNum = paperDTO.getDetail().getQuestionNum();
+		builder.append("满分").append(totalScore);
+		builder.append("分，共{{questionNum}}题");
+		builder.append("。");
+		String paperDesc = builder.toString().replace("{{questionNum}}", String.valueOf(questionNum));
+
+		model.addAttribute("totalScore", totalScore);
+		model.addAttribute("homework", homework);
+		model.addAttribute("paperDTO", paperDTO);
+		model.addAttribute("params", JsonUtils.toJSON(params));
+		model.addAttribute("paperDesc", paperDesc);
+		model.addAttribute("roleId", UserContext.user.getCurrentRoleId());
+		return "/auth/homework/statistics";
+	}
+
+	/**
+	 * 根据总分和比率，计算分数
+	 * @param totalScore 总分
+	 * @param rate 比例
+	 * @return
+	 */
+	private Integer calcScoreByRate(BigDecimal totalScore, BigDecimal rate) {
+		return totalScore.multiply(rate).divide(new BigDecimal(100), 0, RoundingMode.HALF_UP).intValue();
+	}
+
+	/**
+	 * 查看作业试卷分析。
+	 * @param homeworkId 作业标识
+	 * @param model
+	 */
+	@RequestMapping("/analysis")
+	public String analysis(Long homeworkId, Model model, HttpServletRequest request) {
+		Homework homework = this.homeworkService.getHomeworkByHomeworkId(homeworkId);
+		if (!DiagCst.HOMEWORK_STATS_STATUS_FINISH.equals(homework.getStatsStatus())) {
+			// 如果作业没有分析完成，返回分析中页面。
+			model.addAttribute("homework", homework);
+			return "/auth/homework/analying";
+		}
+		User user = UserContext.user.get();
+		WorkStats workStats = this.workStatsService.getWorkStatsByHomeworkId(homework.getHomeworkId());
+		return this._analysis(homework, workStats, user.getId(), user.getCurrentRole().getId(), model, request);
+	}
+
+	/**
+	 * 查看作业试卷分析。
+	 * @param homeworkId 作业标识
+	 * @param model
+	 */
+	@RequestMapping("/analysis2")
+	public String analysis2(Long homeworkId, Long studentId, Model model, HttpServletRequest request) {
+		Long userId = studentId;
+		Long roleId = RoleCst.STUDENT;
+		if (userId == null || userId == 0) {
+			User user = UserContext.user.get();
+			userId = user.getId();
+			roleId = user.getCurrentRole().getId();
+		}
+		Homework homework = this.homeworkService.getHomeworkByHomeworkId(homeworkId);
+		WorkStats workStats = this.analyzeService.generateHomeworkAnalyze(homeworkId);
+		return this._analysis(homework, workStats, userId, roleId, model, request);
+	}
+
+	private String _analysis(Homework homework, WorkStats workStats, Long userId, Long roleId, Model model, HttpServletRequest request) {
+		Map<Long, BigDecimal> stuRateMap = new HashMap<Long, BigDecimal>();
+		if (RoleCst.STUDENT.equals(roleId)) {
+			// 学生
+			HomeworkDtl homeworkDtl = this.homeworkDtlService
+					.getHomeworkDtlByHomeworkIdAndStudentId(homework.getHomeworkId(), userId);
+			WorkDetail workDetail = this.workStatsService
+					.getWorkDetailByHomeworkIdAndStudentId(homework.getHomeworkId(), userId);
+			if (workDetail != null) {
+				workDetail.getQuestions().forEach(v -> {
+					if (v.getTotalResultScore() == null) {
+						stuRateMap.put(v.getQuestionId(), new BigDecimal(0));
+					} else {
+						stuRateMap.put(v.getQuestionId(), v.getTotalScoreRate());
+					}
+				});
+				PrepareHandlerAdapter.doPrepare(PrepareHandler.Mode.View, workDetail.getQuestions());
+				// 答题信息
+				Map<Long, QuestionResult> questionResultMap = workDetail.getQuestions().stream()
+						.collect(Collectors.toMap(v -> v.getQuestionId(), v -> v));
+				model.addAttribute("homeworkDtl", homeworkDtl);
+				model.addAttribute("questionResultMap", questionResultMap);
+			}
+			if (RoleCst.STUDENT.equals(UserContext.user.getCurrentRoleId())) {
+				model.addAttribute("viewMode", PaperAttrs.VIEW_MODE_STUDENT_VIEW);
+			} else {
+				model.addAttribute("viewMode", PaperAttrs.VIEW_MODE_TEACHER_VIEW);
+			}
+		}
+		PaperDetail paperDetail= PaperContext.getPaperDTO(homework.getPaperId()).getDetail();
+		List<Map<String, Object>> sums = workStats.getSums().stream().map(sum -> {
+			Map<String, Object> item = new HashMap<String, Object>();
+			item.put("label", getGroup(paperDetail, sum.getQuestionId()));
+			item.put("questionId", String.valueOf(sum.getQuestionId()));
+			item.put("scoreRate", NumberUtils.formatScore((sum.getScoreRate()) * 100));
+			BigDecimal stuRate = stuRateMap.get(sum.getQuestionId());
+			if (stuRate != null) {
+				item.put("stuRate", NumberUtils.formatScore(stuRate.multiply(new BigDecimal(100))));
+			}
+			return item;
+		}).collect(Collectors.toList());
+		
+		PaperDTO paperDTO = PaperContext.getPaperDTO(homework.getPaperId());
+
+		model.addAttribute("paperDTO", paperDTO);
+		model.addAttribute("chinaNumber", DiagCst.CHINA_NUMBER);
+		model.addAttribute("homework", homework);
+		model.addAttribute("roleId", roleId);
+		Map<String, Object> ReportCst = Maps.newHashMap();
+		ReportCst.put("charts", workStats.getCharts());
+		ReportCst.put("sums", sums);
+		ReportCst.put("homeworkId", homework.getHomeworkId());
+		ReportCst.put("userId", userId);
+		ReportCst.put("roleId", roleId);
+		model.addAttribute("ReportCst", JsonUtils.toJSON(ReportCst));
+		return "/auth/homework/analysis";
+	}
+	
+	private String getGroup(PaperDetail paperDetail, Long questionId) {
+		for (QuestionGroup item : paperDetail.getGroups()) {
+			Optional<ScoredQuestion> firstOptional = item.getQuestions().stream()
+					.filter(q -> q.getQuestionId().equals(questionId)).findFirst();
+			if (firstOptional.isPresent()) {
+				return item.getOrd().toString() +"-" + firstOptional.get().getOrd();
+			}
+		}
+		return "";
+	}
+
+	/**
+	 * 导出excel
+	 * @param homeoworkId
+	 * @param request
+	 * @param response
+	 * @throws Exception
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/export", method = RequestMethod.GET)
+	public void exportStudentList(Long homeworkId, HttpServletRequest request, HttpServletResponse response)
+			throws Exception {
+		List<HomeworkDtl> list = this.homeworkDtlService.findHomeworkDtlByHomeworkId(homeworkId);
+		if (CollectionUtils.isNotEmpty(list)) {
+			list = list.stream().filter(v -> v.getCorrectTime() != null)
+					.sorted((a, b) -> b.getScore().compareTo(a.getScore())).collect(Collectors.toList());
+		}
+		List<HomeworkInfoExcel> excelList = new ArrayList<HomeworkInfoExcel>();
+		int rank = 1;
+		for (HomeworkDtl item : list) {
+			HomeworkInfoExcel excelItem = new HomeworkInfoExcel();
+			excelItem.setScore(NumberUtils.formatScore(item.getScore()));
+			excelItem.setStudentName(item.getStudentName());
+			excelItem.setRank(rank);
+			rank++;
+			excelList.add(excelItem);
+		}
+		Homework homework =  homeworkService.getHomeworkByHomeworkId(homeworkId);
+		PaperDTO paperDTO = PaperContext.getPaperDTO(homework.getPaperId());
+		BigDecimal totalScore = paperDTO.getDetail().getTotalScore();
+		String[] headers = {"排名","姓名", "总分("+ totalScore.intValue() +"分)" };
+		String[] fieldNames = { "rank","studentName", "score" };
+		String homeworkName = homework.getHomeworkName();
+		response.setCharacterEncoding("UTF-8");
+		response.setContentType("application/octet-stream;charset=UTF-8");
+		String agent = request.getHeader("user-agent");
+		String title = homeworkName +"成绩单"+ DateUtils.format(new Date(),"yyyyMMddHHmm");
+		String fileName = FileUtils.getEncodingFileName(title + ".xls", agent);
+		StringBuffer sb = new StringBuffer();
+		sb.append("attachment;").append(fileName);
+		response.setHeader("Content-disposition", sb.toString());
+		
+		new ExportExcelForTable<HomeworkInfoExcel>().exportExcel(title, headers, fieldNames, excelList,
+				response.getOutputStream(),null);
+	}
+
+	/**
+	 * 导出班级学生学期作业的成绩得分
+	 * @param classId
+	 * @param subjectId
+	 * @param request
+	 * @param type 
+	 * @param response
+	 * @throws Exception 
+	 */
+	@RequestMapping("/exportHwGrade")
+	public void exportHwGrade(Long classId,String fileName,Long subjectId,HttpServletRequest request,HttpServletResponse response) throws Exception {
+		List<Homework> classHwList =  null;
+		User user = UserContext.user.get();
+		if (user.getCurrentRole().getId().equals(RoleCst.TEACHER_HEADER)) {
+			classHwList = homeworkService.findHwByClassSubject(classId, subjectId, DiagHelp.getSemesterStarDate());
+		} else {
+			classHwList = homeworkService.findHwByTeacherClass(classId, user.getId(), DiagHelp.getSemesterStarDate());
+		}
+		String[] headers ={"没有作业信息"};
+		String[] fieldNames ={""};
+		List<Map<String, String>> datas = new ArrayList<>();
+		if (classHwList.size() > 0) {
+			Map<String, String> hwNames = new LinkedHashMap<String, String>();
+			hwNames.put("student", "学生姓名");
+			classHwList.forEach(hw -> hwNames.put(hw.getHomeworkId() + "", hw.getHomeworkName()));
+			headers = hwNames.values().toArray(new String[0]);
+			fieldNames = hwNames.keySet().toArray(new String[0]);
+
+			List<Long> hwIds = classHwList.stream().map(h -> h.getHomeworkId()).distinct().collect(Collectors.toList());
+			List<HomeworkDtlRemote> classHwDtlList = homeworkDtlService.findHwDtlByHomeworkIds(hwIds);
+			List<Long> classStuIds = klassRemoteService.findStudentIdsByClassId(classId);
+			//组装数据
+			
+			for (Long studentId : classStuIds) {
+				Map<String, String> map = new HashMap<>();
+				map.put(fieldNames[0], UserBaseContext.getUserBaseByUserId(studentId).getUserName());
+				for (int i = 1; i < fieldNames.length; i++) {
+					Long key = Long.parseLong(fieldNames[i]);
+					Optional<HomeworkDtlRemote> hwDtl = classHwDtlList.stream().filter(t -> {
+						return t.getHomeworkId().equals(key) && t.getStudentId().equals(studentId);
+					}).findFirst();
+					if (hwDtl.isPresent()) {
+						map.put(key.toString(), hwDtl.get().getScore() == null ? "" : hwDtl.get().getScore().toString());
+					}
+				}
+				datas.add(map);
+			}
+		}
+		//排序  名称转为拼音后，再排序
+		if(datas.size() > 0){
+			datas.sort((a,b)->{
+				return  Pinyin.toPinyinAbbr(a.get("student")) .compareTo(Pinyin.toPinyinAbbr(b.get("student")));
+			});
+		}
+		
+		response.setCharacterEncoding("UTF-8");
+		response.setContentType("application/octet-stream;charset=UTF-8");
+		String agent = request.getHeader("user-agent");
+		fileName +="成绩分析";
+		fileName += "-" + DateUtils.format(new Date(), DateUtils.LONG_DATE_PATTERN_NOSPLIT);
+		fileName = FileUtils.getEncodingFileName(fileName + ".xls", agent);
+		StringBuffer sb = new StringBuffer();
+		sb.append("attachment;").append(fileName);
+		response.setHeader("Content-disposition", sb.toString());
+		try {
+			new ExportExcelForTable<Map<String, String>>().exportExcel("成绩分析", headers, fieldNames, datas,
+					response.getOutputStream(), null);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+}

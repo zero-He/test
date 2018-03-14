@@ -1,0 +1,39 @@
+define(function(require, exports, module) {
+	var $ = require('jquery');
+	var I18n = require('homework/common/i18n');
+
+	var s_prepare = $.i18n.prop('homework.homework.type.prepare');
+	var s_class = $.i18n.prop('homework.homework.type.class');
+	var s_home = $.i18n.prop('homework.homework.type.home');
+	var s_alltype = $.i18n.prop('homework.homework.type.alltype');
+	var s_vod = $.i18n.prop('homework.homework.type.vod');
+	var s_auto = $.i18n.prop('homework.homework.type.auto');
+
+	var HomeworkType = {
+		data : [{
+			id : 1,
+			name : s_prepare
+		}, {
+			id : 2,
+			name : s_class
+		}, {
+			id : 3,
+			name : s_home
+		}, {
+			id : 5,
+			name : s_vod
+		},{
+			id:6,
+			name : s_auto
+		}],
+		render : function(target) {
+			$(target).empty();
+			$(target).append('<option value="0">' + s_alltype + '</option>');
+			$.each(HomeworkType.data, function() {
+				$(target).append($('<option>').val(this.id).text(this.name));
+			});
+		}
+	};
+
+	module.exports = HomeworkType;
+});

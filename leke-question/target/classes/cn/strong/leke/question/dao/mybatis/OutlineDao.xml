@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.1//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.question.dao.mybatis.OutlineDao">
+
+	<select id="queryOutline" parameterType="cn.strong.leke.model.question.Outline"
+		resultType="cn.strong.leke.model.question.Outline">
+		SELECT m.*
+		FROM que_outline m
+		<where>
+			<if test="outlineId != null">AND outlineId = #{outlineId}</if>
+			<if test="outlineName != null and outlineName != ''">AND (outlineName LIKE CONCAT('%',#{outlineName},'%'))</if>
+			<if test="schoolStageId != null">AND schoolStageId = #{schoolStageId}</if>
+			<if test="gradeId != null">AND gradeId = #{gradeId}</if>
+			<if test="subjectId != null">AND subjectId = #{subjectId}</if>
+			<if test="materialId != null">AND materialId = #{materialId}</if>
+			<if test="schoolId != null">AND schoolId = #{schoolId}</if>
+			AND isDeleted = 0
+		</where>
+		ORDER BY outlineId DESC
+	</select>
+	
+	<select id="queryOutlines" parameterType="cn.strong.leke.model.question.Outline"
+		resultType="cn.strong.leke.question.model.outline.BaseOutlineQuery">
+		SELECT m.*
+		FROM que_outline m
+		<where>
+			<if test="outlineId != null">AND outlineId = #{outlineId}</if>
+			<if test="outlineName != null and outlineName != ''">AND (outlineName LIKE CONCAT('%',#{outlineName},'%'))</if>
+			<if test="schoolStageId != null">AND schoolStageId = #{schoolStageId}</if>
+			<if test="gradeId != null">AND gradeId = #{gradeId}</if>
+			<if test="subjectId != null">AND subjectId = #{subjectId}</if>
+			<if test="materialId != null">AND materialId = #{materialId}</if>
+			<if test="schoolId != null">AND schoolId = #{schoolId}</if>
+			<if test="status != null">AND status = #{status}</if>
+			AND isDeleted = 0
+		</where>
+		ORDER BY outlineId DESC
+	</select>
+	
+	<select id="findOutlinesBySchIdGraIdSubId" resultType="cn.strong.leke.model.question.Outline">
+		SELECT 
+			m.*
+		FROM 
+			que_outline m
+		WHERE
+			m.schoolId = #{schoolId}
+		AND
+			m.gradeId = #{gradeId}
+		AND
+			m.subjectId = #{subjectId}
+		AND
+			m.isDeleted = 0
+		AND
+			m.status = 1
+		ORDER BY 
+			outlineId DESC
+	</select>
+	
+	<select id="findOutlinesBySchIdStaIdSubId" resultType="cn.strong.leke.model.question.Outline">
+		SELECT 
+			m.*
+		FROM 
+			que_outline m
+		WHERE
+			m.schoolId = #{schoolId}
+		AND
+			m.schoolStageId = #{schoolStageId}
+		AND
+			m.subjectId = #{subjectId}
+		AND
+			m.isDeleted = 0
+		AND
+			m.status = 1
+		ORDER BY 
+			m.outlineId DESC
+	</select>
+	
+	<update id="updateOutline" parameterType="cn.strong.leke.model.question.Outline">
+		UPDATE que_outline
+		<set>
+			outlineName = #{outlineName},
+			description = #{description},
+			schoolStageId = #{schoolStageId},
+			schoolStageName = #{schoolStageName},
+			subjectId = #{subjectId},
+			subjectName = #{subjectName},
+			<if test="modifiedBy != null">modifiedBy = #{modifiedBy},</if>
+			modifiedOn = now()
+		</set>
+		<where>
+			outlineId= #{outlineId}
+		</where>
+	</update>
+	
+	<update id="deleteOutline" parameterType="cn.strong.leke.model.question.Outline">
+		UPDATE que_outline
+		<set>
+			isDeleted = 1,
+			<if test="modifiedBy != null">modifiedBy = #{modifiedBy},</if>
+			modifiedOn = now()
+		</set>
+		<where>
+			outlineId= #{outlineId}
+		</where>
+	</update>
+	
+	<update id="updateOutlineName" parameterType="cn.strong.leke.model.question.Outline">
+		UPDATE que_outline
+		<set>
+			outlineName = #{outlineName},
+			<if test="modifiedBy != null">modifiedBy = #{modifiedBy},</if>
+			modifiedOn = now()
+		</set>
+		<where>
+			outlineId= #{outlineId}
+		</where>
+	</update>
+	
+	<insert id="insertOutline" useGeneratedKeys="true" keyProperty="outlineId"
+		parameterType="cn.strong.leke.model.question.Outline">
+		INSERT INTO que_outline(
+			outlineName, description, schoolStageId, schoolStageName, gradeId, gradeName, subjectId, subjectName, 
+			materialId, materialName, status, schoolId, schoolName, isDeleted, createdBy, createdOn, modifiedBy, modifiedOn
+		) VALUES (
+			#{outlineName}, #{description}, #{schoolStageId}, #{schoolStageName}, #{gradeId}, #{gradeName}, #{subjectId}, #{subjectName},
+			#{materialId}, #{materialName}, #{status}, #{schoolId}, #{schoolName}, 0, #{createdBy}, now(), #{modifiedBy}, now()
+		)
+	</insert>
+	
+	<select id="getOutlineById" parameterType="long"
+		resultType="cn.strong.leke.model.question.Outline">
+		SELECT m.*
+		FROM que_outline m
+		<where>
+			outlineId = #{outlineId}
+			AND isDeleted = 0
+		</where>
+	</select>
+	
+	<!-- 上架 -->
+	<update id="outlineUp" parameterType="cn.strong.leke.model.question.Outline">
+		UPDATE 
+			que_outline
+		SET
+			status=1,modifiedBy=#{modifiedBy},modifiedOn=NOW()
+		WHERE 
+			outlineId=#{outlineId}
+	</update>
+	
+	<!-- 下架 -->
+	<update id="outlineDown" parameterType="cn.strong.leke.model.question.Outline">
+		UPDATE 
+			que_outline
+		SET
+			status=0,modifiedBy=#{modifiedBy},modifiedOn=NOW()
+		WHERE 
+			outlineId=#{outlineId}
+	</update>
+	
+</mapper>

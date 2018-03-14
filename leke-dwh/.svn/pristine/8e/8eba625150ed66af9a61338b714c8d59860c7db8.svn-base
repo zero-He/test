@@ -1,0 +1,57 @@
+package cn.strong.leke.dwh.service.impl;
+
+import java.util.List;
+
+import javax.annotation.Resource;
+
+import org.springframework.stereotype.Component;
+
+import cn.strong.leke.dwh.model.diag.AchievementQuery;
+import cn.strong.leke.dwh.model.diag.AchievementResult;
+import cn.strong.leke.dwh.model.diag.AchievementResult.AchieveInfo;
+import cn.strong.leke.dwh.model.diag.AchievementResult.UserItem;
+import cn.strong.leke.dwh.service.AchievementService;
+import cn.strong.leke.dwh.storage.SparkRepoStorage;
+import cn.strong.leke.remote.service.lesson.ILessonRemoteService;
+
+@Component
+public class AchievementServiceImpl implements AchievementService {
+
+	@Resource
+	private SparkRepoStorage sparkRepoStorage;
+	@Resource
+	private ILessonRemoteService lessonRemoteService;
+
+
+	@Override
+	public AchievementResult getKlassAchievementForTeacher(AchievementQuery query) {
+
+		// 把提交spark任务的参数存入mongodb返回
+		String taskId = sparkRepoStorage.storageQuery(query);
+		submitSpark(taskId);
+		
+//		AchieveInfo achieveInfo = sparkRepoStorage.getResult(taskId, AchieveInfo.class);
+		List<UserItem> userRanks = sparkRepoStorage.getResultByTaskId(taskId, UserItem.class);
+		AchievementResult achievementResult = new AchievementResult();
+//		achievementResult.setAchieveInfo(achieveInfo);
+		achievementResult.setUserRanks(userRanks);
+		 
+		// return calculate result.
+		return achievementResult;
+	}
+	
+	//提交执行提交spark任务的shell脚本
+    public void submitSpark(String taskId) {
+        String scriptPath = "/opt/sparkshell/submitspark.sh";
+        try {
+            String execCmd = "/bin/sh " + scriptPath + " " + taskId; //+param
+            Process process = Runtime.getRuntime().exec(execCmd);
+            process.waitFor();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+
+}

@@ -1,0 +1,68 @@
+<div class="m-search-box">
+	<label class="title">出错时间：</label>
+	<input type="text" id="startTime" name="startTime" class="u-ipt u-ipt-lg"
+		data-bind="datepicker: {
+			value: query.startTime,
+			dateFmt: 'yyyy-MM-dd HH:mm:ss',
+			minDate: '%y-%M-{%d-7} 00:00:00',
+			maxDate: '#F{$dp.$D(\'endTime\') || \'%y-%M-{%d+1} 00:00:00\'}'
+		}"/>
+	<span>-</span>
+	<input type="text" id="endTime" name="endTime" class="u-ipt u-ipt-lg"
+		data-bind="datepicker: {
+			value: query.endTime,
+			dateFmt: 'yyyy-MM-dd HH:mm:ss',
+			minDate: '#F{$dp.$D(\'startTime\') || \'%y-%M-{%d-7} 00:00:00\'}',
+			maxDate: '%y-%M-{%d+1} 00:00:00'
+		}"/>
+	<label class="title">队列名称：</label>
+	<input type="text" name="queueName" class="u-ipt u-ipt-lg"
+		data-bind="value: query.queueName">
+	<input type="submit" value="查询" class="u-btn u-btn-nm u-btn-bg-turquoise"
+		data-bind="click: doSearch"/>
+</div>
+
+<div class="m-table f-mt20">
+<table>
+	<tbody>
+		<tr>
+			<th>出错时间</th>
+			<th>队列名称</th>
+			<th>IP</th>
+			<th>消息类型</th>
+			<th>操作</th>
+		</tr>
+	
+		<!-- ko foreach: records -->
+		<tr>
+			<td data-bind="text: timeStr"></td>
+			<td data-bind="text: queueName"></td>
+			<td data-bind="text: ipaddress"></td>
+			<td data-bind="text: messageClass"></td>
+			<td>
+				<a target="_blank" class="s-c-turquoise"
+					data-bind="click: function() {
+						$component.showDetail($data);
+					}">查看</a>
+			</td>
+		</tr>
+		<!-- /ko -->
+	</tbody>
+</table>
+</div>
+<div data-bind="component: {
+	name: 'leke-page',
+	params: {
+		curPage: curPage,
+		totalSize: totalSize,
+		pageSize: pageSize
+	}
+}"></div>
+<!-- ko if: records().length == 0 -->
+<p class="m-tips">
+	<i></i>
+	<span>
+	当前没有相关数据!
+	</span>
+</p>
+<!-- /ko -->

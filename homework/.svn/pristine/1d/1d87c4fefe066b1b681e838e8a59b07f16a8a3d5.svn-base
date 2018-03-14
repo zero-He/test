@@ -1,0 +1,13 @@
+package cn.strong.leke.homework.service;
+
+
+/**
+ * 练习设置表服务接口。
+ */
+public interface ExerciseOldService {
+	/**
+	 * mysql : Exercise ExerciseItem 
+	 * 迁移到 MongoDB exercise
+	 */
+	void migrationToMongoDB();
+}

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.2.xsd">
+	
+	<!-- 用户创建消息 -->
+	<bean class="cn.strong.leke.scs.listener.UserListener">
+		<property name="queueNames">
+			<list>
+				<value>${mq.q.user.create.user.crm}</value>
+			</list>
+		</property>
+	</bean>
+	<!-- 用户更新消息 -->
+	<bean class="cn.strong.leke.scs.listener.UpdateUserListener">
+		<property name="queueNames">
+			<list>
+				<value>${mq.q.user.update.user.crm}</value>
+			</list>
+		</property>
+	</bean>
+
+	<!-- 销售关系绑定消息 -->
+	<bean class="cn.strong.leke.scs.listener.SaleRelationListener">
+		<property name="queueNames">
+			<list>
+				<value>${mq.q.crm.sale.relation}</value>
+			</list>
+		</property>
+	</bean>
+
+	<!-- 课点充值消息 -->
+	<bean class="cn.strong.leke.scs.listener.PointRechangeListener">
+		<property name="queueNames">
+			<list>
+				<value>${mq.q.crm.rechange.point}</value>
+			</list>
+		</property>
+	</bean>
+
+</beans>

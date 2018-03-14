@@ -1,0 +1,37 @@
+<%@ page pageEncoding="UTF-8"%>
+<%@ include file="/pages/common/tags.jsp"%>
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <title>作业管家</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=640">
+    <link rel="stylesheet" href="${assets}/styles/mobile/v1.3.css?_t=${_t}">
+    <script src="${assets}/scripts/common/mobile/utils.js?_t=${_t}"></script>
+    <leke:context />
+</head>
+
+<body>
+	<menu class="c-topswipe m-swipe">
+	<ul class="swipe-wrap">
+       	<c:forEach items="${studentList}" var="student" varStatus="status">
+       		<c:if test="${status.index%4==0 and !status.first and !status.last}"></li></c:if>
+       		<c:if test="${status.index%4==0}"><li></c:if>
+       		<span class="item <c:if test="${status.index==0}">cur</c:if>" data-i="${student.id}">${student.userName}</span>
+       		<c:if test="${status.last}"></li></c:if>
+		</c:forEach>
+    </ul>
+    </menu>
+	<ul class="c-kemu" id="jMenu"></ul>
+	<script id="jTpl" type="x-mustache">
+		{{#subjectList}}
+		<li class="{{kemu}}" data-c="{{kemu}}" data-i="{{subjectId}}"><span>{{subjectName}}</span></li>
+		{{/subjectList}}
+	</script>
+	<script src="${assets}/scripts/common/mobile/zepto.min.js?_t=${_t}"></script>
+	<script src="/scripts/m/homework/common/mustache.min.js?_t=${_t}"></script>
+	<script src="/scripts/m/homework/common/swipe.min.js?_t=${_t}"></script>
+    <script src="/scripts/m/homework/manager/parent.js?_ttt=${_t}"></script>
+</body>
+</html>

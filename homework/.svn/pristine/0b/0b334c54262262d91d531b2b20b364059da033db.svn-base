@@ -1,0 +1,86 @@
+define(function(require, exports, module) {
+	require('common/forbidpaste');
+	var $ = require('jquery');
+	var json = require('json');
+	var utils = require('utils');
+	var dialog = require('dialog');
+	
+	require('homework/common/sheet.extend');
+	var Answer = require('homework/answer');
+	var Render = require('homework/sheet.render');
+	var I18n = require('homework/common/i18n');
+	
+	var s_confirm = $.i18n.prop('homework.homework.confirm.message');
+	
+	var Work = {
+		subjectId : null,
+		doubtUrl : ctx + '/auth/student/myDoubt/doubtList/doubtForQuestion.htm',
+		init : function() {
+			Render.doRender();
+			this.subjectId = $('#subjectId').val();
+			this.bindEvent();
+		},
+		// 事件注册
+		bindEvent : function() {
+			var _this = this;
+			$('#btnSubmit').click(function() {
+				var hasNull = _this.parseExerciseAnswer();
+				if (hasNull) {
+					dialog.confirm(s_confirm).done(function(sure) {
+						if (sure) {
+							$('#exerciseForm').submit();
+						}
+					});
+				} else {
+					$('#exerciseForm').submit();
+				}
+			});
+		},
+		parseExerciseAnswer : function() {
+			var questionList = $('.p-exam-body>.j-question');
+			var answerInfoList = [];
+			var hasNull = false;
+			questionList.each(function() {
+				var question = $(this);
+				var qid = question.attr('qid');
+				var hasSub = question.attr('hassub');
+				if (hasSub == 'true') {
+					// 有子题
+					var answerInfo = {
+						questionId : parseInt(qid),
+						subs : []
+					};
+					question.find('.q-container').each(function() {
+						var cquestion = $(this);
+						var cqid = cquestion.attr('qid');
+						var answer = Answer.getAnswer(cquestion);
+						if (answer.hasNull) {
+							hasNull = true;
+						}
+						answerInfo.subs.push({
+							questionId : parseInt(cqid),
+							answerContent : json.stringify(answer.content)
+						});
+					});
+					answerInfoList.push(answerInfo);
+				} else {
+					// 无子题
+					var answer = Answer.getAnswer(question);
+					if (answer.hasNull) {
+						hasNull = true;
+					}
+					answerInfoList.push({
+						questionId : parseInt(qid),
+						answerContent : json.stringify(answer.content)
+					});
+				}
+			});
+			var answerJson = json.stringify(answerInfoList);
+			$('#answerJson').val(answerJson);
+			return hasNull;
+		}
+	};
+
+	Work.init();
+
+});

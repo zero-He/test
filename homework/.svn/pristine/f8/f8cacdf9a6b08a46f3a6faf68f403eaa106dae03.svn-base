@@ -1,0 +1,126 @@
+package cn.strong.leke.homework.controller.work;
+
+import static java.util.stream.Collectors.toMap;
+
+import java.util.Map;
+
+import javax.annotation.Resource;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
+
+import cn.strong.leke.common.serialize.support.json.JsonUtils;
+import cn.strong.leke.context.user.UserContext;
+import cn.strong.leke.framework.exceptions.Validation;
+import cn.strong.leke.framework.web.JsonResult;
+import cn.strong.leke.homework.manage.WorkDetailService;
+import cn.strong.leke.homework.model.Homework;
+import cn.strong.leke.homework.model.HomeworkDtl;
+import cn.strong.leke.homework.model.WebWorkModel;
+import cn.strong.leke.homework.model.WorkDetail;
+import cn.strong.leke.homework.service.HomeworkDtlService;
+import cn.strong.leke.homework.service.HomeworkMainService;
+import cn.strong.leke.homework.service.HomeworkService;
+import cn.strong.leke.model.question.QuestionResult;
+import cn.strong.leke.model.user.User;
+import cn.strong.leke.tags.answer.ResDataModel;
+import cn.strong.leke.tags.question.prepare.PrepareHandler;
+import cn.strong.leke.tags.question.prepare.PrepareHandlerAdapter;
+
+@Controller
+@RequestMapping({ "/auth/common/homework", "/auth/teacher/homework", "/auth/provost/homework",
+		"/auth/classTeacher/homework", "/auth/seller/homework", "/auth/technicalSupport/homework",
+		"/auth/parent/homework" })
+public class ViewOthersController {
+
+	@Resource
+	private HomeworkService homeworkService;
+	@Resource
+	private HomeworkDtlService homeworkDtlService;
+	@Resource
+	private HomeworkMainService homeworkMainService;
+	@Resource
+	private WorkDetailService workDetailService;
+
+	/**
+	 * 查看试卷信息。<br>
+	 * 注意：如果学生已经提交但还未批改，只显示学生答题信息，如果学生已经提交并已批改，显示学生答案、正确答案、试题解析。<br>
+	 * 权限：学生和老师都可以访问，根据当前用户判断是否有访问权限。
+	 * @param homeworkDtlId 学生试卷标识
+	 * @param model
+	 */
+	@RequestMapping("/viewWork")
+	public String viewWork(Long homeworkDtlId, Model model) {
+		// 作业信息
+		User user = UserContext.user.get();
+		HomeworkDtl homeworkDtl = this.homeworkDtlService.getHomeworkDtlById(homeworkDtlId);
+		Validation.isPageNotFound(homeworkDtl == null);
+		Homework homework = this.homeworkService.getHomeworkById(homeworkDtl.getHomeworkId());
+
+		ResDataModel respond = WorkSupport.buildResDataModel(user, ResDataModel.DO_VIEWER, homework, homeworkDtl);
+		// 已保存的试卷答题及批改信息
+		WorkDetail workDetail = this.workDetailService.getWorkDetailByHomeworkDtlId(homeworkDtlId);
+		if (workDetail != null) {
+			PrepareHandlerAdapter.doPrepare(PrepareHandler.Mode.View, workDetail.getQuestions());
+			Map<Long, QuestionResult> questionResultMap = workDetail.getQuestions().stream()
+					.collect(toMap(v -> v.getQuestionId(), v -> v));
+			respond.setSheetBookId(workDetail.getSheetBookId());
+			respond.setQuestionResultMap(questionResultMap);
+		}
+		WebWorkModel webWorkModel = WorkSupport.buildWebWorkModel(respond, homework, homeworkDtl);
+		model.addAttribute("paper", WorkSupport.getOrBuildPaperDTO(homework, homeworkDtl));
+		model.addAttribute("respond", respond);
+		model.addAttribute("workModel", JsonUtils.toJSON(webWorkModel));
+		return "/auth/work/doViewerWork";
+	}
+
+	@ResponseBody
+	@RequestMapping("/prevId")
+	public Object prevId(Long homeworkId, Long homeworkDtlId) {
+		Long prevId = this.homeworkDtlService.getPrevHomeworkId(homeworkId, homeworkDtlId);
+		JsonResult json = new JsonResult();
+		if (prevId == null) {
+			json.setErr("现在就是第一个！");
+		}
+		json.addDatas("homeworkDtlId", prevId);
+		return json;
+	}
+
+	@ResponseBody
+	@RequestMapping("/nextId")
+	public Object nextId(Long homeworkId, Long homeworkDtlId) {
+		Long nextId = this.homeworkDtlService.getNextHomeworkId(homeworkId, homeworkDtlId);
+		JsonResult json = new JsonResult();
+		if (nextId == null) {
+			json.setErr("已经是最后一个了！");
+		}
+		json.addDatas("homeworkDtlId", nextId);
+		return json;
+	}
+
+	/**
+	 * 老师、教务作业跳转
+	 * @param homeworkId 老师作业ID
+	 * @return
+	 */
+	@RequestMapping("/redirectViewWork")
+	public String redirectViewWork(Long homeworkId, Long studentId) {
+		HomeworkDtl homeworkDtl = this.homeworkDtlService.getHomeworkDtlByHomeworkIdAndStudentId(homeworkId, studentId);
+		Validation.isPageNotFound(homeworkDtl == null);
+		return "redirect:viewWork.htm?homeworkDtlId=" + homeworkDtl.getHomeworkDtlId();
+	}
+
+	/**
+	 * 非学生角色点播课作业跳转
+	 * @param homeworkId 老师作业ID
+	 * @return
+	 */
+	@RequestMapping("/redirectVodWork")
+	public String redirectVodWork(Long homeworkId, Long studentId) {
+		HomeworkDtl homeworkDtl = this.homeworkDtlService.getHomeworkDtlByParentIdAndStudentId(homeworkId, studentId);
+		Validation.isPageNotFound(homeworkDtl == null);
+		return "redirect:viewWork.htm?homeworkDtlId=" + homeworkDtl.getHomeworkDtlId();
+	}
+}

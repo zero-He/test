@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.question.dao.mybatis.workbook.IWorkbookOperationDao">
+
+	<insert id="add" useGeneratedKeys="true" keyProperty="operationId"
+		parameterType="cn.strong.leke.question.model.workbook.WorkbookOperation">
+		INSERT INTO que_workbook_operation(
+			workbookId,operationType,isDeleted, createdBy, createdOn
+		) VALUES (
+			#{workbookId},#{operationType},0, #{createdBy}, now()
+		)
+	</insert>
+</mapper>

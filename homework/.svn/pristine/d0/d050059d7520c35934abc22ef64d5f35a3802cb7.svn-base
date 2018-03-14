@@ -1,0 +1,19 @@
+
+const types = {};
+
+function reg(acts) {
+    acts.split(',').forEach(act => types[act] = act);
+}
+
+// 初始化
+reg('INIT_DATAS,UPDATE_DATAS,DEVICE_READY');
+// 页面控制
+reg('ROUTER_VIEW,ROUTER_RESULT,SHEET_SKIP_INDEX,SHEET_SKIP_PREV,SHEET_SKIP_NEXT');
+// 答题控制
+reg('ANSWER_JUDGEMENT,ANSWER_SINGLE_CHOICE,ANSWER_MULTI_CHOICE,ANSWER_FILLBLANK,ANSWER_PUNCTUATE,ANSWER_OPENEND,ANSWER_ORAL,ANSWER_HANDWRITE');
+// 服务端交互
+reg('HEARTBEAT,WORK_SAVE,WORK_SUBMIT');
+
+
+
+export default types;

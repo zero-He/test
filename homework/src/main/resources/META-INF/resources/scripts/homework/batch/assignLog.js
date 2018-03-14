@@ -1,0 +1,381 @@
+define(function(require, exports, module){
+	var $ = require('jquery');
+	var ko = require('knockout');
+	var _ = require('underscore');
+	var WdatePicker = require('date');
+	var LekeDate = require('common/base/date');
+	var datepicker = require('common/knockout/bindings/datepicker');
+	var utils = require('utils');
+	var dialog = require('dialog');
+	var I18n = require('homework/common/i18n');
+	require('common/ui/ui-autocomplete/ui-autocomplete');
+	var lekePaper = require("paper/web/leke.control.paper");
+	var history = require('repository/service/HistoryService');
+	
+	var CST ={
+			paperUrl: window.ctx + '/auth/teacher/distribute/popPapers.htm',
+			studentGroupUrl: window.ctx + '/auth/teacher/batch/popStudentGroup.htm',
+			homeworkPostUrl: window.ctx + '/auth/teacher/assignLog/save.htm',
+			homeworkSuccessUrl: window.ctx + '/auth/teacher/assignLogList.htm'
+	};
+	function Model(){
+		var self = this;
+		self.studentGroups = ko.observableArray();
+		self.teacherId = ko.observable();
+		self.teacherName = ko.observable();
+	}
+
+	
+	function TableVM(){
+		var self = this;
+		self.list = ko.observableArray();
+		self.startTime = ko.observable(LekeDate.format(new LekeDate(Leke.currentSystemTime),'yyyy-MM-dd HH:mm'));
+		self.closeTime = ko.observable(LekeDate.format(new LekeDate(Leke.currentSystemTime).add(2,'d'),'yyyy-MM-dd HH:mm'));
+		self.openAnswerTime = ko.observable();
+		self.papers = ko.observable();
+		self.pending = ko.observable(false);
+		self.checkOpenAnswer = ko.observable(false);
+		self.isPass = true;
+		self.init();
+		
+	}
+	
+	TableVM.prototype.bindAuto = function(){
+		var _this =this;
+		$(".item-teacher").autocomplete({
+			url: ctx + '/auth/teacher/auto/findTeacher.htm',
+			nameKey: 'teacherName',
+			minLen : 1,
+			textFn: function(item){
+				if(item){
+					return item.userName ;
+				}
+				return '';
+			},
+			onChange: function(item) {
+				var $index = this.$ipt.data('index');
+				var _model = _this.list.peek()[$index];
+				if(item){
+					_model.teacherName(item.userName);
+					_model.teacherId(item.id);
+				}else{
+					_model.teacherName('');
+					_model.teacherId('');
+				}
+			}
+		});
+    }
+	TableVM.prototype.getPaperIds = function(){
+		var self = this;
+		var paperIds = [];
+		_.each(self.papers() || [],function(n){
+			paperIds.push(n.resId);
+		});
+		return paperIds.join(',');
+	};
+	
+	TableVM.prototype.init = function(){
+		var self = this;
+		var papers = window.CST.papers || [];
+		var model = new Model();
+		_.each(papers,function(p){
+			var urlPaper = {paperId: p.resId,paperName: p.resName};
+			if(urlPaper && urlPaper.paperId){
+				model.papers.push(urlPaper);
+			}
+		});
+		self.list.push(model);
+		
+	};
+	
+	
+	TableVM.prototype.doOpenAnswerTime = function(){
+		var self = this;
+		var isCheck = self.checkOpenAnswer();
+		self.checkOpenAnswer(!isCheck);
+		if(!isCheck && self.closeTime() != null){
+			var defDate = new LekeDate(new Date(self.closeTime()).getTime()).add(2,'d');
+			var fmtDate = LekeDate.format(defDate,'yyyy-MM-dd HH:mm');
+			self.openAnswerTime(fmtDate);
+		}
+		
+	}
+	TableVM.prototype.addHomework = function(){
+		var self = this;
+		self.list.push(new Model());
+		self.bindAuto();
+	};
+	
+	TableVM.prototype.rmHomework = function($data){
+		var self = this;
+		var list = self.list;
+		if(list().length > 1){
+			list.remove($data);
+		}else{
+			utils.Notice.alert('最少保留一条');
+		}
+	};
+	
+	TableVM.prototype.saveHomework = _.throttle(function(){
+		var self = this;
+		if(!self.validation()){
+			return false;
+		}
+		var dataJson = self.toJS();
+		self.pending(true);
+		
+		var req = $.ajax({
+			type: 'post',
+			url: CST.homeworkPostUrl,
+			dataType: 'json',
+			data: {dataJson: dataJson}
+		});
+		
+		req.then(function(data){
+			if(data.success){
+				utils.Notice.alert('操作成功');
+				setTimeout(function(){
+					window.location.href = CST.homeworkSuccessUrl;
+				},1000)
+			}
+			self.pending(false);
+		},function(msg){
+			utils.Notice.alert(msg);
+		});
+	},3000);
+	
+	TableVM.prototype.openPaper = function($data){
+		var self = this;
+		var model = $data;
+		var req = history.loadHistory();
+		req.then(function(datas){
+			lekePaper.openPaper({data: datas},function(papers){
+				if(papers != undefined){
+					self.callbackPaper(papers);
+				}
+			});
+		},function(msg){
+			
+		});
+	};
+	
+	TableVM.prototype.callbackPaper = function(datas){
+		var self = this;
+		var papers = self.papers() || [];
+		var paperIds = [] ;
+		if(papers != undefined){
+			paperIds = papers.map(function(v){return v.resId});
+		}
+		_.each(datas || [],function(n){
+			if(paperIds.indexOf(n.resId) == -1){
+				papers.push(n);
+			}
+			});
+		self.papers(papers);
+		self.findDefaultTeacher();
+	};
+	
+	TableVM.prototype.rmPaper = function($data){
+		var self = this;
+		var grepPapers = $.grep(self.papers(),function(n,i){
+			return $data.resId == n.resId;
+		},true);
+		self.papers(grepPapers);
+	};
+	
+	TableVM.prototype.openStudentGroup = function($index,$data){
+		var self = this;
+		var index = $index();
+		var model = $data;
+		var studentGroupIds = '';
+		if(model){
+			studentGroupIds = JSON.stringify(model.studentGroups());
+		}
+		var ops = {
+				id : 'dPopStudentGroup',
+				title : $.i18n.prop('homework.distribute.student.select'),
+				url: CST.studentGroupUrl + "?type=1&studentGroupIds=" + studentGroupIds,
+				size : 'lg',
+				onClose : function(obj){
+					if (obj != undefined) {
+						self.callbackStudentGroup(index,obj);
+					}
+				}
+		};
+		dialog.open(ops);
+	};
+	
+	TableVM.prototype.callbackStudentGroup = function(index,obj){
+		var self = this;
+		var model =self.list()[index];
+		_.each(obj,function(n){
+			n.str = toFormat(n);
+		});
+		model.studentGroups.removeAll();
+		_.each(obj || [],function(n){
+			model.studentGroups.push(n);
+		});
+		self.findDefaultTeacher();
+	};
+	TableVM.prototype.findDefaultTeacher = function() {
+		var self = this;
+		if (self.papers().length > 0) {
+			var emptyTeacher = $.grep(self.list(), function(n, i) {
+				return n.studentGroups().length > 0
+						&& (n.teacherId() == undefined || $.trim(n.teacherName()).length == 0);
+			});
+			if (emptyTeacher.length > 0) {
+				var subjectIds = [];
+				var classIdMap = [];
+				$.each(self.papers(), function(i, n) {
+					subjectIds.push(n.subjectId);
+				});
+				$.each(self.list(), function(i, n) {
+					var c = {
+						index : i,
+						classIds : []
+					};
+					if (n.teacherId() == undefined || $.trim(n.teacherName()).length == 0) {
+						$.each(n.studentGroups(), function(j, m) {
+							if (m.classType == 1) {
+								c.classIds.push(m.classId);
+							}
+						});
+						if(c.classIds.length > 0){
+							classIdMap.push(c);
+						}
+					}
+				});
+				if (classIdMap.length > 0) {
+					// 异步找到了唯一老师
+					var datas= {
+							subjectIds : subjectIds,
+							stuClasses : classIdMap
+						};
+					console.log(JSON.stringify(datas));
+					$.post('/auth/teacher/assignLog/findAssignTeacher.htm',{json:JSON.stringify(datas)}, function(data) {
+						var teacherList = data.datas.list;
+						if(teacherList == undefined) return;
+						$.each(teacherList, function(i, n) {
+							var item = teacherList[i];
+							self.list()[item.index].teacherId(item.id);
+							self.list()[item.index].teacherName(item.name);
+						});
+					});
+				}
+			}
+		}
+	};
+	
+	TableVM.prototype.rmStudentGroup = function($index,$data){
+		var self = this;
+		var index = $index();
+		var model = self.list()[index];
+		model.studentGroups.remove($data);
+	};
+	
+	TableVM.prototype.validation = function(){
+		var self = this;
+		
+		if(self.checkOpenAnswer() && !self.openAnswerTime()){
+			utils.Notice.alert('请设置答案公布时间');
+			return false;
+		}
+		
+		if(!self.papers() || self.papers().length == 0){
+			utils.Notice.alert('请选择作业');
+			return false;
+		}
+		var list = self.list.peek();
+		for(var i = 0; i < list.length; i++){
+			var n = list[i];
+			if(!n.studentGroups() || !n.studentGroups().length){
+				utils.Notice.alert('第' + (i + 1) + '条记录请选择学生');
+				return false;
+			}
+			if(n.teacherId() == undefined || n.teacherId() == '' || n.teacherName() == undefined || $.trim(n.teacherName()).length == 0 ){
+				utils.Notice.alert('第' + (i + 1) + '条记录请选择批改老师');
+				return false;
+			}
+		}
+		if(!self.startTime()){
+			utils.Notice.alert('请设置作业开始时间');
+			return false;
+		}
+		if(!self.closeTime()){
+			utils.Notice.alert('请设置作业截止时间');
+			return false;
+		}
+		if(self.checkOpenAnswer() && !self.openAnswerTime()){
+			utils.Notice.alert('请设置答案公布时间');
+			return false;
+		}
+		return true;
+	};
+	
+	TableVM.prototype.toJS = function(){
+		var self = this;
+		var startTime = LekeDate.of(self.startTime()).getTime();
+		var closeTime = LekeDate.of(self.closeTime()).getTime();
+		var openAnswerTime = null;
+		if(self.checkOpenAnswer()){
+			openAnswerTime = LekeDate.of(self.openAnswerTime()).getTime();
+		}
+		var params = { resources : []};
+		params.startTime = startTime;
+		params.closeTime = closeTime;
+		params.openAnswerTime = openAnswerTime;
+		_.each(self.papers() || [],function(m){
+			//试卷类型的资源
+			params.resources.push({resId:m.resId,resType:3});
+		});
+		params.assignLogTeaHw = [];
+		_.each(self.list() || [] ,function(n){
+			var joinClassName = [];
+			var studentGroupsJson = _.map(n.studentGroups(),function(m){
+				var info = {};
+				info.classId = m.classId;
+				info.className = m.className;
+				var itemGroupClass = info.className;
+				if(m.groups != null && m.groups.length > 0){
+					var groupNames = [];
+					$.each(m.groups,function(i,n){
+						groupNames.push(n.groupName);
+					});
+					itemGroupClass = info.className + '('+groupNames.join('、') +')';
+				}
+				joinClassName.push(itemGroupClass);
+				info.classType = m.classType;
+				info.courseSetId = m.courseSetId;
+				info.groups = m.groups;
+				return info;
+			});
+			
+			params.assignLogTeaHw.push(
+					{studentGroupsJson:JSON.stringify(studentGroupsJson),
+						teacherClassName: '学生：'+ joinClassName.join('、') + '，老师：' + n.teacherName(),
+						teacherId:n.teacherId(),
+						teacherName:n.teacherName()
+					});
+		});
+
+		return JSON.stringify(params);
+	};
+	
+	function toFormat(obj){
+		var className = obj.className;
+		var groups = obj.groups || [];
+		if(groups.length == 0){
+			return className;
+		}else{
+			var info = '';
+			_.each(groups,function(n){
+				info += n.groupName + ',';
+			});
+			return className + ':'  + info.substring(0,info.length-1);
+		}
+	};
+	var tvm = new TableVM();
+	ko.applyBindings(tvm);
+	tvm.bindAuto();
+});

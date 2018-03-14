@@ -1,0 +1,223 @@
+package cn.strong.leke.monitor.core.service.impl;
+
+import java.text.NumberFormat;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import javax.annotation.Resource;
+import org.springframework.stereotype.Service;
+import cn.strong.leke.common.utils.ListUtils;
+import cn.strong.leke.monitor.core.dao.mybatis.IUserActiveStatisDao;
+import cn.strong.leke.monitor.core.service.IActiveUserStaService;
+import cn.strong.leke.monitor.mongo.course.model.query.SchoolActiveUserStat;
+import cn.strong.leke.monitor.mongo.online.model.query.ActiveUserQuery;
+import cn.strong.leke.monitor.mongo.online.service.IDayActiveUserDao;
+import cn.strong.leke.monitor.util.StatUtils;
+
+@Service
+public class ActiveUserStaServiceImpl implements IActiveUserStaService{
+	@Resource
+	private IDayActiveUserDao dayActiveUserDao;
+	@Resource
+	private IUserActiveStatisDao userActiveStatisDao;
+	
+
+	@Override
+	public List<SchoolActiveUserStat> getDistrictSchoolActiveUser(ActiveUserQuery query) {
+		List<ActiveUserQuery> querySellerSchool = userActiveStatisDao.querySellerSchool(query);
+		// 学校ID
+		List<String> sellerSchools = ListUtils.map(querySellerSchool, e ->
+		{
+			return e.getSchoolName();
+		});
+		
+		List<SchoolActiveUserStat> schoolActiveUserStats = aggregateUserInfo(query, sellerSchools);
+		
+		for (SchoolActiveUserStat schoolActiveUserStat : schoolActiveUserStats) {
+			schoolActiveUserStat = getSchoolInfo(schoolActiveUserStat, querySellerSchool);
+		}
+		return schoolActiveUserStats;
+	}
+	
+	@Override
+	public List<SchoolActiveUserStat> getClassActiveUserInfo(ActiveUserQuery query) {
+		query = setParam(query);
+		List<SchoolActiveUserStat> classActiveUser = dayActiveUserDao.getClassActiveUser(query);
+		for (SchoolActiveUserStat schoolActiveUserStat : classActiveUser) {
+			schoolActiveUserStat = setUserInfo(schoolActiveUserStat);
+		}
+		return classActiveUser;
+	}
+	
+	//对应角色对应的班级和年纪
+	@Override
+	public List<ActiveUserQuery> getClassBySchool(ActiveUserQuery query) {
+		long longs[] = {100L,101L,102L};
+		List<ActiveUserQuery> result = new ArrayList<>();
+		
+		for (int i = 0; i < longs.length; i++) {
+			query.setRoleId(longs[i]);
+			query = setParam(query);
+			List<SchoolActiveUserStat> classActiveUser = dayActiveUserDao.getClassActiveUser(query);
+			List<String> classes = ListUtils.map(classActiveUser, e ->
+			{
+				return e.getClassName();
+			});
+			List<String> grades = ListUtils.map(classActiveUser, e ->
+			{
+				return e.getGradeName();
+			});
+			ActiveUserQuery activeUserQuery = new ActiveUserQuery();
+			activeUserQuery.setClasses(duplicateList(classes));
+			activeUserQuery.setGrades(duplicateList(grades));
+			activeUserQuery.setRoleId(longs[i]);
+			result.add(activeUserQuery);
+		}
+		
+		return result;
+	}
+
+
+	/**
+	 * 求a.b的百分比
+	 * 
+	 * @param a
+	 * @param b
+	 * @return
+	 */
+	public static String percent(int a, int b) {
+		String probability = "";
+		if (b != 0) {
+			// 创建一个数值格式化对象
+			NumberFormat numberFormat = NumberFormat.getInstance();
+			// 设置精确到小数点后2位
+			numberFormat.setMaximumFractionDigits(2);
+			probability = numberFormat.format((float) a / (float) b * 100) + "%";
+		}else {
+			probability = "0%";
+		}
+		return probability;
+	}
+	
+	public static int parseTime(String str){
+		String[] split = str.split("-");
+		String string = "";
+		for (int i = 0; i < split.length; i++) {
+			string += split[i];
+		}
+		return Integer.valueOf(string);
+	}
+	
+	public static ActiveUserQuery setParam(ActiveUserQuery query){
+		Integer ts = query.getTs();
+		switch (query.getCycle()) {
+		case "日":
+			query.setDay(ts);
+			break;
+		case "周":
+			query.setWeek(ts);
+			break;
+		case "月":
+			query.setMonth(ts);
+			break;
+		}
+		return query;
+	}
+
+	public static SchoolActiveUserStat setUserInfo(SchoolActiveUserStat schoolActiveUserStat){
+		int activeUserCount = schoolActiveUserStat.getActiveUsers().size();
+		schoolActiveUserStat.setActiveUsersCount(activeUserCount);
+		schoolActiveUserStat.setActivePro(percent(activeUserCount,schoolActiveUserStat.getValidUsers()));
+		return schoolActiveUserStat;
+	}
+
+
+
+
+
+	
+	public  List<SchoolActiveUserStat> aggregateUserInfo(ActiveUserQuery query,List<String> sellerSchools){
+		List<SchoolActiveUserStat> result = new ArrayList<>();
+		if (sellerSchools.size() != 0) {
+			switch (query.getCycle()) {
+			case "日":
+				Set<Integer> staDay = dayActiveUserDao.getStaDay(parseTime(query.getFromDate()), parseTime(query.getEndDate()));
+				for (Integer date : staDay) { 
+					query.setDay(date);
+					List<SchoolActiveUserStat> activeUser = dayActiveUserDao.getActiveUser(query,sellerSchools);
+					for (SchoolActiveUserStat schoolActiveUserStat : activeUser) {
+						int countUsersByRole = userActiveStatisDao.countUsersByRole(schoolActiveUserStat.getSchoolName(), query.getRoleId(),query.getEndDate());
+						schoolActiveUserStat = setUserInfo(schoolActiveUserStat);
+						schoolActiveUserStat.setTs(date);
+						schoolActiveUserStat.setRegistered(countUsersByRole);
+						result.add(schoolActiveUserStat);
+					}
+				}
+				break;
+			case "周":
+				Set<Integer> staWeek = dayActiveUserDao.getStaWeek(parseTime(query.getStartWeek()), parseTime(query.getEndWeek()));
+				String endDayOfWeek = StatUtils.getEndDayOfWeek(query.getEndWeek());
+				for (Integer week : staWeek) {
+					query.setWeek(week);
+					List<SchoolActiveUserStat> activeUser = dayActiveUserDao.getActiveUser(query, sellerSchools);
+					for (SchoolActiveUserStat schoolActiveUserStat : activeUser) {
+						int countUsersByRole = userActiveStatisDao.countUsersByRole(schoolActiveUserStat.getSchoolName(), query.getRoleId(),endDayOfWeek);
+						schoolActiveUserStat = setUserInfo(schoolActiveUserStat);
+						schoolActiveUserStat.setTs(week);
+						schoolActiveUserStat.setRegistered(countUsersByRole);
+						result.add(schoolActiveUserStat);
+					}
+				}
+				break;
+			case "月":
+				Set<Integer> staMonth = dayActiveUserDao.getStaMonth(parseTime(query.getStartMonth()), parseTime(query.getEndMonth()));
+				String lastDayOfMonth = StatUtils.getLastDayOfMonth(query.getEndMonth());
+				for (Integer month : staMonth) {
+					query.setMonth(month);
+					List<SchoolActiveUserStat> activeUser = dayActiveUserDao.getActiveUser(query, sellerSchools);
+					for (SchoolActiveUserStat schoolActiveUserStat : activeUser) {
+						int countUsersByRole = userActiveStatisDao.countUsersByRole(schoolActiveUserStat.getSchoolName(), query.getRoleId(),lastDayOfMonth);
+						schoolActiveUserStat = setUserInfo(schoolActiveUserStat);
+						schoolActiveUserStat.setTs(month);
+						schoolActiveUserStat.setRegistered(countUsersByRole);
+						result.add(schoolActiveUserStat);
+					}
+				}
+				break;
+			}
+		}
+		return result;
+	}
+
+
+	
+	public SchoolActiveUserStat getSchoolInfo(SchoolActiveUserStat schoolActiveUserStat,
+			List<ActiveUserQuery> querySellerSchool){
+		for (ActiveUserQuery activeUserQuery : querySellerSchool) {
+			if (activeUserQuery.getSchoolId().equals( schoolActiveUserStat.getSchoolId())) {
+				schoolActiveUserStat.setSellerName(activeUserQuery.getSellerName());
+				schoolActiveUserStat.setMarketName(activeUserQuery.getMarketName());
+				schoolActiveUserStat.setLoginName(activeUserQuery.getLoginName());
+				String departName = userActiveStatisDao.getSchoolMarket(activeUserQuery.getMarketId());
+				schoolActiveUserStat.setDepartName(departName);
+			}
+		}
+		return schoolActiveUserStat;
+	}
+	
+	/**
+	 * 去list集合去重
+	 * @param list
+	 * @return
+	 */
+	public List<String> duplicateList(List<String> list){
+		List<String> tempList = new ArrayList<>();
+		for (String string : list) {
+			if (!tempList.contains(string)) {
+				tempList.add(string);
+			}
+		}
+		return tempList;
+	} 
+}
+ 

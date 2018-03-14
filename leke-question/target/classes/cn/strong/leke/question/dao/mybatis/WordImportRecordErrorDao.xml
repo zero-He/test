@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.question.dao.mybatis.WordImportRecordErrorDao">
+
+	<insert id="addWordImportRecordError" useGeneratedKeys="true" keyProperty="errorId"
+		parameterType="cn.strong.leke.question.model.WordImportRecord">
+		INSERT INTO que_word_import_record_error(
+			recordId, ord, error, summary, isDeleted
+		) VALUES (
+			#{recordId}, #{ord}, #{error}, #{summary}, 0
+		)
+	</insert>
+	
+	<select id="findWordImportRecordErrors" resultType="cn.strong.leke.question.model.WordImportRecordError"
+		 parameterType="string">
+		SELECT *
+		FROM que_word_import_record_error
+		<where>
+			recordId = #{recordId}
+			AND isDeleted = 0
+		</where>
+		ORDER BY ord ASC
+	</select>
+	
+	<update id="deleteWordImportRecordError" parameterType="long">
+		UPDATE que_word_import_record_error
+		SET isDeleted = 1
+		WHERE errorId = #{errorId}
+	</update>
+	
+	<select id="countErrorsByRecordId" resultType="_int" parameterType="string">
+		SELECT count(*)
+		FROM que_word_import_record_error a
+		WHERE a.recordId = #{recordId}
+		AND a.isDeleted = 0
+	</select>
+	
+</mapper>

@@ -1,0 +1,293 @@
+package cn.strong.leke.diag.controller;
+
+import static java.util.stream.Collectors.toList;
+
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.annotation.Resource;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
+
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+
+import cn.strong.leke.common.serialize.support.json.JsonUtils;
+import cn.strong.leke.common.utils.CollectionUtils;
+import cn.strong.leke.context.user.UserContext;
+import cn.strong.leke.context.user.cst.RoleCst;
+import cn.strong.leke.diag.dao.homework.model.WorkDtlQuery;
+import cn.strong.leke.diag.dao.homework.mybatis.HomeworkDtlDao;
+import cn.strong.leke.diag.manage.LessonBehaviorService;
+import cn.strong.leke.diag.manage.ReportCycleService;
+import cn.strong.leke.diag.model.report.BehaviorRptQuery;
+import cn.strong.leke.diag.model.report.BehaviorRptView;
+import cn.strong.leke.diag.model.report.ReportCycle;
+import cn.strong.leke.diag.model.report.ScoreRptQuery;
+import cn.strong.leke.diag.model.report.StuScoreRptView;
+import cn.strong.leke.diag.report.StuComboScoreReportHandler;
+import cn.strong.leke.diag.report.StuSubjScoreReportHandler;
+import cn.strong.leke.diag.report.StudentBehaviorReportHandler;
+import cn.strong.leke.framework.exceptions.Validation;
+import cn.strong.leke.framework.page.jdbc.Page;
+import cn.strong.leke.framework.web.JsonResult;
+import cn.strong.leke.lesson.model.ClazzQuery;
+import cn.strong.leke.lessonlog.model.LessonBehavior;
+import cn.strong.leke.model.base.Clazz;
+import cn.strong.leke.model.user.Parent;
+import cn.strong.leke.model.user.User;
+import cn.strong.leke.remote.model.tukor.SubjectRemote;
+import cn.strong.leke.remote.service.lesson.IKlassRemoteService;
+import cn.strong.leke.remote.service.tutor.user.IUserRemoteService;
+
+@Controller
+@RequestMapping("/auth/m/report/stuanaly/")
+public class MobileReportPersonController {
+
+	@Resource
+	private HomeworkDtlDao homeworkDtlDao;
+	@Resource
+	private ReportCycleService reportCycleService;
+	@Resource
+	private LessonBehaviorService lessonBehaviorService;
+	@Resource
+	private IKlassRemoteService klassRemoteService;
+	@Resource
+	private IUserRemoteService userRemoteService;
+
+	@Resource
+	private StuComboScoreReportHandler stuComboScoreReportHandler;
+	@Resource
+	private StuSubjScoreReportHandler stuSubjScoreReportHandler;
+	@Resource
+	private StudentBehaviorReportHandler studentBehaviorReportHandler;
+
+	/**
+	 * 获取学生行政班信息
+	 * @param userId
+	 * @return
+	 */
+	private Long getOrganClassIdByUserId(Long userId) {
+		ClazzQuery query = new ClazzQuery();
+		query.setUserId(userId);
+		query.setRoleId(RoleCst.STUDENT);
+		query.setType(Clazz.CLAZZ_ORGAN);
+		List<Clazz> clazzList = this.klassRemoteService.findClazzByQuery(query);
+		Clazz clazz = CollectionUtils.getFirst(clazzList);
+		return clazz != null ? clazz.getClassId() : null;
+	}
+
+	private List<Map<String, Object>> buildChildrenModel(User user) {
+		if (RoleCst.PARENT.equals(user.getCurrentRole().getId())) {
+			Parent parent = (Parent) user;
+			Validation.notEmpty(parent.getStudents(), "您还没有绑定子女呢！");
+			return parent.getStudents().stream().map(stu -> {
+				Map<String, Object> item = Maps.newHashMap();
+				item.put("value", stu.getId());
+				item.put("label", stu.getUserName());
+				return item;
+			}).collect(toList());
+		} else {
+			Map<String, Object> item = Maps.newHashMap();
+			item.put("value", user.getId());
+			item.put("label", user.getUserName());
+			return Arrays.asList(item);
+		}
+	}
+
+	private List<Map<String, Object>> buildSubjectModel(int mode) {
+		List<Map<String, Object>> subjs = Lists.newArrayList();
+		if (mode == 0) {
+			Map<String, Object> item = Maps.newHashMap();
+			item.put("label", "综合");
+			item.put("value", 0);
+			subjs.add(item);
+		}
+		if (mode == 0 || mode == 2) {
+			List<SubjectRemote> subjectRemotes = UserContext.user.findSubjectsOfCurrentSchool();
+			subjectRemotes.forEach(v -> {
+				Map<String, Object> item = Maps.newHashMap();
+				item.put("label", v.getSubjectName());
+				item.put("value", v.getSubjectId());
+				subjs.add(item);
+			});
+		}
+		return subjs;
+	}
+
+	/**
+	 * 学生成绩报告页面
+	 * @param model
+	 * @return
+	 */
+	@RequestMapping(value = "/score/index", method = RequestMethod.GET)
+	public String score(@RequestParam(defaultValue = "0") int mode,
+			@RequestParam(defaultValue = "/auth/m/report/stuanaly-score") String view, Model model) {
+		User user = UserContext.user.get();
+		List<Map<String, Object>> childs = this.buildChildrenModel(user);
+		List<Map<String, Object>> subjs = this.buildSubjectModel(mode);
+		List<Map<String, Object>> cycles = this.reportCycleService.buildMobileReportTypes();
+		Map<String, Object> ReportCst = new HashMap<>();
+		ReportCst.put("childs", childs);
+		ReportCst.put("subjs", subjs);
+		ReportCst.put("cycles", cycles);
+		ReportCst.put("mode", mode);
+		ReportCst.put("myself", true);
+		ReportCst.put("userId", user.getId());
+		ReportCst.put("userName", user.getUserName());
+		model.addAttribute("ReportCst", JsonUtils.toJSON(ReportCst));
+		return view;
+	}
+
+	/**
+	 * 综合成绩报告
+	 * @param model
+	 * @return
+	 */
+	@RequestMapping("/score/combined")
+	public String combined(Model model) {
+		return this.score(1, "/auth/m/report/stuanaly-combined", model);
+	}
+
+	/**
+	 * 学科成绩报告
+	 * @param model
+	 * @return
+	 */
+	@RequestMapping("/score/subject")
+	public String subject(Model model) {
+		return this.score(2, "/auth/m/report/stuanaly-subject", model);
+	}
+
+	/**
+	 * 学生成绩报告查询
+	 * @param query
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/score/data", method = RequestMethod.POST)
+	public JsonResult score2(ScoreRptQuery query) {
+		if (query.getStudentId() == null) {
+			query.setStudentId(UserContext.user.getUserId());
+		}
+		if (query.getClassId() == null) {
+			Long classId = this.getOrganClassIdByUserId(query.getStudentId());
+			query.setClassId(classId);
+		}
+		StuScoreRptView view;
+		if (query.getSubjectId() != null && query.getSubjectId() > 0) {
+			view = this.stuSubjScoreReportHandler.execute(query);
+		} else {
+			query.setSubjectId(0L);
+			view = this.stuComboScoreReportHandler.execute(query);
+		}
+		return new JsonResult().addDatas("view", view);
+	}
+
+	/**
+	 * 行为分析报告页面
+	 * @param model
+	 * @return
+	 */
+	@RequestMapping("/behavior/index")
+	public String behavior(Model model) {
+		User user = UserContext.user.get();
+		List<Map<String, Object>> childs = this.buildChildrenModel(user);
+		List<Map<String, Object>> cycles = this.reportCycleService.buildMobileReportTypes();
+		Map<String, Object> ReportCst = new HashMap<>();
+		ReportCst.put("childs", childs);
+		ReportCst.put("cycles", cycles);
+		ReportCst.put("userId", user.getId());
+		ReportCst.put("userName", user.getUserName());
+		model.addAttribute("ReportCst", JsonUtils.toJSON(ReportCst));
+		return "/auth/m/report/stuanaly-behavior";
+	}
+
+	/**
+	 * 行为分析报告数据
+	 * @param query
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping("/behavior/data")
+	public JsonResult behavior(BehaviorRptQuery query) {
+		if (query.getStudentId() == null) {
+			query.setStudentId(UserContext.user.getUserId());
+		}
+		BehaviorRptView view = this.studentBehaviorReportHandler.execute(query);
+		return new JsonResult().addDatas("view", view);
+	}
+
+	/**
+	 * 行为分析报告作业完成详情页面
+	 * @param model
+	 * @return
+	 */
+	@RequestMapping("/behavior/homework")
+	public String homework(Long userId, Integer cycleId, Model model) {
+		ReportCycle reportCycle = this.reportCycleService.getReportCycleById(cycleId);
+		Map<String, Object> ReportCst = new HashMap<>();
+		ReportCst.put("userId", userId);
+		ReportCst.put("cycleId", reportCycle.getId());
+		ReportCst.put("cycleName", reportCycle.getLabel());
+		model.addAttribute("ReportCst", JsonUtils.toJSON(ReportCst));
+		return "/auth/m/report/stuanaly-behavior-homework";
+	}
+
+	/**
+	 * 行为分析报告作业完成详情数据
+	 * @param cycleId
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping("/behavior/homework2")
+	public JsonResult homework(Long userId, Integer cycleId, Integer submitStatus, Page page) {
+		ReportCycle reportCycle = this.reportCycleService.getReportCycleById(cycleId);
+		WorkDtlQuery query = new WorkDtlQuery();
+		query.setStudentId(userId);
+		query.setStartTime(reportCycle.getStart());
+		query.setEndTime(reportCycle.getEnd());
+		query.setSubmitStatus(submitStatus);
+		List<Map<String, Object>> list = this.homeworkDtlDao.findWorkDtlsByQuery(query, page);
+		page.setDataList(list);
+		return new JsonResult().addDatas("page", page);
+	}
+
+	/**
+	 * 行为分析报告作业课堂行为列表页面
+	 * @param model
+	 * @return
+	 */
+	@RequestMapping("/behavior/inclass")
+	public String inclass(Long userId, Integer cycleId, Model model) {
+		ReportCycle reportCycle = this.reportCycleService.getReportCycleById(cycleId);
+		Map<String, Object> ReportCst = new HashMap<>();
+		ReportCst.put("userId", userId);
+		ReportCst.put("cycleId", reportCycle.getId());
+		ReportCst.put("cycleName", reportCycle.getLabel());
+		model.addAttribute("ReportCst", JsonUtils.toJSON(ReportCst));
+		return "/auth/m/report/stuanaly-behavior-inclass";
+	}
+
+	/**
+	 * 行为分析报告作业课堂行为列表数据
+	 * @param cycleId
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping("/behavior/inclass2")
+	public JsonResult inclass(Long userId, Integer cycleId, Page page) {
+		ReportCycle reportCycle = this.reportCycleService.getReportCycleById(cycleId);
+		List<LessonBehavior> list = this.lessonBehaviorService.findStudentBehaviorByStudentId(userId,
+				reportCycle.getStart(), reportCycle.getEnd(), page);
+		page.setDataList(list);
+		return new JsonResult().addDatas("page", page);
+	}
+}

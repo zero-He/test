@@ -1,0 +1,66 @@
+package cn.strong.leke.monitor.core.dao.mybatis;
+
+import java.util.List;
+import java.util.Map;
+
+import org.apache.ibatis.annotations.Param;
+
+import cn.strong.leke.monitor.mongo.online.model.DayActiveUser;
+import cn.strong.leke.monitor.mongo.online.model.DeviceOnlineUser;
+import cn.strong.leke.monitor.mongo.online.model.query.ActiveUserQuery;
+
+/**
+ * 用户统计数据层接口
+ * @author hedan
+ *
+ */
+public interface IUserActiveStatisDao {
+	
+	//根据班级id查询班级老师数
+	Integer getTeacherNumByClassId(Long classId);
+	
+	//根据班级id查询班级的家长数
+	Integer getParentNumByClassid(Long classId);
+	
+	//根据用户id查出老师对应的班级学校信息
+	List<Map<String, Object>> getTeacherClassInfo(Long userId);
+	
+	//根据用户id查出学生对应的班级学校信息
+	List<Map<String, Object>> getStudentClassInfo(Long userId);
+	
+	//根据用户id查出家长对应的班级学校信息
+	List<Map<String, Object>> getParentClassInfo(Long userId);
+	
+	//获取学校累计有效学生
+	int getSchoolValidStu(Long schoolId);
+	
+	//获取学校累计有效老师
+	int getSchoolValidTea(Long schoolId);
+	
+	//获取学校累计有效家长
+	int getSchoolValidPar(Long schoolId);
+	
+	//根据客户经理id查询其负责的学校
+	List<String> getSellerSchool(ActiveUserQuery query);
+	
+	/**
+	 * 获取学校注册某角色的用户数量
+	 * 
+	 * @param schoolName
+	 * @param roleId
+	 * @return
+	 */
+	int countUsersByRole(@Param("schoolName") String schoolName, @Param("roleId") Long roleId, @Param("createdOn") String createdOn);
+	
+	List<ActiveUserQuery> getManager(ActiveUserQuery query);
+	
+	String getSchoolMarket(Long schoolId);
+	
+	List<ActiveUserQuery> querySellerSchool(ActiveUserQuery query);
+	
+	//通过用户角色和Id找到所在学校
+	DayActiveUser getSchoolNameByUserId(DeviceOnlineUser deviceOnlineUser);
+	
+	//通过家长Id找到子女所在学校
+	List<DayActiveUser> getSchoolNameByPrId(Long psId);
+}

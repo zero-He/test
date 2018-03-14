@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:context="http://www.springframework.org/schema/context"
+             xmlns:aop="http://www.springframework.org/schema/aop"
+             xmlns:tx="http://www.springframework.org/schema/tx"
+             xsi:schemaLocation="http://www.springframework.org/schema/beans
+                     http://www.springframework.org/schema/beans/spring-beans-3.2.xsd
+                     http://www.springframework.org/schema/context
+                     http://www.springframework.org/schema/context/spring-context-3.2.xsd
+                     http://www.springframework.org/schema/aop
+                     http://www.springframework.org/schema/aop/spring-aop-3.2.xsd
+                     http://www.springframework.org/schema/tx
+                     http://www.springframework.org/schema/tx/spring-tx-3.2.xsd" >
+    
+    <!-- login -->
+	<bean class="cn.strong.leke.monitor.listener.LoginListener">
+		<property name="queueNames">
+			<list>
+				<value>${mq.q.monitor.login}</value>
+			</list>
+		</property>
+	</bean>
+	
+	<!-- access -->
+	<bean class="cn.strong.leke.monitor.listener.AccessListener">
+		<property name="queueNames">
+			<list>
+				<value>${mq.q.monitor.access}</value>
+			</list>
+		</property>
+	</bean>
+	
+	<!-- sql -->
+	<bean class="cn.strong.leke.monitor.listener.SqlListener">
+		<property name="queueNames">
+			<list>
+				<value>${mq.q.monitor.sql}</value>
+			</list>
+		</property>
+	</bean>
+	
+	<!-- exception -->
+	<bean class="cn.strong.leke.monitor.listener.ExceptionListener">
+		<property name="queueNames">
+			<list>
+				<value>${mq.q.monitor.exception}</value>
+			</list>
+		</property>
+	</bean>
+	
+	<bean class="cn.strong.leke.monitor.listener.CommonMleListener">
+		<property name="queueNames">
+			<list>
+				<value>${mq.q.monitor.common.mle}</value>
+			</list>
+		</property>
+	</bean>
+	
+	<bean class="cn.strong.leke.monitor.listener.JobExListener">
+		<property name="queueNames">
+			<list>
+				<value>${mq.q.monitor.jobex}</value>
+			</list>
+		</property>
+	</bean>
+	
+	<bean class="cn.strong.leke.monitor.listener.CsetStusChangeListener">
+		<property name="queueNames">
+			<list>
+				<value>${mq.q.monitor.cset.stus}</value>
+			</list>
+		</property>
+	</bean>
+	
+	<bean class="cn.strong.leke.monitor.listener.CourseTableChangeListener">
+		<property name="queueNames">
+			<list>
+				<value>${mq.q.monitor.course.table}</value>
+			</list>
+		</property>
+	</bean>
+	
+	<bean class="cn.strong.leke.monitor.listener.CourseAttendListener">
+		<property name="queueNames">
+			<list>
+				<value>${mq.q.monitor.course.attend}</value>
+			</list>
+		</property>
+	</bean>
+	
+	<bean class="cn.strong.leke.monitor.listener.CourseTeacherStatusListener">
+		<property name="queueNames">
+			<list>
+				<value>${mq.q.monitor.course.teacher.status}</value>
+			</list>
+		</property>
+	</bean>
+</beans>

@@ -1,0 +1,7 @@
+package cn.strong.leke.dwh.service;
+
+public interface DemoService {
+
+	public Integer test(Long classId, Long subjectId);
+
+}

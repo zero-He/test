@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8" ?>   
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.question.dao.mybatis.workbook.IWorkbookUserResGroupDao">
+	
+	<insert id="addBatchWorkbookUserResGroup" parameterType="cn.strong.leke.question.model.workbook.WorkbookUserResGroup">
+		INSERT INTO que_workbook_user_res_group (
+			workbookId, userResGroupId,
+			isDeleted,createdBy,createdOn,modifiedBy,modifiedOn
+		) VALUES
+		<foreach collection="workbookIds" separator=","  item="workbookId">
+		(
+			#{workbookId}, #{userResGroupId},
+			0, #{modifiedBy}, NOW(), #{modifiedBy}, NOW()
+		)
+		</foreach>
+	</insert>
+	
+	<update id="moveBatchWorkbookUserResGroup"  parameterType="map">
+		UPDATE 
+			que_workbook_user_res_group
+		SET 
+			userResGroupId = #{newUserResGroupId},
+			modifiedBy = #{modifiedBy},
+			modifiedOn = NOW()
+		WHERE
+			isDeleted = 0
+		AND
+			userResGroupId = #{oldUserResGroupId}
+		AND
+			workbookId 
+		IN
+		<foreach collection="workbookIds" open="(" separator="," close=")" item="workbookId">
+			#{workbookId}
+		</foreach>
+	</update>
+	
+	<update id="deleteBatchWorkbookUserResGroup" parameterType="map" >
+		UPDATE 
+			que_workbook_user_res_group
+		SET 
+			isDeleted = 1,
+			modifiedBy = #{modifiedBy},
+			modifiedOn = NOW()
+		WHERE
+			userResGroupId = #{userResGroupId}
+		AND
+			isDeleted = 0
+		AND 
+			workbookId
+		IN 
+		<foreach collection="workbookIds" open="(" separator="," close=")" item="workbookId">
+			#{workbookId}
+		</foreach>
+	</update>
+	
+	<update id="deleteWURGroupByUserResGroupId" parameterType="cn.strong.leke.question.model.workbook.WorkbookUserResGroup">
+		UPDATE 
+			que_workbook_user_res_group
+		SET 
+			isDeleted = 1,
+			modifiedBy = #{modifiedBy},
+			modifiedOn = NOW()
+		WHERE
+			userResGroupId = #{userResGroupId}
+		AND
+			isDeleted = 0
+	</update>
+	
+	<select id="queryCount" parameterType="map" resultType="int">
+		SELECT	count(*)
+		FROM	que_workbook_user_res_group
+		WHERE	userResGroupId = #{userResGroupId}
+		AND	workbookId = #{workbookId}
+		AND	isDeleted = 0 
+	</select>
+	
+	<select id="queryWURGroupByUserResGroupId" parameterType="long" 
+		resultType="cn.strong.leke.question.model.workbook.WorkbookUserResGroup">
+		SELECT *
+		FROM que_workbook_user_res_group
+		WHERE userResGroupId = #{userResGroupId}
+		AND isDeleted = 0 
+	</select>
+	
+	<select id="findByWorkbookAndUser" parameterType="map"
+		resultType="cn.strong.leke.question.model.workbook.WorkbookUserResGroup">
+		SELECT *
+		FROM que_workbook_user_res_group a
+		WHERE a.workbookId = #{workbookId}
+		AND	a.createdBy = #{userId}
+		AND	a.isDeleted = 0
+	</select>
+	
+</mapper>

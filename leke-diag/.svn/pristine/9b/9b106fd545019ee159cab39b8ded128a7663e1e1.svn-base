@@ -1,0 +1,235 @@
+package cn.strong.leke.diag.report;
+
+import static java.util.stream.Collectors.toList;
+
+import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
+import java.util.stream.Stream;
+
+import javax.annotation.Resource;
+
+import org.springframework.stereotype.Component;
+
+import com.google.common.collect.Lists;
+
+import cn.strong.leke.context.base.SubjectContext;
+import cn.strong.leke.diag.manage.ReportCycleService;
+import cn.strong.leke.diag.manage.WorkDetailService;
+import cn.strong.leke.diag.model.StuQueStat;
+import cn.strong.leke.diag.model.StuSubjQuery;
+import cn.strong.leke.diag.model.StuSubjScore;
+import cn.strong.leke.diag.model.StuSubjWork;
+import cn.strong.leke.diag.model.report.ReportCycle;
+import cn.strong.leke.diag.model.report.ScoreRank;
+import cn.strong.leke.diag.model.report.ScoreRptQuery;
+import cn.strong.leke.diag.model.report.StuScoreRptView;
+import cn.strong.leke.diag.model.report.StuScoreRptView.SubjScore;
+import cn.strong.leke.diag.model.report.TrendModel;
+import cn.strong.leke.diag.report.unit.GlobalScoreRankLogicalUnit;
+import cn.strong.leke.diag.report.unit.LogicalContext;
+import cn.strong.leke.diag.report.unit.StuScoreCompareLogicalUnit;
+import cn.strong.leke.diag.report.unit.StuScoreOverallLogicalUnit;
+import cn.strong.leke.diag.report.unit.StuScoreSummaryLogicalUnit;
+import cn.strong.leke.diag.service.HomeworkDtlService;
+import cn.strong.leke.remote.model.tukor.SubjectRemote;
+import cn.strong.leke.remote.service.lesson.IKlassRemoteService;
+
+/**
+ * 学生综合成绩分析。
+ * @author  andy
+ */
+@Component
+public class StuComboScoreReportHandler implements ReportHandler<ScoreRptQuery, StuScoreRptView> {
+
+	@Resource
+	private HomeworkDtlService homeworkDtlService;
+	@Resource
+	private WorkDetailService workDetailService;
+	@Resource
+	private ReportCycleService reportCycleService;
+	@Resource
+	private IKlassRemoteService klassRemoteService;
+
+	@Resource
+	private ScoreTrendReportHandler scoreTrendReportHandler;
+
+	private StuScoreSummaryLogicalUnit stuScoreSummaryLogicalUnit = new StuScoreSummaryLogicalUnit();
+	private StuScoreOverallLogicalUnit stuScoreOverallLogicalUnit = new StuScoreOverallLogicalUnit();
+	private StuScoreCompareLogicalUnit stuScoreCompareLogicalUnit = new StuScoreCompareLogicalUnit();
+	private GlobalScoreRankLogicalUnit globalScoreRankLogicalUnit = new GlobalScoreRankLogicalUnit();
+
+	@Override
+	public StuScoreRptView execute(ScoreRptQuery query) {
+		if (query.getClassId() == null) {
+			return this.executeAsUnit(query);
+		}
+		// 周期及班级人员查询
+		Long studentId = query.getStudentId();
+		ReportCycle reportCycle = this.reportCycleService.getReportCycleById(query.getCycleId());
+		if (reportCycle.getEnd().getTime() > System.currentTimeMillis()) {
+			reportCycle.setEnd(new Date());
+		}
+		List<Long> userIds = this.klassRemoteService.findStudentIdsByClassId(query.getClassId());
+
+		// 基本条件
+		StuSubjQuery stuSubjQuery = new StuSubjQuery();
+		stuSubjQuery.setStart(reportCycle.getStart());
+		stuSubjQuery.setEnd(reportCycle.getEnd());
+
+		// 学生提交：{student: self, subject: assign}
+		stuSubjQuery.setSubjectId(query.getSubjectId());
+		stuSubjQuery.setUserIds(Lists.newArrayList(query.getStudentId()));
+		List<StuSubjWork> works = this.homeworkDtlService.findStuSubjWorks(stuSubjQuery);
+
+		// 班级成绩：{student: all, subject: all}
+		stuSubjQuery.setUserIds(userIds);
+		stuSubjQuery.setSubjectId(0L);
+		List<StuSubjScore> scores = this.homeworkDtlService.findStuSubjScores(stuSubjQuery);
+		List<StuSubjScore> prevScores = this.findStuPrevCycleSubjScores(query, reportCycle);
+		List<StuScoreRptView.SubjMin> subjs = this.resolveSubjs(scores);
+
+		// 学生试题正确数：{student: self, subject: self}
+		Stream<StuSubjScore> stream = scores.stream().filter(v -> v.getUserId().equals(studentId));
+		if (query.getSubjectId() > 0) {
+			stream = stream.filter(v -> v.getSubjectId().equals(query.getSubjectId()));
+		}
+		List<Long> homeworkDtlIds = stream.map(StuSubjScore::getHomeworkDtlId).collect(toList());
+		if (homeworkDtlIds.isEmpty()) {
+			return new StuScoreRptView(false, "暂无已批改的作业数据供分析，报告无法生成！");
+		}
+		StuQueStat stuQueStat = this.workDetailService.getStuQueStatByHomeworkDtlIds(homeworkDtlIds);
+
+		LogicalContext context = new LogicalContext();
+		context.put("query", query);
+		context.put("subjs", subjs);
+		context.put("works", works);
+		context.put("scores", scores);
+		context.put("userIds", userIds);
+		context.put("prevScores", prevScores);
+		context.put("stuQueStat", stuQueStat);
+		context.put("studentId", query.getStudentId());
+		context.put("subjectId", query.getSubjectId());
+
+		// 成绩排行榜
+		List<ScoreRank> scoreRanks = this.globalScoreRankLogicalUnit.execute(context);
+		ScoreRank scoreRank = scoreRanks.stream().filter(v -> v.getUserId().equals(studentId)).findFirst().get();
+		context.put("scoreRank", scoreRank);
+		context.put("scoreRanks", scoreRanks);
+		// 概要信息
+		StuScoreRptView.Summary summary = this.stuScoreSummaryLogicalUnit.execute(context);
+		// 学科对比信息
+		List<SubjScore> subjScores = this.stuScoreCompareLogicalUnit.execute(context);
+		// 综合成绩信息
+		context.put("subjScores", subjScores);
+		StuScoreRptView.Overall overall = this.stuScoreOverallLogicalUnit.execute(context);
+		// 成绩走势信息
+		List<TrendModel> trends = this.scoreTrendReportHandler.execute(query);
+
+		StuScoreRptView view = new StuScoreRptView();
+		view.setIsUnit(false);
+		view.setRptType(reportCycle.getType());
+		view.setSubjs(subjs);
+		view.setSummary(summary);
+		view.setOverall(overall);
+		view.setScoreRanks(scoreRanks);
+		view.setSubjScores(subjScores);
+		view.setTrends(trends);
+		return view;
+	}
+
+	public StuScoreRptView executeAsUnit(ScoreRptQuery query) {
+		// 周期及班级人员查询
+		Long studentId = query.getStudentId();
+		ReportCycle reportCycle = this.reportCycleService.getReportCycleById(query.getCycleId());
+		if (reportCycle.getEnd().getTime() > System.currentTimeMillis()) {
+			reportCycle.setEnd(new Date());
+		}
+		List<Long> userIds = Lists.newArrayList(query.getStudentId());
+
+		// 基本条件
+		StuSubjQuery stuSubjQuery = new StuSubjQuery();
+		stuSubjQuery.setStart(reportCycle.getStart());
+		stuSubjQuery.setEnd(reportCycle.getEnd());
+
+		// 学生提交：{subject: assign}
+		stuSubjQuery.setSubjectId(query.getSubjectId());
+		stuSubjQuery.setUserIds(userIds);
+		List<StuSubjWork> works = this.homeworkDtlService.findStuSubjWorks(stuSubjQuery);
+
+		// 学生全科成绩：{subject: all}
+		stuSubjQuery.setSubjectId(0L);
+		List<StuSubjScore> scores = this.homeworkDtlService.findStuSubjScores(stuSubjQuery);
+		List<StuSubjScore> prevScores = this.findStuPrevCycleSubjScores(query, reportCycle);
+		List<StuScoreRptView.SubjMin> subjs = this.resolveSubjs(scores);
+
+		// 学生试题正确数：{student: self, subject: self}
+		Stream<StuSubjScore> stream = scores.stream().filter(v -> v.getUserId().equals(studentId));
+		if (query.getSubjectId() > 0) {
+			stream = stream.filter(v -> v.getSubjectId().equals(query.getSubjectId()));
+		}
+		List<Long> homeworkDtlIds = stream.map(StuSubjScore::getHomeworkDtlId).collect(toList());
+		if (homeworkDtlIds.isEmpty()) {
+			return new StuScoreRptView(false, "暂无已批改的作业数据供分析，报告无法生成！");
+		}
+		StuQueStat stuQueStat = this.workDetailService.getStuQueStatByHomeworkDtlIds(homeworkDtlIds);
+
+		LogicalContext context = new LogicalContext();
+		context.put("query", query);
+		context.put("subjs", subjs);
+		context.put("works", works);
+		context.put("scores", scores);
+		context.put("userIds", userIds);
+		context.put("prevScores", prevScores);
+		context.put("stuQueStat", stuQueStat);
+		context.put("studentId", query.getStudentId());
+		context.put("subjectId", query.getSubjectId());
+
+		// 成绩排行榜
+		List<ScoreRank> scoreRanks = this.globalScoreRankLogicalUnit.execute(context);
+		ScoreRank scoreRank = scoreRanks.stream().filter(v -> v.getUserId().equals(studentId)).findFirst().get();
+		context.put("scoreRank", scoreRank);
+		context.put("scoreRanks", scoreRanks);
+		// 概要信息
+		StuScoreRptView.Summary summary = this.stuScoreSummaryLogicalUnit.execute(context);
+		// 学科对比信息
+		List<SubjScore> subjScores = this.stuScoreCompareLogicalUnit.execute(context);
+		// 综合成绩信息
+		context.put("subjScores", subjScores);
+		StuScoreRptView.Overall overall = this.stuScoreOverallLogicalUnit.execute(context);
+		// 成绩走势信息
+		List<TrendModel> trends = this.scoreTrendReportHandler.execute(query);
+
+		StuScoreRptView view = new StuScoreRptView();
+		view.setIsUnit(true);
+		view.setRptType(reportCycle.getType());
+		view.setSubjs(subjs);
+		view.setSummary(summary);
+		view.setOverall(overall);
+		view.setSubjScores(subjScores);
+		view.setTrends(trends);
+		return view;
+	}
+
+	private List<StuSubjScore> findStuPrevCycleSubjScores(ScoreRptQuery query, ReportCycle reportCycle) {
+		// 基本条件
+		StuSubjQuery stuSubjQuery = new StuSubjQuery();
+		stuSubjQuery.setUserIds(Arrays.asList(query.getStudentId()));
+		// 前一周期
+		ReportCycle prevCycle = this.reportCycleService.getPrevReportCycle(reportCycle.getId(), reportCycle.getType());
+		if (prevCycle == null) {
+			return Lists.newArrayList();
+		}
+		stuSubjQuery.setStart(prevCycle.getStart());
+		stuSubjQuery.setEnd(prevCycle.getEnd());
+		List<StuSubjScore> prevScores = this.homeworkDtlService.findStuSubjScores(stuSubjQuery);
+		return prevScores;
+	}
+
+	private List<StuScoreRptView.SubjMin> resolveSubjs(List<StuSubjScore> scores) {
+		List<Long> subjectIds = scores.stream().map(StuSubjScore::getSubjectId).distinct().sorted().collect(toList());
+		List<SubjectRemote> subjectRemotes = SubjectContext.findSubjects(subjectIds);
+		return subjectRemotes.stream().map(v -> new StuScoreRptView.SubjMin(v.getSubjectId(), v.getSubjectName()))
+				.collect(toList());
+	}
+}

@@ -1,0 +1,620 @@
+package cn.strong.leke.homework.manage;
+
+import static java.util.stream.Collectors.toMap;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+import javax.annotation.Resource;
+
+import org.springframework.stereotype.Component;
+
+import cn.strong.leke.common.serialize.support.json.JsonUtils;
+import cn.strong.leke.common.utils.CollectionUtils;
+import cn.strong.leke.common.utils.DateUtils;
+import cn.strong.leke.common.utils.ListUtils;
+import cn.strong.leke.common.utils.StringUtils;
+import cn.strong.leke.common.utils.datetime.Week;
+import cn.strong.leke.context.base.UserBaseContext;
+import cn.strong.leke.context.question.QuestionContext;
+import cn.strong.leke.context.user.cst.RoleCst;
+import cn.strong.leke.core.business.incentive.DynamicHelper;
+import cn.strong.leke.framework.exceptions.Validation;
+import cn.strong.leke.framework.mq.MessageSender;
+import cn.strong.leke.framework.page.jdbc.Page;
+import cn.strong.leke.homework.dao.mongo.ExerciseDao;
+import cn.strong.leke.homework.dao.mongo.ExerciseRankDao;
+import cn.strong.leke.homework.dao.mongo.ExerciseRecordQuestionDao;
+import cn.strong.leke.homework.dao.mongo.HolidayHwDao;
+import cn.strong.leke.homework.model.AnswerInfo;
+import cn.strong.leke.homework.model.ExerciseType;
+import cn.strong.leke.homework.model.activity.SimpleExercise;
+import cn.strong.leke.homework.model.mongo.Exercise;
+import cn.strong.leke.homework.model.mongo.ExerciseQuestionCorrect;
+import cn.strong.leke.homework.model.mongo.ExerciseQuestionResult;
+import cn.strong.leke.homework.model.mongo.ExerciseRank;
+import cn.strong.leke.homework.model.mongo.ExerciseRankUser;
+import cn.strong.leke.homework.model.mongo.ExerciseReport;
+import cn.strong.leke.homework.model.query.ExerciseListQuery;
+import cn.strong.leke.homework.util.AnswerUtils;
+import cn.strong.leke.homework.util.ExerciseCommon;
+import cn.strong.leke.homework.util.ScoreUtils;
+import cn.strong.leke.model.incentive.Award;
+import cn.strong.leke.model.incentive.DynamicInfo;
+import cn.strong.leke.model.incentive.DynamicTypes;
+import cn.strong.leke.model.incentive.IncentiveTypes;
+import cn.strong.leke.model.paper.ScoredQuestion;
+import cn.strong.leke.model.question.AnswerResult;
+import cn.strong.leke.model.question.QuestionDTO;
+import cn.strong.leke.model.question.QuestionKnowledge;
+import cn.strong.leke.model.question.QuestionResult;
+import cn.strong.leke.model.question.querys.QuestionSelectQuery;
+import cn.strong.leke.model.user.UserBase;
+import cn.strong.leke.model.wrong.WrongMQ;
+import cn.strong.leke.model.wrong.WrongMQ.WrongQuestion;
+import cn.strong.leke.model.wrong.WrongSource;
+import cn.strong.leke.remote.service.lesson.IKlassRemoteService;
+import cn.strong.leke.remote.service.question.IQuestionSelectRemoteService;
+import cn.strong.leke.remote.service.user.IUserBaseRemoteService;
+import cn.strong.leke.tags.question.check.QuestionCheckAdapter;
+import cn.strong.leke.tags.question.render.QuestionResultRender;
+
+@Component
+public class ExerciseService {
+
+	@Resource
+	private ExerciseDao exerciseDao;
+	@Resource
+	private ExerciseRankDao exerciseRankDao;
+	@Resource
+	private ExerciseRecordQuestionDao exerciseQuestionDao;
+	
+	@Resource
+	private IQuestionSelectRemoteService questionSelectRemoteService;
+	@Resource
+	private MessageSender wrongtopicSender;
+	@Resource
+	private HolidayHwDao holidayHwDao;
+	@Resource
+	private IUserBaseRemoteService userBaseRemoteService;
+	@Resource
+	private IKlassRemoteService klassRemoteService;
+
+	/**
+	 * 查找学生的自主练习
+	 * @param query
+	 * @return
+	 */
+	public List<Exercise> findStuExerciseList(ExerciseListQuery query, Page page) {
+		return this.exerciseDao.findStuExerciseList(query, page);
+	}
+	
+	public Exercise getFirstStuExercise(Long studentId) {
+		return this.exerciseDao.getFirstStuExercise(studentId);
+	}
+
+	
+	/**
+	 * 自主练习保存
+	 * @param exercise
+	 * @return
+	 */
+	public Exercise saveExercise(Exercise exercise, List<AnswerInfo> answerInfoList) {
+		List<ExerciseQuestionResult> questions = this.buildExerciseQuestionResult(answerInfoList, null,
+				exercise.getSubmitTime() != null);
+		exercise.setQuestions(questions);
+		exercise.setTotalNum(questions.size());
+		if (exercise.getSubmitTime() != null) {
+			exercise.setSubmitState(ExerciseCommon.EXERCISE_SUBMIT);
+			exercise.setRightNum((int) questions.stream().filter(v -> Boolean.TRUE.equals(v.getIsCorrect())).count());
+			exercise.setAccuracy(BigDecimal.valueOf(exercise.getRightNum()).divide(
+					BigDecimal.valueOf(exercise.getTotalNum()), 2, RoundingMode.HALF_UP));
+			exercise.setReport(buildExerciseReport(exercise));
+			compareToPre(exercise);
+		}
+		Exercise oldExercise = getExerciseById(exercise.getExerciseId());
+		if (oldExercise != null) {
+			//提交后的保存验证
+			if (exercise.getSubmitTime() == null) {
+				Validation.isFalse(oldExercise.getSubmitState() > 0, "homework.exercise.repartsave");
+			} else {
+				//重复提交验证
+				Validation.isFalse(oldExercise.getSubmitState() > 0, "homework.exercise.repartsubmit");
+			}
+			this.exerciseDao.saveExerciseQuestion(exercise);
+			exercise.setStatus(oldExercise.getStatus());
+		} else {
+			this.exerciseDao.insertExercise(exercise);
+		}
+		if (exercise.getSubmitTime() != null) {
+			//非自主练习，不进入错题本和加入错题业务
+			if (exercise.getStatus() == 1) {
+				this.sendWrongForExercise(exercise);
+				this.addToRecordQuestion(exercise);
+			} else if (exercise.getStatus() == 2) {
+				holidayHwDao.updateMicroHwRate(exercise.getStudentId(), exercise.getExerciseId(), exercise.getAccuracy());
+			}
+		}
+		return exercise;
+	}
+	
+
+	/**
+	 * 查询当天已提交数
+	 * @return
+	 */
+	public Long getTodaySubmitCount() {
+		Date startDate = DateUtils.parseDate(DateUtils.format(new Date(), "yyyy-MM-dd"));
+		Date endDate = DateUtils.addDays(startDate, 1);
+		return this.exerciseDao.getTodaySubmitCount(startDate, endDate);
+	}
+
+	/**
+	 * 生成知识点报告
+	 * @param relIds
+	 * @param exerciseQuestionResult
+	 * @return
+	 */
+	public List<ExerciseReport> buildExerciseReport(Exercise exercise) {
+		List<ExerciseQuestionResult> questions = exercise.getQuestions();
+		List<ExerciseReport> reports = new ArrayList<ExerciseReport>();
+		List<QuestionDTO> questionDTOs = QuestionContext.findQuestions(questions.stream().map(v -> v.getQuestionId())
+				.collect(Collectors.toList()));
+		if (CollectionUtils.isNotEmpty(questionDTOs)) {
+			questionDTOs = questionDTOs.stream().filter(v -> v != null).collect(Collectors.toList());
+		}
+		List<QuestionKnowledge> questionAllKnowledge = new ArrayList<QuestionKnowledge>();
+		questionDTOs.stream().forEach(v -> {
+			questionAllKnowledge.removeAll(v.getKnowledges());
+			questionAllKnowledge.addAll(v.getKnowledges());
+		});
+		//直接相关的知识点
+		List<ExerciseReport> directlyReports = null;
+		//章节时，转化为对应的知识点
+
+		if (ExerciseType.KNOWLEDGE.value == exercise.getExerciseType()) {
+			directlyReports = buildExerciseReportst(exercise.getRelIds(), questionDTOs, questions,
+					questionAllKnowledge, ExerciseReport.KNOWLEDGE);
+			reports.addAll(directlyReports);
+		}
+		List<Long> realtionKnowledgeId = questionAllKnowledge.stream()
+				.filter(v -> !exercise.getRelIds().contains(v.getKnowledgeId())).map(v -> v.getKnowledgeId())
+				.distinct().collect(Collectors.toList());
+		List<ExerciseReport> relationReports = buildExerciseReportst(realtionKnowledgeId, questionDTOs, questions,
+				questionAllKnowledge, ExerciseReport.RELATION_KNOWLEDGE);
+		reports.addAll(relationReports);
+		return reports;
+	}
+
+	private List<ExerciseReport> buildExerciseReportst(List<Long> knowledgeIds, List<QuestionDTO> questionDTOs,
+			List<ExerciseQuestionResult> exerciseQuestionResult, List<QuestionKnowledge> questionAllKnowledge,
+			Integer type) {
+		List<ExerciseReport> datas = new ArrayList<ExerciseReport>();
+		knowledgeIds.stream().forEach(
+				knoledgeId -> {
+					List<Long> kallQues = questionDTOs
+							.stream()
+							.filter(v -> v.getKnowledges().stream()
+									.anyMatch(k -> k.getKnowledgeId().equals(knoledgeId))).map(v -> v.getQuestionId())
+							.collect(Collectors.toList());
+					if (CollectionUtils.isNotEmpty(kallQues)) {
+						ExerciseReport itemReport = new ExerciseReport();
+						itemReport.setKnowledgeId(knoledgeId);
+						itemReport.setQuestions(kallQues);
+						itemReport.setType(type);
+						Optional<QuestionKnowledge> quKnowledge = questionAllKnowledge.stream()
+								.filter(k -> k.getKnowledgeId().equals(knoledgeId)).findFirst();
+						if (quKnowledge.isPresent()) {
+							itemReport.setKnowledgeName(this.subKnoledge(quKnowledge.get().getPath()));
+						}
+						Long krightQues = exerciseQuestionResult
+								.stream()
+								.filter(r -> kallQues.contains(r.getQuestionId())
+										&& Boolean.TRUE.equals(r.getIsCorrect())).count();
+						BigDecimal rigthRate = BigDecimal.valueOf(krightQues).divide(
+								BigDecimal.valueOf(kallQues.size()), 2, RoundingMode.HALF_UP);
+						itemReport.setAccuracy(rigthRate);
+						datas.add(itemReport);
+					}
+				});
+		return datas;
+	}
+
+	private String subKnoledge(String path) {
+		if (StringUtils.isEmpty(path)) {
+			return "";
+		}
+		int index = path.lastIndexOf("-");
+		if (index == -1)
+			return path;
+		else
+			return path.substring(index+1);
+	}
+
+	/**
+	 * 查找某个练习
+	 * @param exerciseId
+	 * @return
+	 */
+	public Exercise getExerciseById(String exerciseId) {
+		return this.exerciseDao.getExerciseById(exerciseId);
+	}
+
+	/**
+	 * 查询某个学生周自主练习对的题目数
+	 * @param userId
+	 * @param week
+	 * @return
+	 */
+	public Long getRightQCountByWeek(Long userId, Integer year, Integer week,Long cutDate) {
+		Calendar calendar = Calendar.getInstance();
+		calendar.setFirstDayOfWeek(Calendar.MONDAY);
+		calendar.set(Calendar.YEAR, year);
+		calendar.set(Calendar.WEEK_OF_YEAR, week);
+		Week wk = new Week(calendar.getTime());
+		Date startDate = wk.getStartDate();
+		Date endDate = new Date(cutDate);
+		return this.exerciseDao.getRightCountByIntervalTime(userId, startDate, endDate);
+	}
+
+	public void saveWeekRank(Integer year, Integer week) {
+		ExerciseRank exerciseRank = buildExerciseRank(year, week);
+		if (exerciseRank != null) {
+			this.exerciseRankDao.saveWeekRank(exerciseRank);
+		}
+	}
+
+	/**
+	 * 对某一区间的自主练习，进行累计题目数的排名
+	 * @param startDate
+	 * @param endDate
+	 * @return
+	 */
+	private ExerciseRank buildExerciseRank(Integer year, Integer week) {
+		Calendar calendar = Calendar.getInstance();
+		calendar.setFirstDayOfWeek(Calendar.MONDAY);
+		calendar.set(Calendar.YEAR, year);
+		calendar.set(Calendar.WEEK_OF_YEAR, week);
+		Week wk = new Week(calendar.getTime());
+		List<ExerciseRankUser> rankUser = this.getExerciseRankUser(wk.getStartDate(), wk.getEndDateTime());
+		/*if (CollectionUtils.isEmpty(rankUser)) {
+			return null;
+		}*/
+		ExerciseRank exerciseRank = new ExerciseRank();
+		exerciseRank.setYear(year);
+		exerciseRank.setWeek(week);
+		exerciseRank.setCreatedBy(888L);
+		exerciseRank.setIsDeleted(false);
+		Long curTime = new Date().getTime();
+		exerciseRank.setCreatedOn(curTime);
+		exerciseRank.setList(rankUser);
+		exerciseRank.setModifiedOn(curTime);
+		exerciseRank.setModifiedBy(888L);
+		return exerciseRank;
+
+	}
+
+	private List<ExerciseRankUser> getExerciseRankUser(Date startDate, Date endDate) {
+		int maxRank = 50;
+		int skip = 0;
+		int rankNo = 1;
+		Long prevTotal = 0L;
+		List<ExerciseRankUser> userRankList = new ArrayList<ExerciseRankUser>();
+		while (true) {
+			List<ExerciseRankUser> partList = this.exerciseDao.getExerciseRankUser(startDate, endDate, maxRank, skip);
+			if (CollectionUtils.isEmpty(partList)) {
+				return userRankList;
+			}
+			for (int i = 0; i < partList.size(); i++) {
+				ExerciseRankUser curr = partList.get(i);
+				if (i > 0) {
+					prevTotal = partList.get(i - 1).getTotal();
+					if (!curr.getTotal().equals(prevTotal)) {
+						rankNo++;
+					}
+				}
+				if (rankNo == maxRank + 1) {
+					return userRankList;
+				}
+				curr.setRank(rankNo);
+				userRankList.add(curr);
+			}
+
+			if (rankNo <= 50) {
+				skip += maxRank;
+			}
+		}
+	}
+
+	public ExerciseRank findWeekRank(Integer year, Integer week) {
+		return this.exerciseRankDao.findWeekRank(year, week);
+	}
+
+	public List<Exercise> findTodayRank() {
+		Date startDate = DateUtils.parseDate(DateUtils.format(new Date(), "yyyy-MM-dd"));
+		Date endDate = DateUtils.addDays(startDate, 1);
+		return exerciseDao.findExerciseByIntervalTime(startDate, endDate,20);
+	}
+	
+	/**
+	 * 查询学生已练习的题目id
+	 * @param userId
+	 * @param subjectId
+	 * @return
+	 */
+	public List<Long>  findRecordQuestion(Long userId,Long subjectId) {
+		return this.exerciseQuestionDao.findRecordQuestion(userId, subjectId);
+	}
+
+	private void sendWrongForExercise(Exercise exercise) {
+		List<ExerciseQuestionResult> questions = exercise.getQuestions();
+		if (CollectionUtils.isEmpty(questions)) {
+			return;
+		}
+		List<WrongQuestion> wrongQuestions = questions.stream().filter(v -> Boolean.FALSE.equals(v.getIsCorrect()))
+				.map(v -> {
+					WrongQuestion item = new WrongQuestion();
+					item.setQuestionId(v.getQuestionId());
+					QuestionResult questionResult = new QuestionResult();
+					questionResult.setQuestionId(v.getQuestionId());
+					if(CollectionUtils.isNotEmpty(v.getSubs())){
+						List<QuestionResult> subs = v.getSubs().stream().map(s->{
+							QuestionResult subItem = new QuestionResult();
+							subItem.setQuestionId(s.getQuestionId());
+							subItem.setAnswerResults( AnswerUtils.convertStringToAnswerResultList(
+							s.getAnswerContent(), null));
+							return subItem;
+						}).collect(Collectors.toList());
+						questionResult.setSubs(subs);
+					} else {
+						questionResult.setAnswerResults(AnswerUtils.convertStringToAnswerResultList(
+								v.getAnswerContent(), null));
+					}
+					item.setAnswerContent(QuestionResultRender.doRender(questionResult));
+					return item;
+				}).collect(Collectors.toList());
+		if (CollectionUtils.isNotEmpty(wrongQuestions)) {
+			WrongMQ wrongMQ = new WrongMQ();
+			wrongMQ.setStudentId(exercise.getStudentId());
+			wrongMQ.setSubjectId(exercise.getSubjectId());
+			wrongMQ.setSubjectName(exercise.getSubjectName());
+			wrongMQ.setSourceName(WrongSource.EXERCISE.name);
+			wrongMQ.setSourceType(WrongSource.EXERCISE.value);
+			wrongMQ.setAnswerTime(new Date());
+			wrongMQ.setQuestions(wrongQuestions);
+			this.wrongtopicSender.send(wrongMQ);
+		}
+	}
+
+	private List<ExerciseQuestionResult> buildExerciseQuestionResult(List<AnswerInfo> answerInfos,
+			Map<Long, QuestionDTO> questionMap, Boolean isSubmit) {
+		if (CollectionUtils.isEmpty(answerInfos)) {
+			return null;
+		}
+		return answerInfos.stream().map(v -> {
+			ExerciseQuestionResult item = new ExerciseQuestionResult();
+			List<AnswerResult> answerResults = AnswerUtils.convertStringToAnswerResultList(v.getAnswerContent(), null);
+			item.setAnswerContent(answerResults.stream().map(c -> c.getMyAnswer()).collect(Collectors.toList()));
+			item.setQuestionId(v.getQuestionId());
+
+			if (CollectionUtils.isEmpty(v.getSubs())) {
+				if (isSubmit) {
+					//批改题目
+					QuestionDTO questionDTO = questionMap != null ? questionMap.get(v.getQuestionId())
+							: QuestionContext.getQuestionDTO(v.getQuestionId());
+					QuestionResult correctResult = correctAnswerInfo(questionDTO, v);
+					item.setIsCorrect(correctResult.getTotalIsRight());
+					List<ExerciseQuestionCorrect> correctContent = correctResult.getAnswerResults().stream().map(c -> {
+						ExerciseQuestionCorrect exerciseQuestionCorrect = new ExerciseQuestionCorrect();
+						exerciseQuestionCorrect.setIsRight(c.getIsRight());
+						exerciseQuestionCorrect.setScore(c.getResultScore());
+						return exerciseQuestionCorrect;
+					}).collect(Collectors.toList());
+					item.setCorrectContent(correctContent);
+					if (item.getCorrectContent().size() > 0) {
+						BigDecimal correctRate = BigDecimal
+								.valueOf(item.getCorrectContent().stream()
+										.filter(c -> Boolean.TRUE.equals(c.getIsRight())).count())
+								.divide(BigDecimal.valueOf(item.getCorrectContent().size()), 1, RoundingMode.HALF_UP);
+						item.setCorrectRate(correctRate);
+					} else {
+						item.setCorrectRate(BigDecimal.valueOf(0));
+					}
+				}
+			} else {
+				if (isSubmit) {
+					QuestionDTO questionDTO = questionMap != null ? questionMap.get(v.getQuestionId())
+							: QuestionContext.getQuestionDTO(v.getQuestionId());
+					Map<Long, QuestionDTO> questionMap2 = questionDTO.getSubs().stream()
+							.collect(toMap(QuestionDTO::getQuestionId, Function.identity()));
+					item.setSubs(buildExerciseQuestionResult(v.getSubs(), questionMap2, isSubmit));
+				} else {
+					item.setSubs(buildExerciseQuestionResult(v.getSubs(), null, isSubmit));
+				}
+				item.setIsCorrect(item.getSubs().stream().allMatch(sub -> Boolean.TRUE.equals(sub.getIsCorrect())));
+				BigDecimal correctRate = BigDecimal
+						.valueOf(item.getSubs().stream().filter(sub -> Boolean.TRUE.equals(sub.getIsCorrect())).count())
+						.divide(BigDecimal.valueOf(item.getSubs().size()), 1, RoundingMode.HALF_UP);
+				item.setCorrectRate(correctRate);
+			}
+			return item;
+		}).collect(Collectors.toList());
+	}
+	
+	public List<Long> findQuestionsFromResources(Exercise exercise ){
+		QuestionSelectQuery query = new QuestionSelectQuery();
+		if (exercise.getDifficultyLevel()!= null && exercise.getDifficultyLevel() > 0) {
+			query.setDiffLevel(exercise.getDifficultyLevel());
+		}
+		if (exercise.getExerciseType() == ExerciseType.KNOWLEDGE.value) {
+			query.setKnowledgeIds(exercise.getRelIds());
+		} else {
+			query.setMaterialNodeIds(exercise.getRelIds());
+		}
+		Integer questionNum = exercise.getRelIds().size() * 5;
+		query.setQuestionNum(questionNum);
+		query.setSubjectId(exercise.getSubjectId());
+		//排除 断句题型
+		Set<Long> inQuestionTypeIds = new HashSet<Long>();
+				Arrays.asList(1L,2L,4L,5L,6L,32L).forEach(v->{
+					inQuestionTypeIds.add(v.longValue());
+		});
+		query.setInQuestionTypeIds(inQuestionTypeIds);
+		query.setIncludeSubjective(false);
+		List<Long> recordQuestionIds = this.findRecordQuestion(exercise.getStudentId(), exercise.getSubjectId());
+		List<Long> resQuestionIds = null;
+		if(CollectionUtils.isEmpty(recordQuestionIds)){
+			resQuestionIds = questionSelectRemoteService.queryRandomQuestionIds(query);
+		}else{
+			query.setQuestionNum( questionNum * 100);
+			boolean isStop  = false;
+			for(int i=0;i<3;i++){
+				resQuestionIds = questionSelectRemoteService.queryRandomQuestionIds(query);
+				if(resQuestionIds.size() < query.getQuestionNum()){
+					isStop = true;
+				}
+				resQuestionIds.removeIf(v->recordQuestionIds.contains(v));
+				if(resQuestionIds.size() >= questionNum){
+					isStop = true;
+				}
+				//随机取出 questionNum 个
+				if(resQuestionIds.size() > questionNum){
+					resQuestionIds = resQuestionIds.subList(0, questionNum);
+				}
+				
+				if(isStop){
+					break;
+				}
+			}
+		}
+	
+		return resQuestionIds;
+	}
+	
+	private QuestionResult correctAnswerInfo(QuestionDTO questionDTO, AnswerInfo answerInfo) {
+		QuestionResult questionResult = new QuestionResult();
+		questionResult.setQuestionId(answerInfo.getQuestionId());
+		List<AnswerResult> answerResultList = AnswerUtils.convertStringToAnswerResultList(
+				answerInfo.getAnswerContent(), null);
+		questionResult.setAnswerResults(answerResultList);
+		ScoredQuestion scoredQuestion = new ScoredQuestion();
+		scoredQuestion.setScore(new BigDecimal(1));
+		QuestionCheckAdapter.check(questionDTO, questionResult, scoredQuestion);
+		return questionResult;
+	}
+
+	public List<QuestionResult> paresToQuestionResult(List<ExerciseQuestionResult> exerciseQuestionResults) {
+		return exerciseQuestionResults.stream().map(resutl -> {
+			return this.convertToQuestionResult(resutl);
+		}).collect(Collectors.toList());
+	}
+	
+	
+	/**
+	 * 练习的题目添加到改学科已练习题目库中
+	 * @param exercise
+	 */
+	private void addToRecordQuestion(Exercise exercise) {
+		Long userId = exercise.getStudentId();
+		Long subjectId = exercise.getSubjectId();
+		List<Long> subjectQuestionIds = this.exerciseQuestionDao.findRecordQuestion(userId, subjectId);
+		List<Long> exerciseQuestionIdList = exercise.getQuestions().stream().map(v->v.getQuestionId()).collect(Collectors.toList());
+		if(subjectQuestionIds == null){
+			subjectQuestionIds = exerciseQuestionIdList;
+		}else{
+			subjectQuestionIds.removeIf(v->exerciseQuestionIdList.contains(v));
+			subjectQuestionIds.addAll(exerciseQuestionIdList);
+			//限制最大数量5000
+			while (subjectQuestionIds.size() > 5000) {
+				subjectQuestionIds.remove(0);
+			}
+		}
+		this.exerciseQuestionDao.saveExerciseQuestion(userId, subjectId, subjectQuestionIds);
+	}
+	
+
+	/**
+	 * 自主练习 激励
+	 * @param exercise
+	 * @return
+	 */
+	public Award sendDynamic(Exercise exercise) {
+		if(exercise.getStatus() != 1){
+			return Award.reject();
+		}
+		DynamicInfo dynamicInfo = new DynamicInfo();
+		UserBase userBase = UserBaseContext.getUserBaseByUserId(exercise.getStudentId());
+		dynamicInfo.setUserId(userBase.getId());
+		dynamicInfo.setUserName(userBase.getUserName());
+		dynamicInfo.setRoleId(RoleCst.STUDENT);
+		dynamicInfo.setSchoolId(exercise.getSchoolId());
+		dynamicInfo.setTitle(exercise.getSubjectName() + ":" + exercise.getExerciseName());
+		dynamicInfo.setTypeId(IncentiveTypes.STUDENT.HW_EXERCISE_FINISH);
+		dynamicInfo.setState(ScoreUtils.toExerciseState(exercise.getAccuracy()));
+		dynamicInfo.setDynamicType(DynamicTypes.HW_EXERCISE_FINISH);
+		Map<String, Object> params = new HashMap<>();
+		params.put("exerciseId", exercise.getExerciseId());
+		dynamicInfo.setParams(params);
+		Award award = DynamicHelper.publish(dynamicInfo);
+		return award;
+	}
+	
+	private void compareToPre(Exercise exercise) {
+		BigDecimal preAccuracy = this.exerciseDao.getPrevAcuracy(exercise.getSubmitTime(), exercise.getSubjectId(),exercise.getStudentId());
+		if (preAccuracy != null) {
+			exercise.setGrowth(exercise.getAccuracy().compareTo(preAccuracy));
+		}
+	}
+
+	private QuestionResult convertToQuestionResult(ExerciseQuestionResult result) {
+		QuestionResult questionResult = new QuestionResult();
+		questionResult.setQuestionId(result.getQuestionId());
+		questionResult.setTotalIsRight(result.getIsCorrect());
+		questionResult.setTotalResultScore(result.getCorrectRate());
+		questionResult.setTotalScoreRate(result.getCorrectRate());
+		questionResult.setSubs(new ArrayList<QuestionResult>());
+		if (CollectionUtils.isEmpty(result.getSubs())) {
+			List<AnswerResult> answerResults = AnswerUtils.convertStringToAnswerResultList(result.getAnswerContent(),
+					JsonUtils.toJSON(result.getCorrectContent()));
+			questionResult.setAnswerResults(answerResults);
+		} else {
+			questionResult.setSubs(new ArrayList<QuestionResult>());
+			result.getSubs().forEach(sub -> {
+				questionResult.getSubs().add(convertToQuestionResult(sub));
+			});
+		}
+		return questionResult;
+	}
+	
+	public List<SimpleExercise> findTodayExercis(Long userId,Date today){
+		return null;
+	}
+
+	public List<SimpleExercise> findStundent(Long clazzId, Date minDateTime, Date maxDateTime) {
+		List<Long> userIds = klassRemoteService.findStudentIdsByClassId(clazzId);
+		return ListUtils.map(userIds, userId -> {
+			SimpleExercise record = new SimpleExercise();
+			UserBase userBase = userBaseRemoteService.getUserBaseByUserId(userId);
+			if (userBase != null) {
+				record.setLoginName(userBase.getLoginName());
+				record.setUserName(userBase.getUserName());
+			}
+			SimpleExercise simpleExercise = exerciseDao.countStudentExercis(userId, minDateTime, maxDateTime);
+			record.setRightNum(simpleExercise.getRightNum());
+			record.setTotalNum(simpleExercise.getTotalNum());
+			return record;
+		});
+	}
+}

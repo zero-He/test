@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.question.dao.mybatis.workbook.ISchoolWorkbookDao">
+	<insert id="add" useGeneratedKeys="true" keyProperty="schoolWorkbookId"
+		parameterType="cn.strong.leke.question.model.workbook.SchoolWorkbook">
+		INSERT INTO que_school_workbook(
+			workbookId, schoolId, addType, status, editLog,
+			isDeleted, createdBy, createdOn, modifiedBy, modifiedOn
+		) VALUES (
+			#{workbookId}, #{schoolId}, #{addType}, #{status}, #{editLog},
+			0, #{createdBy}, now(), #{modifiedBy}, now()
+		)
+	</insert>
+	
+	<insert id="insertBatchSchoolWorkbook" parameterType="map">
+		INSERT INTO que_school_workbook (
+			workbookId, schoolId, addType, status, editLog,
+			isDeleted, createdBy, createdOn, modifiedBy, modifiedOn
+		) VALUES 
+		<foreach collection="assocs" item="data" separator=",">
+		(
+			#{data.workbookId}, #{data.schoolId}, #{data.addType}, #{data.status}, #{data.editLog},
+			0, #{data.createdBy}, NOW(), #{data.modifiedBy}, NOW()
+		)
+		</foreach>
+	</insert>
+	
+	<update id="remove" parameterType="cn.strong.leke.question.model.workbook.SchoolWorkbook">
+		UPDATE que_school_workbook
+		<set>
+			isDeleted = 1,
+			<if test="modifiedBy != null">
+			modifiedBy = #{modifiedBy},
+			</if>
+			modifiedOn = now()
+		</set>
+		<where>
+			AND workbookId = #{workbookId}
+			AND schoolId = #{schoolId}
+			AND isDeleted = 0
+		</where>
+	</update>
+	
+	<select id="getByWorkbookAndSchool" parameterType="map" 
+		resultType="cn.strong.leke.question.model.workbook.SchoolWorkbook">
+		SELECT a.*
+		FROM que_school_workbook a
+		<where>
+			AND workbookId = #{workbookId}
+			AND schoolId = #{schoolId}
+			AND isDeleted = 0
+		</where>
+	</select>
+	
+	<update id="updateStatus" parameterType="cn.strong.leke.question.model.workbook.SchoolWorkbook">
+		UPDATE que_school_workbook
+		<set>
+			status = #{status},
+			editLog = #{editLog},
+			<if test="modifiedBy != null">
+			modifiedBy = #{modifiedBy},
+			</if>
+			modifiedOn = now()
+		</set>
+		<where>
+			AND workbookId = #{workbookId}
+			AND schoolId = #{schoolId}
+			AND isDeleted = 0
+		</where>
+	</update>
+	
+	<select id="countSchoolWorkbook" resultType="_int"
+		 parameterType="cn.strong.leke.question.model.workbook.SchoolWorkbook">
+		SELECT count(*)
+		FROM que_school_workbook
+		<where>
+			workbookId = #{workbookId}
+			AND schoolId = #{schoolId}
+			AND isDeleted = 0
+		</where>
+	</select>
+	
+	<select id="findByWorkbookIds" parameterType="map" 
+		resultType="cn.strong.leke.question.model.workbook.SchoolWorkbook">
+		SELECT a.*
+		FROM que_school_workbook a
+		<where>
+			AND workbookId IN
+			<foreach collection="workbookIds" item="workbookId" open="(" close=")" separator=",">
+				#{workbookId}
+			</foreach>
+			AND schoolId = #{schoolId}
+			AND isDeleted = 0
+		</where>
+	</select>
+	
+</mapper>

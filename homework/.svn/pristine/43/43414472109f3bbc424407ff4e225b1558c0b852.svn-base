@@ -1,0 +1,75 @@
+//init
+$(".back").click(function(){
+	    	window.history.go(-1);
+	    });
+DoubtTools.commonEvent();
+DoubtTools.handbord();
+DoubtTools.takePhoto();
+DoubtTools.record();
+function trim(str){ 
+	//删除左右两端的空格 
+	if(str){
+		return str.replace(/(^\s*)|(\s*$)/g, ""); 
+	}
+	return;
+}
+String.prototype.replaceAll  = function(s1,s2){     
+    return this.replace(new RegExp(s1,"gm"),s2);     
+}
+
+$(".c-tab li").click(function(){
+	var i = $(this).data("i");
+	if(i==2){
+		window.location.href = "ask.htm";
+	}else{
+		window.location.href = "list.htm?resolved="+i;
+	}
+});
+
+$("#jSubmit").click(function(){
+	var jDescribe = trim($("#jDescribe").val())||"";
+	jDescribe = jDescribe.replace(/([\uE000-\uF8FF]|\uD83C[\uDF00-\uDFFF]|\uD83D[\uDC00-\uDDFF])/g, '');
+	if(jDescribe){
+		jDescribe += "<br>";
+	}
+	var jDoubtId = $("#jDoubtId").val();
+	var jResolved = $("#jResolved").val();
+	var imgs = $(".preview img");
+	var promiseArray = DoubtTools.imgBase64FileUpload();
+	var duration = $("#jAudioLength").html()||"";
+	$(".m-load").show();
+	var audioMission = DoubtTools.audioBase64FileUpload();
+	promiseArray.push(audioMission);
+	new Mission().all(promiseArray).run(function(result) {
+		var doubtAudio = null;
+		for(var i in result){
+			var d = result[i];
+			if(d.indexOf("<img")<0){
+				doubtAudio = d;
+				result.splice(i, 1)
+			}
+		}
+		var datas = {
+			"doubtId" : jDoubtId,
+			"explainContent" : jDescribe+result.join("<br>"),
+			"expainAudio" : doubtAudio,
+			"resolved":jResolved,
+			"duration":duration
+		}
+		if(!(datas.explainContent||datas.expainAudio)){
+			Utils.Notice.alert("请输入内容");
+			$("#jDescribe").val("");
+			$("#jCount").html(0);
+			$(".m-load").hide();
+			return;
+		}
+		var form = $("#jForm");
+		for ( var data in datas) {
+			var input = $("<input></input>");
+			input.attr("name",data);
+			input.val(datas[data]);
+			form.append(input);
+		}
+		form.submit();
+	});
+});

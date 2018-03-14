@@ -1,0 +1,174 @@
+define(function(require, exports, module) {
+	var helper = require('./helper');
+
+	var toFixed = helper.toFixed;
+
+	function fillNull(data) {
+		for (var i = 0; i < data.length; i++) {
+			data[i] = data[i] != null ? data[i] : '-';
+		}
+		return data;
+	}
+
+	var CC = {}
+
+	CC.buildOverallFinishPie = function(done, part, undo) {
+		return {
+			color : ['#92d050', '#ffcc00', '#cc3300'],
+			legend : {
+				bottom : 'bottom',
+				selectedMode : false,
+				data : ['已完成', '部分完成', '未完成']
+			},
+			tooltip : {
+				formatter : '{b}：{c}人<br>比率：{d}%'
+			},
+			series : [{
+				name : '完成情况',
+				type : 'pie',
+				radius : '75%',
+				center : ['50%', '47%'],
+				label : {
+					normal : {
+						show : false
+					}
+				},
+				labelLine : {
+					normal : {
+						show : false
+					}
+				},
+				data : [{
+					value : done,
+					name : '已完成'
+				}, {
+					value : part,
+					name : '部分完成'
+				}, {
+					value : undo,
+					name : '未完成'
+				}]
+			}]
+		};
+	}
+
+	CC.buildCategoryFinishRadar = function(total, items) {
+		var datas = [];
+		var indicator = items.map(function(item) {
+			datas.push(item.value);
+			return {
+				name : item.name,
+				max : total
+			};
+		});
+		return {
+			tooltip : {},
+			polar : [{
+				indicator : indicator,
+				center : ['50%', '57%'],
+				radius : '80%',
+				axisLabel : {
+					show : true,
+					textStyle : {
+						color : '#ccc'
+					}
+				},
+				splitArea : {
+					areaStyle : {
+						color : ['#ffffff', '#ffffff']
+					}
+				},
+				splitLine : {
+					lineStyle : {
+						width : 2,
+						color : '#e9eaea'
+					}
+				}
+			}],
+			color : ['#a9cfef'],
+			series : [{
+				type : 'radar',
+				data : [{
+					value : datas,
+					name : '分类完成情况'
+				}]
+			}]
+		};
+	}
+
+	CC.buildBehaviorTimeline = function(actions, max) {
+		var labels = [], datas = [];
+		for (var i = 0; i <= max; i++) {
+			if (actions[i]) {
+				datas.push([i, 0]);
+				labels.push(actions[i][0]);
+			} else {
+				labels.push('');
+			}
+		}
+		return {
+			grid : {
+				top : 20,
+				left : 50,
+				right : 50,
+				bottom : 80
+			},
+			dataZoom : [{
+				show : true,
+				realtime : true
+			}, {
+				type : 'inside',
+				realtime : true
+			}],
+			tooltip : {
+				position : 'top',
+				formatter : function(params) {
+					var acts = actions[params.value[0]];
+					return acts.join('<br />');
+				}
+			},
+			xAxis : {
+				type : 'category',
+				data : labels,
+				boundaryGap : false,
+				axisLine : {
+					lineStyle : {
+						color : '#0ba299',
+						width : 8
+					}
+				},
+				axisTick : {
+					show : false
+				},
+				axisLabel : {
+					interval : function(index, value) {
+						return actions[index];
+					}
+				}
+			},
+			yAxis : {
+				type : 'category',
+				data : [''],
+				axisLine : {
+					show : false
+				},
+				axisTick : {
+					show : false
+				},
+				axisLabel : {
+					show : false
+				}
+			},
+			series : [{
+				type : 'scatter',
+				symbolSize : 15,
+				data : datas,
+				animationDelay : function(idx) {
+					return idx * 5;
+				}
+			}]
+		};
+	}
+
+	module.exports = CC;
+});

@@ -1,0 +1,32 @@
+package cn.strong.leke.diag.dao.beike.model;
+
+public class ResourceInfo {
+
+	private Long resourceId;
+	private Integer beikePhase;
+	private Integer resourceType;
+
+	public Long getResourceId() {
+		return resourceId;
+	}
+
+	public void setResourceId(Long resourceId) {
+		this.resourceId = resourceId;
+	}
+
+	public Integer getBeikePhase() {
+		return beikePhase;
+	}
+
+	public void setBeikePhase(Integer beikePhase) {
+		this.beikePhase = beikePhase;
+	}
+
+	public Integer getResourceType() {
+		return resourceType;
+	}
+
+	public void setResourceType(Integer resourceType) {
+		this.resourceType = resourceType;
+	}
+}

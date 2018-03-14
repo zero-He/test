@@ -1,0 +1,672 @@
+<?xml version="1.0" encoding="UTF-8" ?>   
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.diag.dao.homework.mybatis.HomeworkDtlDao">
+
+	<select id="getHomeworkDtlByHomeworkDtlId" parameterType="long" resultType="cn.strong.leke.diag.model.HomeworkDtl">
+		<![CDATA[
+		SELECT *
+		  FROM HW_HOMEWORK_DTL
+		 WHERE homeworkDtlId = #{homeworkDtlId}
+		   AND isDeleted = 0
+		]]>
+	</select>
+
+	<select id="getHomeworkDtlByHomeworkIdAndStudentId" parameterType="map"
+		resultType="cn.strong.leke.diag.model.HomeworkDtl">
+		<![CDATA[
+		SELECT *
+		  FROM HW_HOMEWORK_DTL
+		 WHERE homeworkId = #{homeworkId}
+		   AND studentId = #{studentId}
+		   AND isDeleted = 0
+		]]>
+	</select>
+
+	<select id="findHomeworkDtlByHomeworkId" parameterType="long" resultType="cn.strong.leke.diag.model.HomeworkDtl">
+		<![CDATA[
+		SELECT *
+		  FROM HW_HOMEWORK_DTL
+		 WHERE homeworkId = #{homeworkId}
+		   AND isDeleted = 0
+		 ORDER BY score DESC
+		]]>
+	</select>
+
+	<sql id="sql_findStuSubj_from_where">
+		<![CDATA[
+		  FROM HW_HOMEWORK a
+		  JOIN HW_HOMEWORK_DTL b
+		    ON a.homeworkId = b.homeworkId
+		 WHERE a.isDeleted = 0
+		   AND a.status = 1
+		   AND b.isDeleted = 0
+		   AND b.orderTime >= #{start}
+		   AND b.orderTime <= #{end}
+		   AND a.homeworkType <= 4
+		   AND b.studentId IN
+		]]>
+		<foreach collection="userIds" item="userId" open="(" close=")" separator=",">
+			#{userId}
+		</foreach>
+		<if test="homeworkType != null and homeworkType > 0">
+			AND a.homeworkType = #{homeworkType}
+		</if>
+		<if test="subjectId != null and subjectId > 0">
+			AND a.subjectId = #{subjectId}
+		</if>
+	</sql>
+
+	<select id="findStuSubjScores" parameterType="cn.strong.leke.diag.model.StuSubjQuery" resultType="cn.strong.leke.diag.model.StuSubjScore">
+		<![CDATA[
+		SELECT b.homeworkDtlId homeworkDtlId,
+		       b.studentId userId,
+		       b.studentName userName,
+		       a.subjectId subjectId,
+		       ROUND(b.scoreRate * 100, 1) score,
+		       a.closeTime date
+		]]>
+		<include refid="sql_findStuSubj_from_where" />
+		<![CDATA[
+		   AND b.correctTime IS NOT NULL
+		]]>
+	</select>
+
+	<select id="findHomeworkDtlIds" parameterType="cn.strong.leke.diag.model.StuSubjQuery" resultType="long">
+		<![CDATA[
+		SELECT b.homeworkDtlId
+		]]>
+		<include refid="sql_findStuSubj_from_where" />
+		<![CDATA[
+		   AND b.correctTime IS NOT NULL
+		]]>
+	</select>
+
+	<select id="findStuSubjWorks" parameterType="cn.strong.leke.diag.model.StuSubjQuery" resultType="cn.strong.leke.diag.model.StuSubjWork">
+		<![CDATA[
+		SELECT b.studentId userId,
+		       b.studentName userName,
+		       a.subjectId subjectId,
+		       count(*) totalNum,
+		       sum(IF(b.submitTime IS NULL, 0, 1)) submitNum,
+		       sum(IF(b.submitStatus = 2, 1, 0)) delayNum,
+			   sum(IF(b.correctTime IS NULL, 0, 1)) correctNum
+		]]>
+		<include refid="sql_findStuSubj_from_where" />
+		<![CDATA[
+		 GROUP BY b.studentId, a.subjectId
+		]]>
+	</select>
+
+	<select id="findStuDiligentDtoList" parameterType="map" resultType="cn.strong.leke.diag.model.StuDiligentDto">
+		<![CDATA[
+		SELECT hd.studentId,
+		       hd.studentName,
+		       SUM(IF(hd.submitStatus = 1, 1, 0)) normal,
+		       SUM(IF(hd.submitStatus = 2, 1, 0)) delay,
+		       SUM(IF(hd.submitStatus = 0, 1, 0)) unsubmit,
+		       ROUND(SUM(IF(hd.submitStatus = 1, 1, 0)) * 100 / count(*), 2) normalRate,
+		       ROUND(SUM(IF(hd.submitStatus = 2, 1, 0)) * 100 / count(*), 2) delayRate,
+		       ROUND(SUM(IF(hd.submitStatus = 0, 1, 0)) * 100 / count(*), 2) unsubmitRate
+		  FROM HW_HOMEWORK h
+		 INNER JOIN HW_HOMEWORK_DTL hd
+		    ON h.homeworkId = hd.homeworkId
+		 WHERE h.classId = #{classId}
+		   AND h.classType = #{classType}
+		   AND h.subjectId = #{subjectId}
+		   AND IF(h.homeworkType = 2, h.closeTime, h.startTime) <= NOW()
+		   AND h.status = 1
+		]]>
+		<if test="teacherId != null">
+			AND h.teacherId = #{teacherId}
+		</if>
+		<if test="startTime != null">
+		<![CDATA[
+			AND h.closeTime >= #{startTime}
+		]]>
+		</if>
+		<if test="endTime != null">
+		<![CDATA[
+			AND h.closeTime <= #{endTime}
+		]]>
+		</if>
+		<![CDATA[
+		   AND h.isDeleted = 0
+		   AND hd.isDeleted = 0
+		 GROUP BY hd.studentId
+		 ORDER BY unsubmitRate DESC
+		]]>
+	</select>
+
+	<select id="findClassDiligentDtoList" parameterType="map" resultType="cn.strong.leke.diag.model.ClassDiligentDto">
+		<![CDATA[
+		SELECT h.classId,
+		       h.className,
+		       SUM(IF(hd.submitStatus = 1, 1, 0)) normal,
+		       SUM(IF(hd.submitStatus = 2, 1, 0)) delay,
+		       SUM(IF(hd.submitStatus = 0, 1, 0)) unsubmit,
+		       ROUND(SUM(IF(hd.submitStatus = 1, 1, 0)) * 100 / count(*), 2) normalRate,
+		       ROUND(SUM(IF(hd.submitStatus = 2, 1, 0)) * 100 / count(*), 2) delayRate,
+		       ROUND(SUM(IF(hd.submitStatus = 0, 1, 0)) * 100 / count(*), 2) unsubmitRate
+		  FROM HW_HOMEWORK h
+		 INNER JOIN HW_HOMEWORK_DTL hd
+		    ON h.homeworkId = hd.homeworkId
+		 WHERE h.subjectId = #{subjectId}
+		   AND h.classType = #{classType}
+		   AND h.classId IN 
+		]]>
+		<foreach collection="classIdList" item="classId" open="(" close=")" separator=",">
+			#{classId}
+		</foreach>
+		<if test="startTime != null">
+		<![CDATA[
+			AND h.closeTime >= #{startTime}
+		]]>
+		</if>
+		<if test="endTime != null">
+		<![CDATA[
+			AND h.closeTime <= #{endTime}
+		]]>
+		</if>
+		<![CDATA[
+		   AND h.isDeleted = 0
+		   AND hd.isDeleted = 0
+		 GROUP BY h.classId
+		 ORDER BY unsubmitRate DESC
+		]]>
+	</select>
+
+	<select id="findSubjectAnalysisDtoList" parameterType="map" resultType="cn.strong.leke.diag.model.SubjectAnalysisDto">
+		<![CDATA[
+		SELECT t.subjectId,
+		       SUM(IF(t.avgScore >= 85, 1, 0)) a,
+		       SUM(IF(t.avgScore >= 70 and t.avgScore < 85, 1, 0)) b,
+		       SUM(IF(t.avgScore >= 60 and t.avgScore < 70, 1, 0)) c,
+		       SUM(IF(t.avgScore < 60, 1, 0)) d
+		  FROM (SELECT hd.studentId,
+		               h.subjectId,
+		               ROUND(AVG(hd.scoreRate) * 100, 1) avgScore
+		          FROM HW_HOMEWORK h
+		         INNER JOIN HW_HOMEWORK_DTL hd
+		            ON h.homeworkId = hd.homeworkId
+		         WHERE h.classId = #{classId}
+		           AND h.classType = #{classType}
+		           AND hd.correctTime IS NOT NULL
+		           AND h.isDeleted = 0
+		           AND hd.isDeleted = 0
+		         GROUP BY hd.studentId, h.subjectId) t
+		 WHERE t.avgScore IS NOT NULL
+		 GROUP BY t.subjectId
+		]]>
+	</select>
+
+	<select id="findClassAnalysisDtoList" parameterType="map" resultType="cn.strong.leke.diag.model.ClassAnalysisDto">
+		<![CDATA[
+		SELECT t.classId,
+		       t.className,
+		       ROUND(SUM(IF(t.avgScore >= 85, 1, 0)) * 100 / count(*), 2) rateA,
+		       ROUND(SUM(IF(t.avgScore >= 70 and t.avgScore < 85, 1, 0)) * 100 / count(*), 2) rateB,
+		       ROUND(SUM(IF(t.avgScore >= 60 and t.avgScore < 70, 1, 0)) * 100 / count(*), 2) rateC,
+		       ROUND(SUM(IF(t.avgScore < 60, 1, 0)) * 100 / count(*), 2) rateD
+		  FROM (SELECT h.classId,
+		               h.className,
+		               hd.studentId,
+		               ROUND(AVG(hd.scoreRate) * 100, 1) avgScore
+		          FROM HW_HOMEWORK h
+		         INNER JOIN HW_HOMEWORK_DTL hd
+		            ON h.homeworkId = hd.homeworkId
+		         WHERE h.subjectId = #{subjectId}
+		           AND h.classType = #{classType}
+		]]>
+		<if test="classIdList != null">
+			AND h.classId IN
+			<foreach collection="classIdList" item="classId" open="(" close=")" separator=",">
+				#{classId}
+			</foreach>
+		</if>
+		<![CDATA[
+		           AND hd.correctTime IS NOT NULL
+		           AND h.isDeleted = 0
+		           AND hd.isDeleted = 0
+		         GROUP BY h.classId, h.className, hd.studentId
+		        HAVING avgScore IS NOT NULL) t
+		 GROUP BY t.classId
+		]]>
+	</select>
+
+	<select id="findStuSubjectScoreDtoList" parameterType="map" resultType="cn.strong.leke.diag.model.StuSubjectScoreDto">
+		<![CDATA[
+		SELECT hd.studentId,
+		       hd.studentName,
+		       h.subjectId,
+		       ROUND(AVG(hd.scoreRate) * 100, 1) avgScore
+		  FROM HW_HOMEWORK h
+		 INNER JOIN HW_HOMEWORK_DTL hd
+		    ON h.homeworkId = hd.homeworkId
+		 WHERE h.classId = #{classId}
+		   AND h.classType = #{classType}
+		   AND hd.scoreRate IS NOT NULL
+		   AND hd.correctTime IS NOT NULL
+		   AND h.isDeleted = 0
+		   AND hd.isDeleted = 0
+		 GROUP BY hd.studentId, h.subjectId
+		 ORDER BY hd.studentId
+		]]>
+	</select>
+
+	<select id="findOneStuSubjectScoreDtoList" parameterType="map"
+		resultType="cn.strong.leke.diag.model.StuSubjectScoreDto">
+		<![CDATA[
+		SELECT hd.studentId,
+		       h.subjectId,
+		       ROUND(AVG(hd.scoreRate) * 100, 1) avgScore
+		  FROM HW_HOMEWORK h
+		 INNER JOIN HW_HOMEWORK_DTL hd
+		    ON h.homeworkId = hd.homeworkId
+		 WHERE hd.studentId = #{studentId}
+		   AND h.classType = #{classType}
+		   AND h.classId = #{classId}
+		   AND hd.scoreRate IS NOT NULL
+		   AND hd.correctTime IS NOT NULL
+		   AND h.isDeleted = 0
+		   AND hd.isDeleted = 0
+		 GROUP BY hd.studentId, h.subjectId
+		 ORDER BY hd.studentId
+		]]>
+	</select>
+
+	<select id="findClassSubjectScoreDtoList" parameterType="map"
+		resultType="cn.strong.leke.diag.model.ClassSubjectScoreDto">
+		<![CDATA[
+		SELECT t.subjectId,
+		       ROUND(MAX(t.avgScore), 1) maxScore,
+		       ROUND(MIN(t.avgScore), 1) minScore,
+		       ROUND(AVG(t.avgScore), 1) avgScore
+		  FROM (SELECT hd.studentId,
+		               h.subjectId,
+		               ROUND(AVG(hd.scoreRate) * 100, 2) avgScore
+		          FROM HW_HOMEWORK h
+		         INNER JOIN HW_HOMEWORK_DTL hd
+		            ON h.homeworkId = hd.homeworkId
+		         WHERE h.classId = #{classId}
+		           AND h.classType = #{classType}
+		           AND hd.scoreRate IS NOT NULL
+		           AND hd.correctTime IS NOT NULL
+		           AND h.isDeleted = 0
+		           AND hd.isDeleted = 0
+		         GROUP BY hd.studentId, h.subjectId) t
+		 GROUP BY t.subjectId
+		 ORDER BY t.subjectId
+		]]>
+	</select>
+
+	<select id="findStudentSubmitState" parameterType="map" resultType="map">
+		<![CDATA[
+		SELECT st.studentName,
+		       th.homeworkName homeworkName,
+		       st.submitStatus submitStatus,
+		       st.submitTime   submitTime,
+		       th.closeTime    closeTime
+		  FROM  HW_HOMEWORK th
+		 INNER JOIN HW_HOMEWORK_DTL st
+		    ON st.homeworkId = th.homeworkId
+		 WHERE th.isDeleted = 0
+		   AND st.isDeleted = 0
+		   AND th.status = 1
+		   AND IF(th.homeworkType = 2, th.closeTime, th.startTime) <= NOW()
+		   AND st.submitStatus IS NOT NULL
+		]]>
+		<if test="startTime != null">
+		<![CDATA[
+			AND th.closeTime >= #{startTime}
+		]]>
+		</if>
+		<if test="endTime != null">
+		<![CDATA[
+			AND th.closeTime <= #{endTime}
+		]]>
+		</if>
+		<if test="subjectId != null">
+			AND th.subjectId = #{subjectId}
+		</if>
+		<if test="studentId != null">
+			AND st.studentId = #{studentId}
+		</if>
+		<if test="classType != null">
+			AND th.classType = #{classType}
+		</if>
+		<if test="classId != null">
+			AND th.classId = #{classId}
+		</if>
+		<![CDATA[
+		  ORDER BY th.startTime ASC
+		]]>
+	</select>
+
+	<select id="getUsersAvgScore" parameterType="map" resultType="bigdecimal">
+		<![CDATA[
+		SELECT ROUND(AVG(st.scoreRate * 100), 1) avgScore
+		  FROM HW_HOMEWORK th
+		 INNER JOIN HW_HOMEWORK_DTL st
+		    ON st.homeworkId = th.homeworkId
+		 WHERE th.isDeleted = 0
+		   AND st.isDeleted = 0
+		   AND st.submitStatus IS NOT NULL
+		   AND th.subjectId = #{subjectId}
+		]]>
+		<if test="startTime != null">
+		<![CDATA[
+			AND th.closeTime >= #{startTime}
+		]]>
+		</if>
+		<if test="endTime != null">
+		<![CDATA[
+			AND th.closeTime <= #{endTime}
+		]]>
+		</if>
+		<![CDATA[
+			AND st.studentId IN
+		]]>
+		<foreach item="userId" collection="userIds" open="(" close=")" separator=",">
+			#{userId}
+		</foreach>
+	</select>
+	<!--学生：查询按照课程学科分组的作业统计信息 -->
+	<select id="findMyCourseSubject" parameterType="cn.strong.leke.diag.model.CourseSubjectHomeworkStatisticsStudentsQueryDto"
+		resultType="cn.strong.leke.diag.model.CourseSubjectHomeworkStatisticsStudentsDto">
+		SELECT * FROM (
+		SELECT
+		hw.subjectId,
+		hw.subjectName,
+		hw.classId,
+		hw.className,
+		dtl.studentId,
+		dtl.studentName,
+		COUNT(*) homeworkCount,
+		SUM(IF(submitStatus = 1,1,0)) finishCount,
+		SUM(IF(submitStatus = 2,1,0)) delayCount,
+		SUM(IF(submitStatus = 0,1,0)) noFinishCount
+		FROM
+		HW_HOMEWORK_DTL dtl
+		JOIN HW_HOMEWORK hw ON dtl.homeworkId =
+		hw.homeworkId
+		WHERE dtl.isDeleted = 0
+		AND hw.isDeleted = 0
+		AND hw.status = 1
+		AND studentId = #{studentId}
+		<if test="startDate != null">
+			AND hw.closeTime >= #{startDate}
+		</if>
+		GROUP BY
+		dtl.studentId,hw.subjectId,hw.classId
+		) AS t
+		WHERE 1=1
+		<if test="subjectId !=null">
+			AND subjectId = #{subjectId}
+		</if>
+		<if test="className != null and className !=''">
+			AND className LIKE CONCAT('%',#{className},'%')
+		</if>
+	</select>
+
+	<select id="findSubjWorkByUserId" parameterType="map" resultType="cn.strong.leke.diag.model.UserStats$SubjWork">
+	<![CDATA[
+		SELECT b.subjectId,
+			   b.subjectName,
+			   COUNT(*) totalNum,
+			   SUM(IF(a.submitStatus = 1, 1, 0)) normalNum,
+			   SUM(IF(a.submitStatus = 2, 1, 0)) delayNum
+		  FROM HW_HOMEWORK_DTL a
+		  JOIN HW_HOMEWORK b
+		    ON a.homeworkId = b.homeworkId
+		 WHERE a.isDeleted = 0
+		   AND b.isDeleted = 0
+		   AND b.status = 1
+		   AND a.studentId = #{userId}
+		   AND b.closeTime >= #{startTime}
+		   AND b.closeTime < #{endTime}
+		 GROUP BY subjectId
+	]]>
+	</select>
+
+	<select id="findSubjScoreByUserId" parameterType="map" resultType="cn.strong.leke.diag.model.UserStats$SubjScore">
+	<![CDATA[
+		SELECT b.subjectId,
+			   b.subjectName,
+			   COUNT(*) totalNum,
+			   SUM(a.scoreRate) * 100  totalScore,
+			   MAX(a.scoreRate) * 100  maxScore,
+			   MIN(a.scoreRate) * 100  minScore
+		  FROM HW_HOMEWORK_DTL a
+		  JOIN HW_HOMEWORK b
+		    ON a.homeworkId = b.homeworkId
+		 WHERE a.isDeleted = 0
+		   AND b.isDeleted = 0
+		   AND b.status = 1
+		   AND a.submitStatus > 0
+		   AND a.correctTime IS NOT NULL
+		   AND a.studentId = #{userId}
+		   AND b.closeTime >= #{startTime}
+		   AND b.closeTime < #{endTime}
+		 GROUP BY subjectId
+	]]>
+	</select>
+
+	<select id="findHwDtlByHomeworkIds" resultType="cn.strong.leke.remote.model.homework.HomeworkDtlRemote">
+		<![CDATA[
+		SELECT studentId,score,homeworkId
+		FROM HW_HOMEWORK_DTL
+		WHERE isDeleted = 0 
+		]]>
+		AND homeworkId IN
+		<foreach collection="hwIds" item="item" open="(" separator="," close=")">
+			#{item}
+		</foreach>
+	</select>
+
+	<select id="getStudentFinishAnalyByTime" parameterType="map"
+		resultType="cn.strong.leke.diag.dao.homework.model.WorkFinishAnaly">
+	<![CDATA[
+		SELECT COUNT(*) totalNum,
+			   COUNT(IF(a.submitStatus = 1, 1, NULL)) normalNum,
+			   COUNT(IF(a.submitStatus = 2, 1, NULL)) delayNum,
+			   COUNT(IF(a.bugFixStage > 1, 1, NULL)) doneBugFixNum,
+			   COUNT(IF(a.bugFixStage = 1, 1, NULL)) undoBugFixNum
+		  FROM HW_HOMEWORK_DTL a
+		  JOIN HW_HOMEWORK b
+		    ON a.homeworkId = b.homeworkId
+		 WHERE a.isDeleted = 0
+		   AND b.isDeleted = 0
+		   AND b.status = 1
+		   AND b.homeworkType <= 3
+		   AND a.studentId = #{studentId}
+		   AND b.closeTime >= #{start}
+		   AND b.closeTime <= #{end}
+	]]>
+	</select>
+
+	<select id="findResBugFixStateByCourseSingleId" parameterType="map"
+		resultType="cn.strong.leke.diag.model.report.ResReviewState">
+	<![CDATA[
+		SELECT b.studentId, COUNT(IF(b.bugFixStage = 1, 1, NULL)) = 0 state
+		  FROM HW_HOMEWORK a
+		  JOIN HW_HOMEWORK_DTL b
+		    ON a.homeworkId = b.homeworkId
+		 WHERE a.isDeleted = 0
+		   AND a.status = 1
+		   AND a.homeworkType <= 2
+		   AND b.isDeleted = 0
+		   AND b.bugFixStage > 0
+		   AND a.courseSingleId = #{courseSingleId}
+		 GROUP BY b.studentId
+	]]>
+	</select>
+
+	<select id="findResBugFixStateByStudentId" parameterType="map"
+		resultType="cn.strong.leke.diag.model.report.ResReviewState">
+	<![CDATA[
+		SELECT a.courseSingleId, COUNT(IF(b.bugFixStage = 1, 1, NULL)) = 0 state
+		  FROM HW_HOMEWORK a
+		  JOIN HW_HOMEWORK_DTL b
+		    ON a.homeworkId = b.homeworkId
+		 WHERE a.isDeleted = 0
+		   AND a.status = 1
+		   AND a.homeworkType <= 2
+		   AND b.isDeleted = 0
+		   AND b.bugFixStage > 0
+		   AND b.studentId = #{studentId}
+		   AND a.courseSingleId IN
+	]]>
+		<foreach collection="courseSingleIds" item="courseSingleId" separator="," open="(" close=")">
+			#{courseSingleId}
+		</foreach>
+	<![CDATA[
+		 GROUP BY a.courseSingleId
+	]]>
+	</select>
+
+	<select id="getScoreLevelsByHomeworkId" parameterType="long"
+		resultType="cn.strong.leke.diag.dao.homework.model.LessonExamAnaly">
+	<![CDATA[
+		SELECT COUNT(IF(scoreRate >= 0.85, 1, NULL)) levelA,
+		       COUNT(IF(scoreRate >= 0.70 AND scoreRate < 0.85, 1, NULL)) levelB,
+		       COUNT(IF(scoreRate >= 0.60 AND scoreRate < 0.70, 1, NULL)) levelC,
+		       COUNT(IF(scoreRate >= 0.45 AND scoreRate < 0.60, 1, NULL)) levelD,
+		       COUNT(IF(scoreRate < 0.45, 1, NULL)) levelE
+		  FROM HW_HOMEWORK_DTL
+		 WHERE homeworkId = #{homeworkId}
+		   AND correctTime IS NOT NULL
+		   AND isDeleted = 0
+	]]>
+	</select>
+
+	<select id="findWorkDtlsByQuery" parameterType="cn.strong.leke.diag.dao.homework.model.WorkDtlQuery"
+		resultType="map">
+	<![CDATA[
+		SELECT a.homeworkId,
+		       b.homeworkDtlId,
+		       a.homeworkName,
+		       a.closeTime,
+		       b.submitTime,
+		       b.submitStatus
+		  FROM HW_HOMEWORK a
+		  JOIN HW_HOMEWORK_DTL b
+		    ON a.homeworkId = b.homeworkId
+		 WHERE a.isDeleted = 0
+		   AND a.status = 1
+		   AND b.isDeleted = 0
+		   AND b.studentId = #{studentId}
+		   AND b.submitStatus = #{submitStatus}
+		   AND a.homeworkType <= 3
+		   AND a.closeTime >= #{startTime}
+		   AND a.closeTime <= #{endTime}
+	]]>
+	</select>
+
+	<select id="findHomeworkNumByUserIds" parameterType="map" resultType="integer">
+	<![CDATA[
+		SELECT COUNT(DISTINCT a.homeworkId)
+		  FROM HW_HOMEWORK a
+		  JOIN HW_HOMEWORK_DTL b
+		    ON a.homeworkId = b.homeworkId
+		 WHERE a.isDeleted = 0
+		   AND a.status = 1
+		   AND a.homeworkType <= 3
+		   AND a.closeTime >= #{start}
+		   AND a.closeTime <= #{end}
+		   AND a.startTime <= NOW()
+		   AND b.isDeleted = 0
+		   AND b.studentId IN
+	]]>
+		<foreach item="userId" collection="userIds" open="(" close=")" separator=",">
+			#{userId}
+		</foreach>
+		<if test="teacherId != null">
+			AND a.teacherId = #{teacherId}
+		</if>
+		<if test="subjectId != null">
+			AND a.subjectId = #{subjectId}
+		</if>
+	</select>
+
+	<select id="findUserWorkSubmitRatesByUserIds" parameterType="map"
+		resultType="cn.strong.leke.diag.dao.homework.model.UserWorkSubmitRate">
+	<![CDATA[
+		SELECT b.studentId userId,
+		       b.studentName userName,
+		       ROUND(SUM(IF(b.submitStatus = 1, 1, 0)) * 100 / COUNT(*), 1) normalRate,
+		       ROUND(SUM(IF(b.submitStatus > 0, 1, 0)) * 100 / COUNT(*), 1) submitRate
+		  FROM HW_HOMEWORK a
+		  JOIN HW_HOMEWORK_DTL b
+		    ON a.homeworkId = b.homeworkId
+		 WHERE a.isDeleted = 0
+		   AND a.status = 1
+		   AND a.homeworkType <= 3
+		   AND a.closeTime >= #{start}
+		   AND a.closeTime <= #{end}
+		   AND a.startTime <= NOW()
+		   AND b.isDeleted = 0
+		   AND b.studentId IN
+	]]>
+		<foreach item="userId" collection="userIds" open="(" close=")" separator=",">
+			#{userId}
+		</foreach>
+		<if test="teacherId != null">
+			AND a.teacherId = #{teacherId}
+		</if>
+		<if test="subjectId != null">
+			AND a.subjectId = #{subjectId}
+		</if>
+			GROUP BY b.studentId
+	</select>
+	
+	<select id="findUserSubmitBugFixRatesByUserIds" parameterType="map"
+		resultType="cn.strong.leke.diag.model.UserRate">
+	<![CDATA[
+		SELECT a.studentId userId,
+			   ROUND(SUM(IF(a.submitStatus = 1, 1, 0)) * 100 / COUNT(*)) rate,
+			   ROUND(SUM(IF(a.bugFixStage > 1, 1, 0)) * 100 / SUM(IF(a.bugFixStage > 0, 1, 0))) rate2
+		  FROM HW_HOMEWORK_DTL a
+		  JOIN HW_HOMEWORK b
+		    ON a.homeworkId = b.homeworkId
+		 WHERE a.isDeleted = 0
+		   AND b.isDeleted = 0
+		   AND b.status = 1
+		   AND b.homeworkType <= 3
+		   AND b.closeTime >= #{start}
+		   AND b.closeTime <= #{end}
+		   AND a.startTime <= NOW()
+		   AND b.teacherId = #{teacherId}
+		   AND b.subjectId = #{subjectId}
+		   AND a.studentId IN
+	]]>
+		<foreach item="userId" collection="userIds" open="(" close=")" separator=",">
+			#{userId}
+		</foreach>
+		 GROUP BY a.studentId
+	</select>
+
+	<select id="findStudentReviewCountByCourseSingleId" parameterType="map"
+		resultType="cn.strong.leke.diag.model.ReviewCount">
+		<![CDATA[
+		SELECT b.studentId userId,
+		       a.courseSingleId lessonId,
+		       IFNULL(COUNT(IF(b.bugFixStage = 1, 1, NULL)), 0) num
+		  FROM HW_HOMEWORK a
+		  JOIN HW_HOMEWORK_DTL b
+		    ON a.homeworkId = b.homeworkId
+		 WHERE a.isDeleted = 0
+		   AND a.status = 1
+		   AND a.homeworkType <= 2
+		   AND b.isDeleted = 0
+		   AND b.bugFixStage > 0
+		   AND a.courseSingleId IN
+		]]>
+		<foreach collection="courseSingleIds" item="courseSingleId" separator="," open="(" close=")">
+			#{courseSingleId}
+		</foreach>
+		<![CDATA[
+		 GROUP BY a.courseSingleId
+		]]>
+	</select>
+
+</mapper>   

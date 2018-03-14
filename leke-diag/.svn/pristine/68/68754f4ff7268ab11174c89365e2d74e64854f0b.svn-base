@@ -1,0 +1,67 @@
+var {toFixed, toRate} = require('../../../utils/number');
+
+function fmtLevelRate(levelNum, correctNum, finishNum) {
+	if (finishNum == 0) {
+		return '--';
+	}
+	var rate = toRate(levelNum, correctNum, 1);
+	return `${levelNum}(${rate}%)`;
+}
+
+function fmtHomeworkName(data) {
+	if (data.correctNum > 0) {
+		return <a href={`../../homework/overall/${data.homeworkId}.htm`}>{data.homeworkName}</a>;
+	}
+	return data.homeworkName;
+}
+
+// 随堂作业
+class LessonHomework extends React.Component {
+	render() {
+		let datas = this.props.datas;
+		if (!(datas && datas.length)) {
+			return null;
+		}
+		return (
+			<section id={this.props.id} className="ana-module">
+				<div className="title">随堂作业</div>
+				<div className="c-scrolltable">
+					<div className="left">
+						<table>
+							<tr><td>作业名称</td></tr>
+							<tr><td>提交人数(比率)</td></tr>
+							<tr><td>未交人数(比率)</td></tr>
+							<tr><td>总分</td></tr>
+							<tr><td>平均分</td></tr>
+							<tr><td>最高分</td></tr>
+							<tr><td>最低分</td></tr>
+							<tr><td>优秀人数(比率)</td></tr>
+							<tr><td>良好人数(比率)</td></tr>
+							<tr><td>及格人数(比率)</td></tr>
+							<tr><td>较差人数(比率)</td></tr>
+							<tr><td>危险人数(比率)</td></tr>
+						</table>
+					</div>
+					<div className="right">
+						<table>
+							<tr>{datas.map(data => <td><span className="name">{fmtHomeworkName(data)}</span></td>)}</tr>
+							<tr>{datas.map(data => <td>{data.finishNum}({toRate(data.finishNum, data.totalNum, 1)}%)</td>)}</tr>
+							<tr>{datas.map(data => <td>{data.totalNum - data.finishNum}({toRate(data.totalNum - data.finishNum, data.totalNum, 1)}%)</td>)}</tr>
+							<tr>{datas.map(data => <td>{data.totalScore}</td>)}</tr>
+							<tr>{datas.map(data => <td>{data.avgScore ? data.avgScore : '--'}</td>)}</tr>
+							<tr>{datas.map(data => <td>{data.maxScore ? data.maxScore : '--'}</td>)}</tr>
+							<tr>{datas.map(data => <td>{data.minScore ? data.minScore : '--'}</td>)}</tr>
+							<tr>{datas.map(data => <td>{fmtLevelRate(data.levelA, data.correctNum, data.finishNum)}</td>)}</tr>
+							<tr>{datas.map(data => <td>{fmtLevelRate(data.levelB, data.correctNum, data.finishNum)}</td>)}</tr>
+							<tr>{datas.map(data => <td>{fmtLevelRate(data.levelC, data.correctNum, data.finishNum)}</td>)}</tr>
+							<tr>{datas.map(data => <td>{fmtLevelRate(data.levelD, data.correctNum, data.finishNum)}</td>)}</tr>
+							<tr>{datas.map(data => <td>{fmtLevelRate(data.levelE, data.correctNum, data.finishNum)}</td>)}</tr>
+						</table>
+					</div>
+				</div>
+			</section>
+		);
+	}
+}
+
+module.exports = LessonHomework;

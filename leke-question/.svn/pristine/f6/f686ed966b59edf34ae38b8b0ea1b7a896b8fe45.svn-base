@@ -1,0 +1,290 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.1//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.question.dao.mybatis.KnowledgeDao">
+
+	<insert id="insertKnowledge" useGeneratedKeys="true" keyProperty="knowledgeId"
+		parameterType="cn.strong.leke.model.question.Knowledge">
+		INSERT INTO que_knowledge(
+			knowledgeName, knowledgeCode, schoolStageId,
+			subjectId, proficiency, parentId, ord, lft, rgt,
+			isDeleted, createdBy, createdOn, modifiedBy, modifiedOn
+		) VALUES (
+			#{knowledgeName}, #{knowledgeCode}, #{schoolStageId},
+			#{subjectId}, #{proficiency}, #{parentId}, #{ord}, #{lft}, #{rgt},
+			0, #{createdBy}, now(), #{modifiedBy}, now()
+		)
+	</insert>
+	
+	<update id="updateKnowledge" parameterType="cn.strong.leke.model.question.Knowledge">
+		UPDATE que_knowledge
+		<set>
+			<if test="knowledgeName != null and knowledgeName != ''">knowledgeName = #{knowledgeName},</if>
+			<if test="knowledgeCode != null and knowledgeCode != ''">knowledgeCode = #{knowledgeCode},</if>
+			<if test="schoolStageId != null">schoolStageId = #{schoolStageId},</if>
+			<if test="subjectId != null">subjectId = #{subjectId},</if>
+			<if test="proficiency != null">proficiency = #{proficiency},</if>
+			<if test="ord != null">ord = #{ord},</if>
+			<if test="modifiedBy != null">modifiedBy = #{modifiedBy},</if>
+			modifiedOn = now()
+		</set>
+		<where>
+			knowledgeId= #{knowledgeId}
+		</where>
+	</update>
+	
+	<update id="deleteKnowledge" parameterType="cn.strong.leke.model.question.Knowledge">
+		UPDATE que_knowledge
+		<set>
+			isDeleted = 1,
+			<if test="modifiedBy != null">modifiedBy = #{modifiedBy},</if>
+			modifiedOn = now()
+		</set>
+		<where>
+			knowledgeId= #{knowledgeId}
+		</where>
+	</update>
+	
+	<select id="queryKnowledges" parameterType="cn.strong.leke.model.question.Knowledge"
+		resultType="cn.strong.leke.model.question.Knowledge">
+		SELECT *
+		FROM que_knowledge
+		<where>
+			<if test="knowledgeId != null">AND knowledgeId = #{knowledgeId}</if>
+			<if test="knowledgeName != null and knowledgeName != ''">AND knowledgeName LIKE '%'||#{knowledgeName}||'%'</if>
+			<if test="knowledgeCode != null and knowledgeCode != ''">AND knowledgeCode LIKE '%'||#{knowledgeCode}||'%'</if>
+			<if test="schoolStageId != null">AND schoolStageId = #{schoolStageId}</if>
+			<if test="subjectId != null">AND subjectId = #{subjectId}</if>
+			<if test="parentId != null">AND parentId = #{parentId}</if>
+			AND isDeleted = 0
+		</where>
+		ORDER BY parentId ASC, ord ASC
+	</select>
+	
+	<select id="getKnowledgeById" parameterType="long"
+		resultType="cn.strong.leke.model.question.Knowledge">
+		SELECT *
+		FROM que_knowledge
+		<where>
+			knowledgeId = #{knowledgeId}
+			AND isDeleted = 0
+		</where>
+	</select>
+	
+	<select id="getKnowledge" parameterType="long"
+		resultType="cn.strong.leke.model.question.Knowledge">
+		SELECT *
+		FROM que_knowledge
+		<where>
+			knowledgeId = #{knowledgeId}
+		</where>
+	</select>
+	
+	<update id="updateIncLftIndexGteLftVal" parameterType="cn.strong.leke.model.question.Knowledge">
+		UPDATE que_knowledge
+		SET lft = lft + 2
+		<where>
+			<![CDATA[
+				AND lft >= #{lft}
+			]]>
+			AND schoolStageId = #{schoolStageId}
+			AND subjectId = #{subjectId}
+			AND isDeleted = 0
+		</where>
+	</update>
+	
+	<update id="updateIncRgtIndexGteLftVal" parameterType="cn.strong.leke.model.question.Knowledge">
+		UPDATE que_knowledge
+		SET rgt = rgt + 2
+		<where>
+			<![CDATA[
+				AND rgt >= #{lft}
+			]]>
+			AND schoolStageId = #{schoolStageId}
+			AND subjectId = #{subjectId}
+			AND isDeleted = 0
+		</where>
+	</update>
+	
+	<update id="updateDecLftIndexGteLftVal" parameterType="cn.strong.leke.model.question.Knowledge">
+		UPDATE que_knowledge
+		SET lft = lft - 2
+		<where>
+			<![CDATA[
+				AND lft >= #{lft}
+			]]>
+			AND schoolStageId = #{schoolStageId}
+			AND subjectId = #{subjectId}
+			AND isDeleted = 0
+		</where>
+	</update>
+	
+	<update id="updateDecRgtIndexGteLftVal" parameterType="cn.strong.leke.model.question.Knowledge">
+		UPDATE que_knowledge
+		SET rgt = rgt - 2
+		<where>
+			<![CDATA[
+				AND rgt >= #{lft}
+			]]>
+			AND schoolStageId = #{schoolStageId}
+			AND subjectId = #{subjectId}
+			AND isDeleted = 0
+		</where>
+	</update>
+	
+	<update id="updateLftRgtIndex" parameterType="cn.strong.leke.model.question.Knowledge">
+		UPDATE que_knowledge
+		<set>
+			lft = #{lft},
+			rgt = #{rgt},
+			modifiedOn = now()
+		</set>
+		<where>
+			AND knowledgeId = #{knowledgeId}
+			AND isDeleted = 0
+		</where>
+	</update>
+	
+	<select id="countKnowledgeRoot" parameterType="cn.strong.leke.model.question.Knowledge" 
+		resultType="int">
+		SELECT count(*)
+		FROM que_knowledge
+		<where>
+			schoolStageId = #{schoolStageId}
+			AND subjectId = #{subjectId}
+			AND isDeleted = 0
+		</where>
+	</select>
+	
+	<select id="queryQueKnowledgeTreeNodes"
+		parameterType="cn.strong.leke.question.model.QueKnowledgeTreeQuery"
+		resultType="cn.strong.leke.question.model.StatisKnowledge">
+		SELECT a.* , b.queCount
+		FROM que_knowledge a
+		LEFT JOIN (
+			SELECT c.knowledgeId, count(DISTINCT d.questionId) as queCount
+			FROM que_knowledge c, (
+				SELECT e.questionId, g.knowledgeId, g.schoolStageId, g.subjectId, g.lft, g.rgt
+				FROM que_question e
+				LEFT JOIN que_question_knowledge f
+				ON e.questionId = f.questionId
+				AND f.isDeleted = 0
+				LEFT JOIN que_knowledge g
+				ON f.knowledgeId = g.knowledgeId
+				AND g.isDeleted = 0
+				WHERE e.isDeleted= 0
+				AND e.parentId IS NULL
+				AND e.sharePlatform = 1
+				<if test="statusType == 4 or statusType == 5 or statusType == 7">
+					AND e.questionStatus = #{statusType}
+				</if>
+				<if test="statusType == 99">
+					AND (e.questionStatus = 4 OR e.questionStatus = 7)
+				</if>
+			) d
+			<where> 
+				AND c.schoolStageId = d.schoolStageId
+				AND c.subjectId = d.subjectId
+				<![CDATA[
+				AND d.lft >= c.lft
+				AND d.rgt <= c.rgt
+				]]>
+				AND c.isDeleted = 0
+			</where>
+			GROUP BY c.knowledgeId
+		) b
+		ON a.knowledgeId = b.knowledgeId
+		WHERE a.schoolStageId = #{schoolStageId}
+		AND a.subjectId = #{subjectId}
+		AND a.parentId = #{parentId}
+		AND a.isDeleted = 0
+		ORDER BY a.parentId ASC, a.ord ASC
+	</select>
+	
+	
+	<select id="getSameOrderFrontNode" parameterType="cn.strong.leke.model.question.Knowledge"
+		resultType="cn.strong.leke.model.question.Knowledge">
+		SELECT *
+		FROM que_knowledge
+		<where>
+			parentId = #{parentId}
+			<![CDATA[
+				AND knowledgeId < #{knowledgeId}
+			]]>
+			AND ord = #{ord}
+			AND isDeleted = 0
+		</where>
+	</select>
+	
+	<select id="getSameOrderAfterNode" parameterType="cn.strong.leke.model.question.Knowledge"
+		resultType="cn.strong.leke.model.question.Knowledge">
+		SELECT *
+		FROM que_knowledge
+		<where>
+			parentId = #{parentId}
+			<![CDATA[
+				AND knowledgeId > #{knowledgeId}
+			]]>
+			AND ord = #{ord}
+			AND isDeleted = 0
+		</where>
+	</select>
+	
+	<select id="getOrderFrontNode" parameterType="cn.strong.leke.model.question.Knowledge"
+		resultType="cn.strong.leke.model.question.Knowledge">
+		SELECT *
+		FROM que_knowledge
+		<where>
+			parentId = #{parentId}
+			<![CDATA[
+			AND ord < #{ord}
+			]]>
+			AND isDeleted = 0
+		</where>
+	</select>
+	
+	<select id="getOrderAfterNode" parameterType="cn.strong.leke.model.question.Knowledge"
+		resultType="cn.strong.leke.model.question.Knowledge">
+		SELECT *
+		FROM que_knowledge
+		<where>
+			parentId = #{parentId}
+			<![CDATA[
+			AND ord > #{ord}
+			]]>
+			AND isDeleted = 0
+		</where>
+	</select>
+	
+	<select id="findByIds" parameterType="map"
+		resultType="cn.strong.leke.model.question.Knowledge">
+		SELECT *
+		FROM que_knowledge
+		<where>
+			knowledgeId IN 
+			<foreach collection="knowledgeIds" item="knowledgeId" separator="," open="(" close=")">
+				#{knowledgeId}
+			</foreach>
+			AND isDeleted = 0
+		</where>
+	</select>
+	
+	<select id="getPath" parameterType="long"
+		resultType="cn.strong.leke.model.question.Knowledge">
+		SELECT a.*
+		FROM que_knowledge a
+		JOIN que_knowledge b 
+		ON b.knowledgeId = #{knowledgeId}
+		AND b.isDeleted = 0
+		<where>
+			a.schoolStageId = b.schoolStageId
+			AND a.subjectId = b.subjectId
+			<![CDATA[
+			AND a.lft <= b.lft
+			AND a.rgt >= b.rgt
+			]]>
+			AND a.isDeleted = 0
+		</where>
+		ORDER BY a.lft ASC
+	</select>
+</mapper>

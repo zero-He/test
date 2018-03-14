@@ -1,0 +1,180 @@
+/* 
+ * 包名: cn.strong.leke.homework.service.impl
+ *
+ * 文件名：DoubtService.java
+ *
+ * 版权所有：Copyright www.leke.cn Corporation 2014 
+ * 
+ * 创建者: luf
+ *
+ * 日期：2014-6-18
+ */
+package cn.strong.leke.homework.service.impl;
+
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.annotation.Resource;
+
+import org.springframework.stereotype.Service;
+
+import cn.strong.leke.common.utils.StringUtils;
+import cn.strong.leke.context.base.UserBaseContext;
+import cn.strong.leke.context.user.UserContext;
+import cn.strong.leke.context.user.cst.RoleCst;
+import cn.strong.leke.core.business.incentive.DynamicHelper;
+import cn.strong.leke.core.business.notice.NoticeHelper;
+import cn.strong.leke.framework.page.jdbc.Page;
+import cn.strong.leke.homework.dao.mybatis.DoubtDao;
+import cn.strong.leke.homework.dao.mybatis.ExplainDao;
+import cn.strong.leke.homework.model.Doubt;
+import cn.strong.leke.homework.model.DoubtDtl;
+import cn.strong.leke.homework.model.DoubtNAPIDto;
+import cn.strong.leke.homework.model.Explain;
+import cn.strong.leke.homework.service.DoubtService;
+import cn.strong.leke.model.base.SchoolCst;
+import cn.strong.leke.model.incentive.DynamicInfo;
+import cn.strong.leke.model.incentive.DynamicTypes;
+import cn.strong.leke.model.incentive.IncentiveTypes;
+import cn.strong.leke.model.user.UserBase;
+import cn.strong.leke.notice.model.todo.DoubtStuEvent;
+
+/**
+ * 〈一句话功能简述〉
+ * 〈功能详细描述〉
+ * @author    luf
+ * @version   Avatar 
+ */
+@Service("doubtServiceImpl")
+public class DoubtServiceImpl implements DoubtService {
+
+	@Resource
+	private DoubtDao doubtDao;
+	@Resource
+	private ExplainDao explainDao;
+
+	@Override
+	public boolean saveDoubt(Doubt doubt) {
+		doubt.setTargetType(1);
+		doubt.setDeleted(false);
+		doubt.setCreatedOn(new Date());
+		doubt.setDoubtTitle(StringUtils.replaceUtf8mb4(doubt.getDoubtTitle()));
+		doubt.setDoubtContent(StringUtils.replaceUtf8mb4(doubt.getDoubtContent()));
+		doubtDao.saveDoubt(doubt);
+		//发送提问待办 
+		this.todo(doubt.getDoubtId(), doubt.getTeacherId(), doubt.getDoubtTitle(), doubt.getCreatedBy(),
+				doubt.getUserName());
+		return doubt.getDoubtId() > 0;
+	}
+
+	@Override
+	public List<DoubtDtl> doubtList(Doubt doubt, Page page) {
+		return doubtDao.doubtList(doubt, page);
+
+	}
+	@Override
+	public DoubtDtl getDetail(DoubtDtl doubt) {
+		doubt.setCreatedBy(UserContext.user.getUserId());
+		return doubtDao.getDetail(doubt);
+	}
+	
+	public List<DoubtDtl> getTeacherDoubtl(Doubt doubt, Page page) {
+		doubt.setTeacherId(UserContext.user.getUserId());
+		List<DoubtDtl> doubts = doubtDao.getTeacherDoubtl(doubt, page);
+		/* 老师答疑界面，解答列表数据 */
+		for (DoubtDtl dt : doubts) {
+			Explain explain = new Explain();
+			explain.setDoubtId(dt.getDoubtId());
+			explain.setCreatedBy(UserContext.user.getUserId());
+			dt.setExplains(explainDao.getExplainList(explain));
+		}
+
+		return doubts;
+	}
+
+	@Override
+	public void saveDoubtN(List<DoubtNAPIDto> doubtList) {
+		if(doubtList!=null){
+			for(DoubtNAPIDto doubtN : doubtList){
+				if(doubtN.getAnswerTime()!=null){
+					
+				}
+				UserBase user = UserBaseContext.getUserBaseByUserId(doubtN.getStudentId());
+				String title = null;
+				if(doubtN.getDoubtContent()!=null&&doubtN.getDoubtContent().length()>15){
+					title = doubtN.getDoubtContent().substring(0,15);
+				}else{
+					title = doubtN.getDoubtContent();
+				}
+				Doubt doubt = new Doubt();
+				doubt.setDoubtTitle(title);
+				doubt.setUserName(user.getUserName());
+				doubt.setDoubtType(1);
+				doubt.setDoubtContent(doubtN.getDoubtContent());
+				doubt.setTargetType(1);
+				doubt.setResolved(Boolean.FALSE);
+				doubt.setCreatedBy(doubtN.getStudentId());
+				doubt.setCreatedOn(doubtN.getCreateTime());
+				doubt.setTeacherId(doubtN.getTeacherId());
+				doubt.setDeleted(Boolean.FALSE);
+				Doubt _doubt = doubtDao.getDoubt(doubt);
+				if(_doubt!=null){
+					doubt=_doubt;
+				}else{
+					doubtDao.saveDoubt(doubt);
+					DynamicInfo dynamicInfo = new DynamicInfo();
+					dynamicInfo.setUserId(user.getId());
+					dynamicInfo.setUserName(user.getUserName());
+					dynamicInfo.setRoleId(RoleCst.STUDENT);
+					dynamicInfo.setSchoolId(SchoolCst.LEKE);
+					dynamicInfo.setDynamicType(DynamicTypes.HW_SPONSOR_DOUBT);
+					Map<String,Object> params = new HashMap<String, Object>();
+					params.put("doubtId", doubt.getDoubtId());
+					dynamicInfo.setParams(params);
+					dynamicInfo.setTitle(doubt.getDoubtTitle());
+					dynamicInfo.setTypeId(IncentiveTypes.STUDENT.HW_STUDENT_DOUBT);
+					DynamicHelper.publish(dynamicInfo);
+				}
+				if(doubtN.getAnswerTime()!=null){
+					UserBase teacher = UserBaseContext.getUserBaseByUserId(doubtN.getTeacherId());
+					Explain explain = new Explain();
+					explain.setUserName(teacher.getUserName());
+					explain.setDoubtId(doubt.getDoubtId());
+					explain.setCreatedBy(doubtN.getTeacherId());
+					explain.setCreatedOn(doubtN.getAnswerTime());
+					explain.setExplainContent(doubtN.getAnswer());
+					explain.setDeleted(Boolean.FALSE);
+					explainDao.saveExplain(explain);
+					doubtDao.resoveDoubt(doubt.getDoubtId());
+					DynamicInfo dynamicInfo = new DynamicInfo();
+					dynamicInfo.setUserId(teacher.getId());
+					dynamicInfo.setUserName(teacher.getUserName());
+					dynamicInfo.setRoleId(RoleCst.TEACHER);
+					dynamicInfo.setSchoolId(SchoolCst.LEKE);
+					dynamicInfo.setDynamicType(DynamicTypes.HW_SLOVE_DOUBT);
+					Map<String,Object> params = new HashMap<String, Object>();
+					params.put("doubtId", doubt.getDoubtId());
+					dynamicInfo.setParams(params);
+					dynamicInfo.setTitle(doubt.getDoubtTitle());
+					dynamicInfo.setTypeId(IncentiveTypes.TEACHER.HW_STUDENT_DOUBT);
+					DynamicHelper.publish(dynamicInfo);
+				}
+			}
+		}
+	}
+
+	/**
+	 * 学生提问，发送待办
+	 */
+	private void todo(Long doubtId, Long teacherId, String title, Long studentId, String studentName) {
+		DoubtStuEvent event = new DoubtStuEvent();
+		event.setDoubtId(doubtId);
+		event.setTitle(title);
+		event.setTeacherId(teacherId);
+		event.setStudentId(studentId);
+		event.setStudentName(studentName);
+		NoticeHelper.todo(event);
+	}
+}

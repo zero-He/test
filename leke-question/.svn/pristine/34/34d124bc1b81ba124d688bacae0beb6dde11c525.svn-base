@@ -1,0 +1,77 @@
+package cn.strong.leke.question.core.material.cmd.impl;
+
+import javax.annotation.Resource;
+
+import org.apache.commons.io.FilenameUtils;
+import org.springframework.stereotype.Service;
+
+import cn.strong.leke.common.utils.StringUtils;
+import cn.strong.leke.core.business.samba.BusiData;
+import cn.strong.leke.core.business.samba.SambaBusService;
+import cn.strong.leke.core.business.samba.SambaConsts;
+import cn.strong.leke.core.business.samba.TransRequest;
+import cn.strong.leke.core.dfs.FileUtils;
+import cn.strong.leke.framework.exceptions.ValidateException;
+import cn.strong.leke.model.user.User;
+import cn.strong.leke.question.core.material.cmd.IMaterialFileHandler;
+import cn.strong.leke.question.dao.mybatis.material.IMaterialFileDao;
+import cn.strong.leke.question.model.material.MaterialFile;
+
+@Service
+public class MaterialFileHandler implements IMaterialFileHandler {
+	@Resource
+	private IMaterialFileDao materialFileDao;
+	@Resource
+	private SambaBusService sambaBusService;
+
+	@Override
+	public void add(MaterialFile assoc, User user) {
+		if (assoc.getMaterialId() == null || StringUtils.isEmpty(assoc.getFileUrl())) {
+			throw new ValidateException("电子教材附件信息错误！");
+		}
+		Long materialId = assoc.getMaterialId();
+		Long userId = user.getId();
+		assoc.setCreatedBy(userId);
+		startTransCodeTask(assoc);
+		materialFileDao.del(materialId, userId);
+		materialFileDao.add(assoc);
+	}
+
+	@Override
+	public void updateTransCodeTask(MaterialFile assoc) {
+		if (assoc.getTaskId() == null || assoc.getMaterialId() == null) {
+			throw new ValidateException("电子教材附件信息错误！");
+		}
+		materialFileDao.updateTransCodeTask(assoc);
+	}
+
+	private void preprocess(MaterialFile assoc) {
+		String fileUrl = assoc.getFileUrl();
+		String ext = FilenameUtils.getExtension(fileUrl);
+		String cwUrl = fileUrl.substring(0, fileUrl.lastIndexOf(SambaConsts.SEPARATOR));
+		assoc.setType(ext.toUpperCase());
+		assoc.setCwUrl(cwUrl);
+		assoc.setCwSuffix(ext.toUpperCase());
+		assoc.setStatus(MaterialFile.STATUS_PROCESS);
+	}
+
+	/*
+	 * 开始转码服务
+	 */
+	private void startTransCodeTask(MaterialFile assoc) {
+		Integer transType = SambaConsts.TRANS_TYPE_SERVER;
+		preprocess(assoc);
+		String fileUrl = assoc.getFileUrl();
+		String ext = FilenameUtils.getExtension(assoc.getFileUrl());
+		String fileName = FilenameUtils.getBaseName(fileUrl) + FileUtils.EXTENSION_SEPARATOR + ext;
+		TransRequest transRequest = new TransRequest();
+		transRequest.setSrcPath(assoc.getFileUrl());
+		transRequest.setDesPath(assoc.getCwUrl());
+		transRequest.setFileName(fileName);
+		transRequest.setTranType(transType);
+		transRequest.setDatas(new BusiData(assoc.getMaterialId(), SambaConsts.BUSI_DATA_TYPE_MATERIAL));
+		String taskId = sambaBusService.doChange(transRequest);
+		assoc.setTaskId(taskId);
+	}
+
+}

@@ -1,0 +1,321 @@
+package cn.strong.leke.homework.controller;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+
+import javax.annotation.Resource;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.ModelMap;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+
+import cn.strong.leke.common.utils.CollectionUtils;
+import cn.strong.leke.common.utils.DateUtils;
+import cn.strong.leke.context.user.ParentContext;
+import cn.strong.leke.context.user.UserContext;
+import cn.strong.leke.context.user.cst.RoleCst;
+import cn.strong.leke.framework.exceptions.ValidateException;
+import cn.strong.leke.homework.model.ClassSubject;
+import cn.strong.leke.homework.model.VacationYearBean;
+import cn.strong.leke.homework.service.HomeworkConfigService;
+import cn.strong.leke.homework.service.HomeworkDtlService;
+import cn.strong.leke.homework.util.SubjectEnum;
+import cn.strong.leke.lesson.model.ClazzQuery;
+import cn.strong.leke.lesson.model.TeachSubj;
+import cn.strong.leke.model.base.Clazz;
+import cn.strong.leke.model.user.Student;
+import cn.strong.leke.model.user.User;
+import cn.strong.leke.remote.model.tukor.SubjectRemote;
+import cn.strong.leke.remote.service.lesson.IKlassRemoteService;
+import cn.strong.leke.remote.service.tutor.base.ISubjectRemoteService;
+
+/**
+ * 
+ *
+ * 描述:教师布置作业controller
+ *
+ * @author  basil
+ * @created 2014-6-21 下午1:41:04
+ * @since   v1.0.0
+ */
+@Controller
+@RequestMapping("/auth/*")
+public class VacationHomeworkController {
+
+	protected static final Logger logger = LoggerFactory.getLogger(VacationHomeworkController.class);
+
+	@Resource
+	private HomeworkDtlService homeworkDtlService;
+	@Resource
+	private IKlassRemoteService iKlassRemoteService;
+	@Resource
+	private ISubjectRemoteService iSubjectRemoteService;
+	@Resource
+	private HomeworkConfigService homeworkConfigService;
+	
+	
+	@RequestMapping(value = {"/common/homework/vacationHomeworkList"}, method = RequestMethod.GET)
+	public String homeworkList() {
+		if(!homeworkConfigService.HasConfig()){
+			return "/auth/hd/vacationWork/noConfig";
+		}
+		
+		User user = UserContext.user.get();
+		Long roleId = user.getCurrentRole().getId();
+		if(roleId.equals(RoleCst.TEACHER)){
+			return "redirect:/auth/teacher/homework/vacationHomeworkList.htm";
+		}else if(roleId.equals(RoleCst.TEACHER_HEADER)){
+			return "redirect:/auth/classTeacher/homework/vacationHomeworkList.htm";
+		}else if(roleId.equals(RoleCst.STUDENT)){
+			return "redirect:/auth/student/homework/vacationHomeworkList.htm";
+		}else if(roleId.equals(RoleCst.PARENT)){
+			return "redirect:/auth/parent/homework/vacationHomeworkList.htm";
+		}else{
+			return "redirect:/auth/student/homework/vacationHomeworkList.htm";
+		}
+		
+	}
+	
+	
+	
+	@RequestMapping(value = {"student/homework/vacationHomeworkList","parent/homework/vacationHomeworkList"}, method = RequestMethod.GET)
+	public String vacationHomeworkList(Integer type,Long studentId, ModelMap modelMap) {
+		
+		if(!homeworkConfigService.HasConfig()){
+			return "/auth/hd/vacationWork/noConfig";
+		}
+		
+		if(type==null){
+			type=1;
+		}
+		Long roleId = UserContext.user.getCurrentRoleId();
+		Boolean isParent = roleId.equals(RoleCst.PARENT);
+		
+		if(isParent){
+			List<Student> studentList = ParentContext.parent.get().getStudents();
+			studentList.sort(new Comparator<Student>(){
+	            public int compare(Student arg0, Student arg1) {
+	                return arg0.getId().compareTo(arg1.getId());
+	            }
+	        }); 
+			if(studentList.size()>0){
+				if(studentId==null){
+					studentId = studentList.get(0).getId();
+				}
+			}else{
+				throw new ValidateException("请先绑定子女");
+			}
+			modelMap.addAttribute("studentList", studentList);
+			
+		}else{
+			studentId = UserContext.user.getUserId();
+		}
+		modelMap.addAttribute("studentId", studentId);
+		modelMap.addAttribute("isParent", isParent);
+		modelMap.addAttribute("type", type);
+		
+		return "/auth/homework/vacationHomeworkList";
+	}
+
+	/**
+	 * 寒暑假作业列表
+	 * @param classId
+	 * @param subjectId
+	 * @param modelMap
+	 * @return
+	 */
+	@RequestMapping(value = {"classTeacher/homework/vacationHomeworkList", "teacher/homework/vacationHomeworkList"}, method = RequestMethod.GET)
+	public String vacationHomeworkLists(Long classId, Long subjectId, ModelMap modelMap) {
+		if (!homeworkConfigService.HasConfig()) {
+			return "/auth/hd/vacationWork/noConfig";
+		}
+		User user = UserContext.user.get();
+		Long roleId = user.getCurrentRole().getId();
+		Long userId = user.getId();
+		Long schoolId = user.getCurrentSchool().getId();
+		Boolean isTecher = roleId.equals(RoleCst.TEACHER);
+
+		if (isTecher) {
+			//获取所有的老师学科列表，及对应班级列表
+			List<TeachSubj> teachSubj = iKlassRemoteService.findTeachSubjByUserId(userId, schoolId);
+			//按学科ID给teachSubj排序
+			teachSubj.sort(new Comparator<TeachSubj>() {
+				public int compare(TeachSubj arg0, TeachSubj arg1) {
+					return arg0.getSubjectId().compareTo(arg1.getSubjectId());
+				}
+			});
+			//遍历判断是否绑定学科班级
+			for (TeachSubj ts : teachSubj) {
+				List<Clazz> clazzList = ts.getClazzList();
+				if (clazzList.size() == 0) {
+					Clazz clazz = new Clazz();
+
+					clazz.setClassId(-1l);
+					clazz.setClassName("没有绑定学科班级");
+					clazzList.add(clazz);
+				}
+				//按班级ID给clazzList排序
+				clazzList.sort(new Comparator<Clazz>() {
+					public int compare(Clazz arg0, Clazz arg1) {
+						return arg0.getClassId().compareTo(arg1.getClassId());
+					}
+				});
+			}
+			if (teachSubj.size() > 0) {
+
+				if (subjectId == null || classId == null) {
+
+					TeachSubj ts = teachSubj.get(0);
+					if (subjectId == null) {
+						subjectId = ts.getSubjectId();
+					}
+					if (classId == null) {
+						if (ts.getClazzList().size() > 0) {
+							classId = ts.getClazzList().get(0).getClassId();
+						} else {
+							classId = 0l;
+						}
+					}
+				}
+			}else{
+				throw new ValidateException("请先绑定学科和班级。");
+			}
+			modelMap.addAttribute("classId", classId);
+			modelMap.addAttribute("subjectId", subjectId);
+			modelMap.addAttribute("teachSubj", teachSubj);
+			modelMap.addAttribute("isTecher", isTecher);
+
+		} else {
+
+			ClazzQuery query = new ClazzQuery();
+			query.setType(Clazz.CLAZZ_ORGAN);
+			query.setUserId(userId);
+			query.setRoleId(roleId);
+			query.setSchoolId(schoolId);
+			List<Clazz> classList = iKlassRemoteService.findClazzByQuery(query);
+			classList.sort(new Comparator<Clazz>() {
+				public int compare(Clazz arg0, Clazz arg1) {
+					return arg0.getClassId().compareTo(arg1.getClassId());
+				}
+			});
+			List<ClassSubject> classSubjectList = new ArrayList<ClassSubject>();
+			for (Clazz clazz : classList) {
+				ClassSubject classSubject = new ClassSubject();
+				classSubject.setAlias(clazz.getAlias());
+				classSubject.setClassId(clazz.getClassId());
+				classSubject.setClassName(clazz.getClassName());
+				classSubject.setSchoolStageId(clazz.getSchoolStageId());
+				List<SubjectRemote> subjectList = iSubjectRemoteService.findSubjectListBySchoolStageId(clazz.getSchoolStageId());
+				if (subjectList.size() == 0) {
+					SubjectRemote subjectRemote = new SubjectRemote();
+					subjectRemote.setSubjectId(-1l);
+					subjectRemote.setSubjectName("没有绑定班级学科");
+					subjectList.add(subjectRemote);
+				}
+				subjectList.sort(new Comparator<SubjectRemote>() {
+					public int compare(SubjectRemote arg0, SubjectRemote arg1) {
+						return arg0.getSubjectId().compareTo(arg1.getSubjectId());
+					}
+				});
+				classSubject.setSubjectList(subjectList);
+				classSubjectList.add(classSubject);
+			}
+
+			if (classSubjectList.size() > 0) {
+				ClassSubject ts = classSubjectList.get(0);
+				if (subjectId == null || classId == null) {
+
+					if (classId == null) {
+						classId = ts.getClassId();
+					}
+					if (subjectId == null) {
+						if (ts.getSubjectList().size() > 0) {
+							subjectId = ts.getSubjectList().get(0).getSubjectId();
+						} else {
+							subjectId = 0l;
+						}
+					}
+				}
+			} else {
+				throw new ValidateException("请先绑定行政班级。");
+			}
+			modelMap.addAttribute("classId", classId);
+			modelMap.addAttribute("subjectId", subjectId);
+			modelMap.addAttribute("classSubjectList", classSubjectList);
+			modelMap.addAttribute("isTecher", isTecher);
+		}
+		modelMap.addAttribute("yearHoliday", getYearHoliday());
+		List<TeachSubj> teachSubjByUserId = iKlassRemoteService.findTeachSubjByUserId(UserContext.user.getUserId(), UserContext.user.getCurrentSchoolId());
+		if (CollectionUtils.isNotEmpty(teachSubjByUserId)) {
+			for (TeachSubj teachSubj : teachSubjByUserId) {
+				if (SubjectEnum.isEnglishSubject(teachSubj.getSubjectId())) {
+					modelMap.addAttribute("isEnglish", true);
+					break;
+				}
+			}
+		}
+		return "/auth/homework/vacationHomeworkTList";
+	}
+
+	@RequestMapping(value = {"classTeacher/homework/vacationHomeworkDetail","teacher/homework/vacationHomeworkDetail","student/homework/vacationHomeworkDetail","parent/homework/vacationHomeworkDetail"}, method = RequestMethod.GET)
+	public String vacationHomeworkDetail(String id, ModelMap modelMap) {
+		
+		Long roleId = UserContext.user.getCurrentRoleId();
+		
+		modelMap.addAttribute("isTeacherHeader", roleId.equals(RoleCst.TEACHER_HEADER));
+		modelMap.addAttribute("isTeacher", roleId.equals(RoleCst.TEACHER));
+		modelMap.addAttribute("isParent", roleId.equals(RoleCst.PARENT));
+		modelMap.addAttribute("isStudent", roleId.equals(RoleCst.STUDENT));
+		modelMap.addAttribute("homeworkId", id);
+		return "/auth/homework/vacationHomeworkDetail";
+	}
+
+	@RequestMapping(value = {"classTeacher/homework/microHomeworkDetail","teacher/homework/microHomeworkDetail","student/homework/microHomeworkDetail","parent/homework/microHomeworkDetail"}, method = RequestMethod.GET)
+	public String microHomeworkDetail(String id, ModelMap modelMap) {
+		
+		Long roleId = UserContext.user.getCurrentRoleId();
+		
+		modelMap.addAttribute("isTeacherHeader", roleId.equals(RoleCst.TEACHER_HEADER));
+		modelMap.addAttribute("isTeacher", roleId.equals(RoleCst.TEACHER));
+		modelMap.addAttribute("isParent", roleId.equals(RoleCst.PARENT));
+		modelMap.addAttribute("isStudent", roleId.equals(RoleCst.STUDENT));
+		modelMap.addAttribute("homeworkId", id);
+		return "/auth/homework/microHomeworkDetail";
+	}
+
+	/**
+	 * 获取年 寒暑假
+	 * @return java.util.List<cn.strong.leke.homework.model.VacationYearBean>
+	 * @Author LIU.SHITING
+	 * @Version 2.6
+	 * @Date 2017/5/11 11:24
+	 * @Param []
+	 */
+	public List<VacationYearBean> getYearHoliday() {
+		int currentYear = DateUtils.getCurrentYear();
+		List<VacationYearBean> yearList = new ArrayList<>();
+		for (int i = 0; i < 5; i++) {
+			String year = (currentYear - i) + "";
+			for (int j = 2; j > 0; j--) {
+				//1:寒假，2：暑假
+				VacationYearBean yearBean = new VacationYearBean();
+				if (j == 2) {
+					yearBean.setYearId(year + (j + ""));
+					yearBean.setHoliday(2);
+					yearBean.setYearName(year + "暑假");
+				}
+				if (j == 1) {
+					yearBean.setYearId(year + (j + ""));
+					yearBean.setHoliday(1);
+					yearBean.setYearName(year + "寒假");
+				}
+				yearList.add(yearBean);
+			}
+		}
+		return yearList;
+	}
+}

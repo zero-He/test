@@ -1,0 +1,51 @@
+<%@ page pageEncoding="UTF-8"%>
+<%@ include file="/pages/common/tags.jsp"%>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <title>乐答</title>
+    <link rel="stylesheet" href="${assets}/styles/mobile/global.css">
+    <link rel="stylesheet" href="${assets}/styles/mobile/doubt-pad.css">
+    <%@ include file="/pages/common/cordova.jsp"%>
+</head>
+<body>
+	<section class="c-doubt-pad">
+        <ul class="c-tab">
+            <li <c:if test="${resolved eq 1}">class="cur"</c:if> data-i="1"><div class="done">已解答</div></li>
+            <li <c:if test="${resolved eq 0}">class="cur"</c:if> data-i="0"><div class="none" >未解答</div></li>
+            <c:if test="${currentRoleId==100 }">
+            	<li <c:if test="${resolved eq 2}">class="cur"</c:if> data-i="2"><div class="ques" >我要提问</div></li>
+            </c:if>
+        </ul>
+        <input id="jResolved" type="hidden" value="${resolved}">
+        <form id="jForm" action="">
+			<input type="hidden" name="resolved" value="${resolved}"/>
+		</form>
+
+        <div class="right">
+            <header class="c-title">${resolvedName}</header>
+
+            <div class="content">
+                <!-- 问题列表 -->
+                <div class="c-doubt-lists" id="jDroploadId">
+                    <ul id="jListBody">
+                        
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+    <script id="jListTpl" type="x-mustache">
+		{{#dataList}}
+	    	<li class="item c-arrow" data-i="{{doubtId}}">
+                <h5>[{{doubtTypeStr}}] {{doubtTitle}}</h5>
+                <div class="info"><c:if test="${currentRoleId==101}">{{userName}}   </c:if>{{explainTimeOnString}}</div>
+            </li>
+		{{/dataList}}
+    </script>
+    <script src="${assets}/scripts/common/mobile/common.js?_t=${_t}"></script>
+    <script src="/scripts/m/p/doubt/list.js?_tt=${_t}"></script>
+</body>
+</html>

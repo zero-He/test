@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8" ?>   
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.scs.dao.slave.AccountDao">
+
+	<select id="findPointAccountByQuery" parameterType="cn.strong.leke.scs.model.query.PointAccountQuery"
+		resultType="cn.strong.leke.scs.model.view.PointAccount">
+	<![CDATA[
+		SELECT a.accountId,
+			   a.ownerId,
+			   a.ownerName,
+			   a.ownerType,
+			   a.loginName,
+			   a.phone,
+			   b.bookId,
+			   b.balance - b.freeze usable,
+			   b.balance,
+			   b.total,
+			   b.freeze,
+			   b.bestowal,
+			   c.sellerId,
+			   c.sellerName
+		  FROM pay.pay_account a
+		  JOIN pay.pay_point_book b
+		    ON a.accountId = b.accountId
+		  LEFT JOIN crm.scs_customer c
+		    ON a.ownerId = c.lekeId
+		   AND c.customerType = a.ownerType
+		   AND c.isDeleted = 0
+		 WHERE a.isDeleted = 0
+	]]>
+		<if test="sellerId != null and sellerId > 0">
+			AND c.sellerId = #{sellerId}
+		</if>
+		<if test="sellerName != null and sellerName != ''">
+			AND c.sellerName LIKE CONCAT('%', #{sellerName}, '%')
+		</if>
+		<if test="ownerName != null and ownerName != ''">
+			AND a.ownerName LIKE CONCAT('%', #{ownerName}, '%')
+		</if>
+		<if test="loginName != null and loginName != ''">
+			AND a.loginName LIKE CONCAT('%', #{loginName}, '%')
+		</if>
+		<if test="order != null and order != ''">
+			ORDER BY ${order} ${sort}
+		</if>
+	</select>
+
+</mapper>   

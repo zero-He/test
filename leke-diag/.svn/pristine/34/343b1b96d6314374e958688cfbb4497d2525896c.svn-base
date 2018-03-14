@@ -1,0 +1,29 @@
+package cn.strong.leke.diag.dao.beike.model;
+
+public class BeikeConst {
+	/**
+	 * 备课资源类型：1 - 课件
+	 */
+	public static final Long RES_TYPE_CW = 1L;
+	/**
+	 * 备课资源类型：2 - 微课
+	 */
+	public static final Long RES_TYPE_MC = 2L;
+	/**
+	 * 备课资源类型：3 - 作业
+	 */
+	public static final Long RES_TYPE_HW = 3L;
+
+	/**
+	 * 备课阶段类型：1 - 预习
+	 */
+	public static final Long PHASE_PREVIEW = 1L;
+	/**
+	 * 备课阶段类型：2 - 课中
+	 */
+	public static final Long PHASE_INCLASS = 2L;
+	/**
+	 * 备课阶段类型：3 - 课后
+	 */
+	public static final Long PHASE_REVIEW = 3L;
+}

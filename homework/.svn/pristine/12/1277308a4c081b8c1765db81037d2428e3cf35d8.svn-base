@@ -1,0 +1,146 @@
+package cn.strong.leke.homework.service.impl;
+
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.annotation.Resource;
+
+import org.springframework.stereotype.Service;
+
+import cn.strong.leke.common.utils.CollectionUtils;
+import cn.strong.leke.common.utils.ListUtils;
+import cn.strong.leke.common.utils.function.Function;
+import cn.strong.leke.common.utils.function.Predicate;
+import cn.strong.leke.context.base.UserBaseContext;
+import cn.strong.leke.framework.exceptions.ValidateException;
+import cn.strong.leke.homework.dao.mongo.HomeworkProgressDao;
+import cn.strong.leke.homework.model.mongo.HomeworkProgress;
+import cn.strong.leke.homework.model.mongo.HomeworkProgress.StudentTs;
+import cn.strong.leke.homework.service.IHomeworkProgressService;
+import cn.strong.leke.model.user.SimpleUser;
+import cn.strong.leke.model.user.UserBase;
+
+@Service
+public class HomeworkProgressServiceImpl implements IHomeworkProgressService {
+
+	@Resource
+	private HomeworkProgressDao homeworkProgressDao;
+
+	public void insert(HomeworkProgress record) {
+		homeworkProgressDao.insert(record);
+	}
+
+	@Override
+	public void heartbeat(Long homeworkId, Long studentId) {
+		boolean success = homeworkProgressDao.heartbeat(homeworkId, studentId);
+		if (!success) {
+			HomeworkProgress hp = this.homeworkProgressDao.get(homeworkId, studentId);
+			if (hp == null) {
+				return;
+			}
+			if (CollectionUtils.isEmpty(hp.getFinished()) && CollectionUtils.isEmpty(hp.getUnfinished())) {
+				StudentTs ts = new StudentTs();
+				ts.setStudentId(studentId);
+				ts.setTs(new Date());
+				ts.setUsed(30);
+				this.homeworkProgressDao.append(homeworkId, ts);
+			}
+		}
+	}
+
+	@Override
+	public Integer submit(Long homeworkId, Long studentId) {
+		HomeworkProgress progress = this.homeworkProgressDao.get(homeworkId, studentId);
+		Integer used = 30;
+		if (progress != null && CollectionUtils.isNotEmpty(progress.getUnfinished())) {
+			StudentTs ts = progress.getUnfinished().get(0);
+			used = ts.getUsed() != null ? ts.getUsed() : 30;
+		}
+		homeworkProgressDao.submit(homeworkId, studentId, used);
+		return used;
+	}
+
+	@Override
+	public void submitForSheet(Long homeworkId, Long studentId) {
+		homeworkProgressDao.submit(homeworkId, studentId, null);
+	}
+
+	@Override
+	public Map<String, List<SimpleUser>> getById(Long homeworkId) {
+		if (homeworkId == null) {
+			throw new ValidateException("homeworkId should not be null.");
+		}
+		Map<String, List<SimpleUser>> result = new HashMap<String, List<SimpleUser>>();
+		HomeworkProgress progress = homeworkProgressDao.getById(homeworkId);
+		if (progress == null) {
+			return Collections.emptyMap();
+		}
+		List<StudentTs> finished = progress.getFinished();
+		List<StudentTs> doing = progress.getUnfinished();
+		StudentTsUtils studentTsUtils = new StudentTsUtils();
+		if (CollectionUtils.isNotEmpty(finished)) {
+			Collections.sort(finished, studentTsUtils);
+			result.put("finished", ListUtils.map(finished, ConvertUserBase.STU));
+		}
+		if (CollectionUtils.isNotEmpty(doing)) {
+			doing = ListUtils.filter(doing, studentTsUtils);
+			Collections.sort(doing, studentTsUtils);
+			result.put("doing", ListUtils.map(doing, ConvertUserBase.STU));
+		}
+		return result;
+	}
+
+	private enum ConvertUserBase implements Function<StudentTs, SimpleUser> {
+		STU;
+		@Override
+		public SimpleUser apply(StudentTs t) {
+			SimpleUser su = new SimpleUser();
+			UserBase ub = UserBaseContext.getUserBaseByUserId(t.getStudentId());
+			su.setUserId(ub.getUserId());
+			su.setUserName(ub.getUserName());
+			su.setLoginName(ub.getLoginName());
+			su.setNick(ub.getNick());
+			su.setPhoto(ub.getPhoto());
+			return su;
+		}
+
+	}
+
+	private class StudentTsUtils implements Comparator<StudentTs>, Predicate<StudentTs> {
+		private StudentTsUtils() {
+			this.setNowDate(new Date());
+		}
+
+		private Date nowDate;
+
+		public Date getNowDate() {
+			return nowDate;
+		}
+
+		public void setNowDate(Date nowDate) {
+			this.nowDate = nowDate;
+		}
+
+		@Override
+		public int compare(StudentTs o1, StudentTs o2) {
+			return o2.getTs().compareTo(o1.getTs());
+		}
+
+		@Override
+		public boolean test(StudentTs t) {
+			// 两分钟内
+			return t.getTs() != null && this.getNowDate().getTime() > t.getTs().getTime()
+					&& this.getNowDate().getTime() - t.getTs().getTime() < 120000;
+		}
+	}
+
+	@Override
+	public HomeworkProgress get(Long homeworkId, Long studentId) {
+		return this.homeworkProgressDao.get(homeworkId, studentId);
+	}
+
+}

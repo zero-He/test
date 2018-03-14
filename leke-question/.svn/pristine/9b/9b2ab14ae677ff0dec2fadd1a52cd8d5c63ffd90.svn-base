@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.question.dao.mybatis.question.IFamousSchoolQuestionCheckLogDao">
+	
+	<insert id="add" useGeneratedKeys="true" keyProperty="checkLogId"
+		parameterType="cn.strong.leke.question.model.question.FamousSchoolQuestionCheckLog">
+		INSERT INTO que_famous_school_question_check_log(
+			questionId, schoolId, fromStatus, toStatus, checkNote, checkedUser,
+			isDeleted, createdBy, createdOn
+		) VALUES (
+			#{questionId}, #{schoolId}, #{fromStatus}, #{toStatus}, #{checkNote}, #{checkedUser},
+			0, #{createdBy}, now()
+		)
+	</insert>
+	
+	<select id="findByQuestionAndSchool" parameterType="map"
+		resultType="cn.strong.leke.question.model.question.FamousSchoolQuestionCheckLog">
+		SELECT a.*
+		FROM que_famous_school_question_check_log a
+		<where>
+			AND questionId = #{questionId}
+			AND schoolId = #{schoolId}
+			AND isDeleted = 0
+		</where>
+		ORDER BY a.createdOn DESC
+	</select>
+
+</mapper>

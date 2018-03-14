@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" ?>   
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.homework.dao.mybatis.HomeworkStatusExportDao">
+
+	<select id = "findExportStatus" parameterType="long" resultType="cn.strong.leke.homework.model.ExportStatus" >
+		<![CDATA[
+			SELECT hh.homeworkId,hhd.studentId,hhd.studentName,hhd.submitStatus 
+			from HW_HOMEWORK hh, HW_HOMEWORK_DTL hhd
+			where hh.homeworkId = hhd.homeworkId 
+			and hh.classId = #{classId} and hh.schoolId = #{schoolId}
+			and hh.isDeleted = 0 and hhd.isDeleted = 0 and hh.status=1
+			and hhd.studentId IS NOT NULL
+			ORDER BY studentId desc , homeworkId desc
+		]]>
+	</select>
+	
+	<select id="countExportStatus" parameterType="long" resultType="int">
+		SELECT count(1)
+			from HW_HOMEWORK hh, HW_HOMEWORK_DTL hhd
+			where hh.homeworkId = hhd.homeworkId 
+			and hh.classId = #{classId} and hh.schoolId = #{schoolId}
+			and hh.isDeleted = 0 and hhd.isDeleted = 0 and hh.status=1
+	</select>
+	
+	<select id="findHomeWorkByClassId" parameterType="long" resultType="cn.strong.leke.homework.model.Homework">
+		select hh.homeworkId,hh.homeworkName,hh.className
+		from HW_HOMEWORK hh
+		where hh.classId = #{classId} and hh.isDeleted = 0 and hh.status=1 and hh.schoolId = #{schoolId}
+	</select>
+</mapper>   

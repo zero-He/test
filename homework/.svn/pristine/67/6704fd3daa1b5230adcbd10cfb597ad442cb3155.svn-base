@@ -1,0 +1,45 @@
+<%@ page pageEncoding="UTF-8"%>
+<%@ include file="/pages/common/tags.jsp"%>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<%@ include file="/pages/common/meta.jsp"%>
+<title>微课学习</title>
+<style>
+	div{width:0.75rem;height:1.5rem;}
+	.topbar{display:none;}
+	.playerBox .sewise-player-ui .controlbar{bottom:36px;}
+	div.sewise-player-ui div.controlbar ul.controlbar-btns li a.controlbar-btns-fullscreen,
+	div.sewise-player-ui div.controlbar ul.controlbar-btns li a.controlbar-btns-normalscreen{display:none;!important;}
+	.playerBox{width:100%!important;top:0!important;left:0!important;height:100%!important;margin:0!important;overflow:hidden;}
+	div.sewise-player-ui div.buffer div.buffer-text{width:70px!important;}
+	div.sewise-player-ui div.buffer div.buffer-text div.buffer-text-tip{width:50px!important;}
+	div.sewise-player-ui div.big-play-btn{height:90px!important;width:90px!important;}
+</style>
+
+</head>
+<body>
+    <input name="id" type="hidden" value="${id}" />
+	<input name="microId" type="hidden" value="${microId}" />
+	<div class="playerBox" style="width:900px;height:450px;position:absolute;top:50%;left:50%;margin:-225px 0 0 -450px;">
+	 	<script type="text/javascript" src="/scripts/hd/common/player/sewise.player.min.js?server=vod&type=mp4&videourl=${initParam.onlineServerName}/${microcourseFile.cwUrl }.mp4&sourceid=&autostart=true&starttime=0&lang=en_US&buffer=5&skin=vodOrange&draggable=true"></script>
+	</div>
+</body>
+
+
+<script src="${assets}/scripts/common/mobile/common.js"></script>
+<script >
+	seajs.use('/scripts/hd/homework/vacationWork/WkStudy',function(view){
+	var id = 'jPreviewDiv';
+	var userId = '${userId}';
+	var filePath = '${microcourseFile.cwUrl}';
+	// var isMedia = '${isMedia}';
+	var taskId = '${microcourseFile.taskId}';
+	var fileSuffix = '${microcourseFile.cwSuffix}';
+	var microId = '${microcourse.microcourseId}';
+	var holidayId= '${holidayId}';
+	view.init(id, userId, fileSuffix, filePath, taskId,holidayId,microId);
+});
+</script>
+</html>

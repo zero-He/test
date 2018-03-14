@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.1//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.question.analysis.db.dao.mybatis.ISmartPaperQuestionDao">
+
+	<sql id="join_section">
+		<if test="section != null">
+			JOIN que_material_node h
+			ON h.materialNodeId = #{section.materialNodeId}
+			AND h.isDeleted = 0
+			JOIN que_question_section f
+			ON a.questionId = f.questionId
+			AND f.isDeleted = 0
+			JOIN que_material_node g
+			ON f.materialNodeId = g.materialNodeId
+			AND g.materialId = h.materialId
+			<![CDATA[
+			AND	g.lft >= h.lft
+			AND g.rgt <= h.rgt
+			]]>
+			AND g.isDeleted = 0
+			
+			<if test="section.knowledgeIds != null and section.knowledgeIds.size > 0">
+			JOIN que_question_knowledge qk
+			ON a.questionId = qk.questionId
+			AND qk.isDeleted = 0
+			AND qk.knowledgeId IN
+				<foreach collection="section.knowledgeIds" item="item" separator="," open="(" close=")">#{item}</foreach>
+			</if>
+		</if>
+	</sql>
+
+	<sql id="join_knowledgeIds">
+		<if test="knowledgeIds != null and knowledgeIds.size > 0">
+			JOIN que_knowledge ks_k
+			ON ks_k.knowledgeId IN
+				<foreach collection="knowledgeIds" item="item" separator="," open="(" close=")">#{item}</foreach>
+			AND ks_k.isDeleted = 0
+			JOIN que_question_knowledge ks_m
+			ON a.questionId = ks_m.questionId
+			AND ks_m.isDeleted = 0
+			JOIN que_knowledge ks_n
+			ON ks_m.knowledgeId = ks_n.knowledgeId
+			AND ks_n.schoolStageId = ks_k.schoolStageId
+			AND ks_n.subjectId = ks_k.subjectId
+			<![CDATA[
+			AND	ks_n.lft >= ks_k.lft
+			AND ks_n.rgt <= ks_k.rgt
+			]]>
+			AND ks_n.isDeleted = 0
+		</if>
+	</sql>
+	
+	<sql id="smart_paper_join">
+		<include refid="join_section"/>
+		<include refid="join_knowledgeIds"/>
+	</sql>
+	
+	<sql id="smart_paper_criteria">
+		<if test="schoolStageId != null">AND a.schoolStageId = #{schoolStageId}</if>
+		<if test="subjectId != null">AND a.subjectId = #{subjectId}</if>
+		<if test="questionTypeId != null">AND a.questionTypeId = #{questionTypeId}</if>
+		AND a.parentId IS NULL
+		AND a.isDeleted = 0
+		AND a.isDisabled = 0
+	</sql>
+	
+	<sql id="querySmartPaperQuestions_personal">
+		SELECT a.questionId
+		FROM que_question a
+		<include refid="smart_paper_join"/>
+		<where>
+			AND a.createdBy = #{userId}
+			AND a.sharePersonal = 1
+			<include refid="smart_paper_criteria"/>
+		</where>
+	</sql>
+	
+	<sql id="querySmartPaperQuestions_favorite">
+		SELECT a.questionId
+		FROM que_question a
+		JOIN que_teacher_question tq
+		ON a.questionId = tq.questionId
+		AND tq.isDeleted = 0
+		<include refid="smart_paper_join"/>
+		<where>
+			AND tq.teacherId = #{userId}
+			<include refid="smart_paper_criteria"/>
+		</where>
+	</sql>
+	
+	<sql id="querySmartPaperQuestions_school">
+		SELECT a.questionId
+		FROM que_question a
+		JOIN que_school_question sq
+		ON a.questionId = sq.questionId
+		AND sq.isDeleted = 0
+		<include refid="smart_paper_join"/>
+		<where>
+			AND a.schoolId = #{schoolId}
+			<include refid="smart_paper_criteria"/>
+		</where>
+	</sql>
+	
+	<sql id="querySmartPaperQuestions_league">
+		SELECT a.questionId
+		FROM que_question a
+		JOIN que_school_question sq
+		ON a.questionId = sq.questionId
+		AND sq.isDeleted = 0
+		<include refid="smart_paper_join"/>
+		<where>
+			AND a.schoolId IN
+			<foreach collection="leagueMemberIds" item="memberId" open="(" separator="," close=")">
+				#{memberId}
+			</foreach>
+			<include refid="smart_paper_criteria"/>
+		</where>
+	</sql>
+	
+	<sql id="querySmartPaperQuestions_leke">
+		SELECT a.questionId
+		FROM que_question a
+		<include refid="smart_paper_join"/>
+		<where>
+			AND a.sharePlatform = 1
+			AND (
+				<![CDATA[
+				a.schoolId <> 0
+				]]>
+				OR a.questionStatus IN (4, 17)
+			)
+			<include refid="smart_paper_criteria"/>
+		</where>
+	</sql>
+	
+	<sql id="querySmartPaperQuestions_share">
+		SELECT a.questionId
+		FROM que_question a
+		<include refid="smart_paper_join"/>
+		<where>
+			AND a.sharePlatform = 1
+			<![CDATA[
+			AND a.schoolId <> 0
+			]]>
+			<include refid="smart_paper_criteria"/>
+		</where>
+	</sql>
+	
+	<sql id="querySmartPaperQuestions_boutique">
+		SELECT a.questionId
+		FROM que_question a
+		<include refid="smart_paper_join"/>
+		<where>
+			AND a.sharePlatform = 1
+			AND a.schoolId = 0
+			AND a.questionStatus IN (4, 17)
+			<include refid="smart_paper_criteria"/>
+		</where>
+	</sql>
+	
+	<sql id="querySmartPaperQuestions_all">
+		<foreach collection="shareScopes" item="scope" separator="UNION">
+			(
+			<if test="scope == 1">
+				<include refid="querySmartPaperQuestions_personal"/>
+			</if>
+			<if test="scope == 4">
+				<include refid="querySmartPaperQuestions_favorite"/>
+			</if>
+			<if test="scope == 2">
+				<include refid="querySmartPaperQuestions_school"/>
+			</if>
+			<if test="scope == 5">
+				<include refid="querySmartPaperQuestions_league"/>
+			</if>
+			<if test="scope == 3">
+				<include refid="querySmartPaperQuestions_leke"/>
+			</if>
+			<if test="scope == 6">
+				<include refid="querySmartPaperQuestions_share"/>
+			</if>
+			<if test="scope == 7">
+				<include refid="querySmartPaperQuestions_boutique"/>
+			</if>
+			
+			LIMIT #{limit}
+			)
+		</foreach>
+	</sql>
+	
+	<select id="findSmartPaperQids" resultType="_long"
+		parameterType="cn.strong.leke.question.analysis.db.model.SmartPaperDbQuery">
+		<include refid="querySmartPaperQuestions_all"/>
+	</select>
+	
+	<select id="findSmartPaperQues" resultType="cn.strong.leke.question.analysis.db.model.SmartPaperQue"
+		parameterType="map">
+		SELECT a.questionId, a.questionTypeId, a.difficulty
+		FROM que_question a
+		WHERE a.questionId IN
+			<foreach collection="questionIds" item="item" separator="," open="(" close=")">#{item}</foreach>
+		AND a.isDeleted = 0
+		AND a.isDisabled = 0
+	</select>
+</mapper>

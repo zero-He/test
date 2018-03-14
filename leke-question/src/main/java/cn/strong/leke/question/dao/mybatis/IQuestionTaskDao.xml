@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.question.dao.mybatis.IQuestionTaskDao">
+	<select id="maxTaskCount" resultType="int" parameterType="cn.strong.leke.question.model.QuestionTask">
+		SELECT COUNT(*) 
+		FROM que_question q
+		WHERE NOT EXISTS 
+			(
+				SELECT * 
+				FROM que_question_task_item t
+				WHERE isDeleted = 0
+					AND q.questionId = t.questionId
+			)
+			AND questionStatus = 12
+			AND parentId IS NULL
+			AND isDeleted = 0
+			AND sharePlatform = 1
+			AND mayDup = 0
+			AND gradeId = #{gradeId}
+			AND subjectId = #{subjectId}
+			AND TIMESTAMPDIFF(DAY,createdOn,NOW())
+	</select>
+	
+	<select id="checkFinished" resultType="int" parameterType="cn.strong.leke.question.model.QuestionTask">
+		SELECT COUNT(*)
+		FROM que_question q
+		WHERE EXISTS
+			(
+				SELECT * 
+				FROM que_question_task_item t
+				WHERE t.isDeleted = 0
+				AND q.questionId = t.questionId
+				<if test="userId != null and userId > 0">
+					AND t.createdBy = #{userId}
+				</if>
+			)
+			AND questionStatus = 12
+			AND isDeleted = 0
+			AND sharePlatform = 1
+			AND mayDup = 0
+			AND TIMESTAMPDIFF(DAY,createdOn,NOW())
+	</select>
+	
+	<insert id="saveQuestionTask" parameterType="cn.strong.leke.question.model.QuestionTask" useGeneratedKeys="true" keyProperty="taskId">
+		INSERT INTO que_question_task(
+			userId, gradeId, subjectId, taskCount, createdOn, isDeleted
+		) VALUES (
+			#{userId},#{gradeId},#{subjectId},#{taskCount}, now(),0
+		)
+	</insert>
+	
+	<select id="queryUnTaskedQuestionIdList" resultType="long" parameterType="cn.strong.leke.question.model.QuestionTask">
+		SELECT questionId 
+		FROM que_question q
+		WHERE questionStatus = 12
+			AND parentId IS NULL
+			AND isDeleted = 0
+			AND sharePlatform = 1
+			AND mayDup = 0
+			AND gradeId = #{gradeId}
+			AND subjectId = #{subjectId}
+			AND TIMESTAMPDIFF(DAY,createdOn,NOW())
+			AND NOT EXISTS
+				(
+					SELECT * 
+					FROM que_question_task_item t
+					WHERE t.isDeleted = 0
+						AND q.questionId = t.questionId
+				)
+		LIMIT #{taskCount}
+	</select>
+	
+	<insert id="saveQuestionTaskItem" parameterType="cn.strong.leke.question.model.QuestionTaskItem" useGeneratedKeys="true" keyProperty="id">
+		INSERT INTO que_question_task_item(
+			userId, taskId, questionId, createdBy, createdOn, modifiedBy, modifiedOn, isDeleted
+		) VALUES (
+			#{userId},#{taskId},#{questionId},#{createdBy}, now(),#{modifiedBy}, now(),0
+		)
+	</insert>
+	
+	<select id="queryQuestionTaskByUserId" resultType="cn.strong.leke.question.model.QuestionTask" parameterType="cn.strong.leke.question.model.QuestionTask">
+		SELECT gradeId, subjectId, SUM(taskCount) AS taskCount
+		FROM que_question_task
+		WHERE isDeleted = 0
+		<if test="userId != null and userId > 0">
+			AND userId = #{userId}
+		</if>
+		GROUP BY gradeId, subjectId
+		
+	</select>
+	
+	<select id="querySurplusQuestionTaskByUserId" resultType="cn.strong.leke.question.model.QuestionTask" parameterType="cn.strong.leke.question.model.QuestionTask">
+		SELECT gradeId, subjectId, COUNT(*) AS surplusCount
+		FROM que_question q
+		WHERE questionStatus=12
+			AND isDeleted = 0
+			AND sharePlatform = 1
+			AND mayDup = 0
+			AND TIMESTAMPDIFF(DAY,createdOn,NOW())
+			AND EXISTS
+				(
+					SELECT * 
+					FROM que_question_task_item t
+					WHERE t.isDeleted = 0
+						AND q.questionId = t.questionId
+						<if test="userId != null and userId > 0">
+							AND t.createdBy = #{userId}
+						</if>
+				)
+		GROUP BY gradeId, subjectId
+		
+	</select>
+	
+	<select id="queryQuestionTaskSurplusGroupByUserId" resultType="cn.strong.leke.question.model.QuestionTask" parameterType="cn.strong.leke.question.model.QuestionTask">
+		SELECT createdBy,COUNT(*) AS taskCount
+		FROM que_question_task_item t
+		WHERE isDeleted = 0
+			AND EXISTS
+				(
+					SELECT * 
+					FROM que_question q
+					WHERE q.questionStatus=12
+						AND q.isDeleted = 0
+						AND q.questionId = t.questionId
+						AND sharePlatform = 1
+						AND mayDup = 0
+						AND TIMESTAMPDIFF(DAY,createdOn,NOW())
+				)
+			<if test="userIds != null and userIds.size != 0">
+				AND createdBy in
+				<foreach collection="userIds" item="userId" open="(" close=")" separator=",">
+					#{userId}
+				</foreach>
+			</if>
+		GROUP BY createdBy
+	</select>
+	
+	<select id="queryTaskAmountListByUserIdOrderByDate" resultType="cn.strong.leke.question.model.InputStatisDTO" parameterType="cn.strong.leke.question.model.InputStatisQuery">
+		SELECT CONVERT(createdOn,DATE) AS createdDate, SUM(taskCount) AS taskAmount
+		FROM que_question_task
+		WHERE isDeleted=0 
+		<if test="startDate != null and startDate != ''">
+			AND createdOn <![CDATA[>=]]> #{startDate}
+		</if>
+		<if test="endDate != null and endDate != ''">
+			AND createdOn <![CDATA[<=]]> #{endDate}
+		</if>
+		<if test="userId != null and userId > 0">
+			AND userId = #{userId}
+		</if>
+		GROUP BY YEAR(createdOn),MONTH(createdOn),DAY(createdOn)
+	</select>
+	
+	<select id="queryTaskAmountListOrderByUserId" resultType="cn.strong.leke.question.model.InputStatisDTO" parameterType="cn.strong.leke.question.model.InputStatisQuery">
+		SELECT userId, SUM(taskCount) AS taskAmount
+		FROM que_question_task
+		WHERE isDeleted=0 
+		<if test="startDate != null and startDate != ''">
+			AND createdOn <![CDATA[>=]]> #{startDate}
+		</if>
+		<if test="endDate != null and endDate != ''">
+			AND createdOn <![CDATA[<=]]> #{endDate}
+		</if>
+		<if test="userIds != null and userIds.size != 0">
+			AND userId in
+			<foreach collection="userIds" item="userId" open="(" close=")" separator=",">
+				#{userId}
+			</foreach>
+		</if>
+		GROUP BY userId
+	</select>
+	
+	<update id="recycleQuestionTaskItem" parameterType="cn.strong.leke.question.model.QuestionTask">
+		UPDATE que_question_task_item t
+		SET isDeleted = 1
+		WHERE isDeleted = 0
+			<if test="userId != null and userId > 0">
+				AND createdBy = #{userId}
+			</if>
+			AND EXISTS
+				(
+				SELECT * 
+				FROM que_question q
+				WHERE q.questionStatus=12
+					AND q.isDeleted = 0
+					AND q.questionId = t.questionId
+					AND sharePlatform = 1
+					AND mayDup = 0
+					AND TIMESTAMPDIFF(DAY,createdOn,NOW())
+				)
+	</update>
+	
+	<update id="deleteQuestionTaskItemByQuestionId" 
+		parameterType="cn.strong.leke.question.model.QuestionTaskItem">
+		UPDATE que_question_task_item
+		<set>
+			isDeleted = 1,
+			<if test="modifiedBy != null">modifiedBy = #{modifiedBy},</if>
+			modifiedOn = now()
+		</set>
+		<where>
+			questionId = #{questionId}
+			AND isDeleted = 0
+		</where>
+	</update>
+	
+</mapper>

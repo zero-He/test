@@ -1,0 +1,458 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.diag.dao.teachingMonitor.AttendanceXDao">
+	<sql id="baseSql">
+		<if test="subjectId != null and subjectId != -1">
+			AND EXISTS (SELECT 1 FROM lesson.ls_klass_subject ks WHERE ks.classSubjId = l.classSubjId AND ks.subjectId = #{subjectId})
+		</if>
+		AND EXISTS (
+			SELECT 1 FROM lesson.ls_klass k WHERE k.classId = l.classId AND k.isExpired = 0 AND k.isDeleted = 0
+			<if test="gradeId != null and gradeId != -1">
+				AND k.gradeId = #{gradeId}
+			</if>
+		)
+		AND EXISTS (
+			SELECT 1 FROM lesson.ls_klass k, lesson.ls_klass_teacher kt
+			WHERE kt.userId = l.teacherId
+			AND k.classId = kt.classId
+			AND k.isExpired = 0
+			AND k.isDeleted = 0
+			AND k.type = 1
+			AND kt.roleId = 101
+			AND k.schoolId = #{schoolId}
+			<if test="gradeId != null and gradeId != -1">
+				AND k.gradeId = #{gradeId}
+			</if>
+			<if test="subjectId != null and subjectId != -1">
+				AND kt.subjectId = #{subjectId}
+			</if>
+		)
+	</sql>
+
+	<!--根据筛选条件查询统计相关的数据-->
+	<select id="selectAttendanceCountPartData" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo" resultType="cn.strong.leke.diag.model.teachingMonitor.attendance.AttendanceCountBean">
+		SELECT
+			COUNT(DISTINCT(l.teacherId)) AS teacherTotalNum,
+			COUNT(l.teacherId) AS totalClassNum,
+			COUNT(al.csAttenId)  AS realClassNum,
+			CONVERT(((COUNT(al.csAttenId))/(COUNT(l.teacherId)))*100,DECIMAL(10,2)) AS classPro,
+			SUM(IF(t.allStatus = '[0]' OR t.allStatus = '[5]', 1, 0)) AS allOn,
+			CONVERT((SUM(IF(t.allStatus = '[0]' OR t.allStatus = '[5]', 1, 0))/(COUNT(l.teacherId)))*100,DECIMAL(10,2)) AS allOnPro,
+			SUM(IF(t.allStatus = '[1]' OR t.allStatus = '[1,5]', 1, 0)) AS late,
+			CONVERT((SUM(IF(t.allStatus = '[1]' OR t.allStatus = '[1,5]', 1, 0))/(COUNT(l.teacherId)))*100,DECIMAL(10,2)) AS latePro,
+			SUM(IF(t.allStatus = '[2]', 1, 0)) AS early,
+			CONVERT((SUM(IF(t.allStatus = '[2]', 1, 0))/(COUNT(l.teacherId)))*100,DECIMAL(10,2)) AS earlyPro,
+			SUM(IF(t.allStatus = '[1,2]', 1, 0)) AS lateAndEarly,
+			CONVERT((SUM(IF(t.allStatus = '[1,2]', 1, 0))/(COUNT(l.teacherId)))*100,DECIMAL(10,2)) AS lateAndEarlyPro,
+			(COUNT(l.teacherId)-COUNT(al.csAttenId)) AS notClassNum,
+			CONVERT((((COUNT(l.teacherId))-(COUNT(al.csAttenId)))/COUNT(l.teacherId))*100,DECIMAL(10,2)) AS notClassNumPro
+		FROM lesson.ls_lesson l
+			LEFT JOIN lesson.ls_attendance_lesson al ON al.scId = l.courseSingleId
+			LEFT JOIN lesson.ls_attendance_teacher t ON t.csAttendId = al.csAttenId
+		WHERE l.schoolId = #{schoolId}
+			AND l.isDeleted = 0
+			AND (al.isDeleted = 0 OR al.isDeleted IS NULL)
+			<![CDATA[
+				AND  l.startTime >= DATE(#{startDate})
+				AND l.endTime < DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+			]]>
+			<include refid="baseSql"/>
+	</select>
+
+	<!--根据筛选条件查询日走势数据-->
+	<select id="selectAttendanceDayTrendPartData" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo" resultType="cn.strong.leke.diag.model.teachingMonitor.attendance.AttendanceBean">
+		SELECT
+			a.startDate,
+			a.endDate,
+			a.dateStr,
+			IFNULL(z.allOn, 0) allOn,
+			IFNULL(z.late, 0) late,
+			IFNULL(z.early, 0) early,
+			IFNULL(z.lateAndEarly, 0) lateAndEarly,
+			(
+				SELECT count(1) FROM lesson.ls_lesson l
+				WHERE l.schoolId = #{schoolId}
+				AND IFNULL(l.isDeleted,0) = 0
+				<![CDATA[
+					AND l.startTime >= a.startDate
+					AND l.startTime < ADDDATE(a.startDate,1)
+				]]>
+				AND not exists(SELECT 1 FROM lesson.ls_attendance_lesson al WHERE al.scId = l.courseSingleId)
+				<include refid="baseSql"/>
+			) notClassNum
+		FROM
+		(
+			SELECT
+			@d :=@d + 1 AS rn,
+			DATE_ADD(#{startDate}, INTERVAL @d DAY) startDate,
+			DATE_ADD(#{startDate}, INTERVAL @d DAY) endDate,
+			DATE_ADD(#{startDate}, INTERVAL @d DAY) dateStr
+		FROM
+			lesson.ls_dateAssistant,
+			(SELECT @d :=- 1) b
+			LIMIT #{limit}
+		) a
+		LEFT JOIN (
+			SELECT
+			DATE_FORMAT(l.startTime, '%Y-%m-%d') startDate,
+			SUM(IF((t.allStatus = '[0]' OR t.allStatus = '[5]'), 1, 0)) allOn,
+			SUM(IF((t.allStatus = '[1]' OR t.allStatus = '[1,5]'), 1, 0)) late,
+			SUM(IF(t.allStatus = '[2]', 1, 0)) early,
+			SUM(IF(t.allStatus = '[1,2]', 1, 0)) lateAndEarly
+			FROM
+			lesson.ls_attendance_lesson al,
+			lesson.ls_attendance_teacher t,
+			lesson.ls_lesson l
+			WHERE
+			t.csAttendId = al.csAttenId
+			AND al.scId = l.courseSingleId
+			AND al.schoolId = #{schoolId}
+			AND IFNULL(al.isDeleted, 0) = 0
+			AND IFNULL(l.isDeleted, 0) = 0
+			<![CDATA[
+				AND l.startTime >= #{startDate}
+				AND l.endTime < ADDDATE(#{startDate}, #{limit})
+			]]>
+			<include refid="baseSql"/>
+			GROUP BY DATE_FORMAT(l.startTime, '%Y-%m-%d')
+		) z ON a.startDate = z.startDate;
+	</select>
+
+	<!--根据筛选条件查询周走势数据-->
+	<select id="selectAttendanceWeekTrendPartData" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo" resultType="cn.strong.leke.diag.model.teachingMonitor.attendance.AttendanceBean">
+		SELECT
+			a.startDate,
+			a.endDate,
+			CONCAT(a.startDate,'/',a.endDate) dateStr,
+			(
+				SELECT count(1) FROM lesson.ls_attendance_lesson al, lesson.ls_attendance_teacher t, lesson.ls_lesson l
+				WHERE t.csAttendId = al.csAttenId and al.scId = l.courseSingleId
+				AND al.schoolId = #{schoolId}
+				AND IFNULL(al.isDeleted,0) = 0
+				AND IFNULL(l.isDeleted,0) = 0
+				<![CDATA[
+				AND l.startTime >= a.startDate
+				AND l.startTime <= DATE_ADD(a.endDate,INTERVAL 1 DAY)
+				]]>
+				AND (t.allStatus = '[0]' OR t.allStatus = '[5]')
+				<include refid="baseSql"/>
+			) allOn,
+			(
+				SELECT count(1) FROM lesson.ls_attendance_lesson al, lesson.ls_attendance_teacher t, lesson.ls_lesson l
+				WHERE t.csAttendId = al.csAttenId and al.scId = l.courseSingleId
+				AND al.schoolId = #{schoolId}
+				AND IFNULL(al.isDeleted,0) = 0
+				AND IFNULL(l.isDeleted,0) = 0
+				<![CDATA[
+				AND l.startTime >= a.startDate
+				AND l.startTime <= DATE_ADD(a.endDate,INTERVAL 1 DAY)
+				]]>
+				AND (t.allStatus = '[1]' OR t.allStatus = '[1,5]')
+				<include refid="baseSql"/>
+			) late,
+			(
+				SELECT count(1) FROM lesson.ls_attendance_lesson al, lesson.ls_attendance_teacher t, lesson.ls_lesson l
+				WHERE t.csAttendId = al.csAttenId and al.scId = l.courseSingleId
+				AND al.schoolId = #{schoolId}
+				AND IFNULL(al.isDeleted,0) = 0
+				AND IFNULL(l.isDeleted,0) = 0
+				<![CDATA[
+				AND l.startTime >= a.startDate
+				AND l.startTime <= DATE_ADD(a.endDate,INTERVAL 1 DAY)
+				]]>
+				AND t.allStatus = '[2]'
+				<include refid="baseSql"/>
+			) early,
+			(
+				SELECT count(1) from lesson.ls_attendance_lesson al, lesson.ls_attendance_teacher t, lesson.ls_lesson l
+				WHERE t.csAttendId = al.csAttenId and al.scId = l.courseSingleId
+				AND al.schoolId = #{schoolId}
+				AND IFNULL(al.isDeleted,0) = 0
+				AND IFNULL(l.isDeleted,0) = 0
+				<![CDATA[
+				AND l.startTime >= a.startDate
+				AND l.startTime <= DATE_ADD(a.endDate,INTERVAL 1 DAY)
+				]]>
+				AND t.allStatus = '[1,2]'
+				<include refid="baseSql"/>
+			) lateAndEarly,
+			(
+				SELECT count(1) FROM lesson.ls_lesson l
+				where l.schoolId = #{schoolId}
+				AND IFNULL(l.isDeleted,0) = 0
+				<![CDATA[
+				AND l.startTime >= a.startDate
+				AND l.startTime <= DATE_ADD(a.endDate,INTERVAL 1 DAY)
+				]]>
+				AND not exists(SELECT 1 FROM lesson.ls_attendance_lesson al WHERE al.scId = l.courseSingleId)
+				<include refid="baseSql"/>
+			) notClassNum
+		FROM
+		(
+			SELECT
+			p.startDate,
+			CASE WHEN DATE(#{endDate}) BETWEEN p.startDate and p.endDate THEN DATE(#{endDate}) ELSE p.endDate END endDate
+			FROM
+			(
+				SELECT
+				t.startDate,
+				SUBDATE(t.startDate,WEEKDAY(t.startDate)-6) endDate
+				FROM
+				(
+					SELECT @d:=@d+1 as rn, DATE_ADD(#{startDate}, INTERVAL @d DAY) startDate
+					FROM lesson.ls_dateAssistant, (select @d:=-1) b limit #{limit}  -- 结束时间-开始时间的天数
+				) t
+			) p
+			WHERE DAYOFWEEK(p.startDate) = 2 OR p.startDate = date(#{startDate})
+		) a;
+	</select>
+
+	<!--根据筛选条件查询月走势数据-->
+	<select id="selectAttendanceMonthTrendPartData" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo" resultType="cn.strong.leke.diag.model.teachingMonitor.attendance.AttendanceBean">
+		SELECT
+			a.startDate,
+			a.endDate,
+			CONCAT(a.startDate,'/',a.endDate) dateStr,
+			IFNULL(z.allOn, 0) allOn,
+			IFNULL(z.late, 0) late,
+			IFNULL(z.early, 0) early,
+			IFNULL(z.lateAndEarly, 0) lateAndEarly,
+			(
+				SELECT count(1) FROM lesson.ls_lesson l
+				WHERE l.schoolId = #{schoolId}
+				AND IFNULL(l.isDeleted,0) = 0
+				<![CDATA[
+				AND l.startTime >= a.startDate
+				AND l.startTime < ADDDATE(a.endDate,1)
+				]]>
+				AND not exists(SELECT 1 FROM lesson.ls_attendance_lesson al WHERE al.scId = l.courseSingleId)
+				<include refid="baseSql"/>
+			) notClassNum
+		FROM
+		(
+			SELECT
+			p.startDate,
+			CASE WHEN DATE(#{endDate}) BETWEEN p.startDate AND p.endDate THEN DATE(#{endDate}) ELSE p.endDate END endDate,
+			ADDDATE(ADDDATE(LAST_DAY(p.startDate),1),INTERVAL -1 MONTH) staDate
+			FROM
+			(
+				SELECT
+				t.*,
+				LAST_DAY(t.startDate) endDate
+				FROM
+				(
+					SELECT @d :=@d + 1 AS rn, DATE_ADD(#{startDate}, INTERVAL @d DAY) startDate FROM lesson.ls_dateAssistant,(SELECT @d :=- 1) b LIMIT #{limit}
+				) t
+			) p
+			WHERE DATE_ADD(p.startDate,INTERVAL -DAY(p.startDate) + 1 DAY) = p.startDate OR p.startDate = DATE(#{startDate})
+		) a
+		LEFT JOIN (
+			SELECT
+			ADDDATE(ADDDATE(LAST_DAY(l.startTime),1),INTERVAL -1 MONTH) startDate,
+			SUM(IF((t.allStatus = '[0]' OR t.allStatus = '[5]'), 1, 0)) allOn,
+			SUM(IF((t.allStatus = '[1]' OR t.allStatus = '[1,5]'), 1, 0)) late,
+			SUM(IF(t.allStatus = '[2]', 1, 0)) early,
+			SUM(IF(t.allStatus = '[1,2]', 1, 0)) lateAndEarly
+			FROM
+			lesson.ls_attendance_lesson al,
+			lesson.ls_attendance_teacher t,
+			lesson.ls_lesson l
+			WHERE
+			t.csAttendId = al.csAttenId
+			AND al.scId = l.courseSingleId
+			AND al.schoolId = #{schoolId}
+			AND IFNULL(al.isDeleted, 0) = 0
+			AND IFNULL(l.isDeleted, 0) = 0
+			<![CDATA[
+			AND l.startTime >= #{startDate}
+			AND l.endTime < ADDDATE(#{endDate}, INTERVAL 1 MONTH)
+			]]>
+			<include refid="baseSql"/>
+			GROUP BY ADDDATE(ADDDATE(LAST_DAY(l.startTime),1),INTERVAL -1 MONTH)
+		) z ON a.staDate = z.startDate;
+	</select>
+
+	<!--根据筛选条件查询年级横向对比数据-->
+	<select id="selectAttendanceCompareGradePartData" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo" resultType="cn.strong.leke.diag.model.teachingMonitor.attendance.AttendanceCompareBean">
+		SELECT
+			k.gradeId,
+			k.gradeName,
+			SUM(IF(t.allStatus = '[0]' OR t.allStatus = '[5]', 1, 0)) AS allOn,
+			SUM(IF(t.allStatus = '[1]' OR t.allStatus = '[1,5]', 1, 0)) AS late,
+			SUM(IF(t.allStatus = '[2]', 1, 0)) AS early,
+			SUM(IF(t.allStatus = '[1,2]', 1, 0)) AS lateAndEarly,
+			(COUNT(l.teacherId))-(COUNT(al.csAttenId)) AS notClassNum
+		FROM lesson.ls_lesson l
+			LEFT JOIN lesson.ls_attendance_lesson al ON al.scId = l.courseSingleId
+			LEFT JOIN lesson.ls_attendance_teacher t ON t.csAttendId = al.csAttenId
+			LEFT JOIN lesson.ls_klass k ON k.classId = l.classId
+		WHERE l.schoolId = #{schoolId}
+			AND l.isDeleted = 0
+			AND (al.isDeleted = 0 OR al.isDeleted IS NULL)
+			AND k.gradeId IS NOT NULL
+			<![CDATA[
+				AND l.startTime >= DATE(#{startDate})
+				AND l.endTime < DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+			]]>
+			<include refid="baseSql"/>
+		GROUP BY k.gradeId;
+	</select>
+
+	<!--根据筛选条件查询学科横向对比数据-->
+	<select id="selectAttendanceCompareSubjectPartData" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo" resultType="cn.strong.leke.diag.model.teachingMonitor.attendance.AttendanceCompareBean">
+		SELECT
+			ks.subjectId,
+			ks.subjectName,
+			SUM(IF(t.allStatus = '[0]' OR t.allStatus = '[5]', 1, 0)) AS allOn,
+			SUM(IF(t.allStatus = '[1]' OR t.allStatus = '[1,5]', 1, 0)) AS late,
+			SUM(IF(t.allStatus = '[2]', 1, 0)) AS early,
+			SUM(IF(t.allStatus = '[1,2]', 1, 0)) AS lateAndEarly,
+			(COUNT(l.teacherId))-(COUNT(al.csAttenId)) AS notClassNum
+		FROM lesson.ls_lesson l
+			LEFT JOIN lesson.ls_attendance_lesson al ON al.scId = l.courseSingleId
+			LEFT JOIN lesson.ls_attendance_teacher t ON t.csAttendId = al.csAttenId
+			LEFT JOIN lesson.ls_klass_subject ks ON ks.classSubjId = l.classSubjId
+		WHERE l.schoolId = #{schoolId}
+			AND l.isDeleted = 0
+			AND (al.isDeleted = 0 OR al.isDeleted IS NULL)
+			AND ks.subjectId IS NOT NULL
+			<![CDATA[
+				AND l.startTime >= DATE(#{startDate})
+				AND l.endTime < DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+			]]>
+			<include refid="baseSql"/>
+		GROUP BY ks.subjectId;
+	</select>
+
+	<!--根据筛选条件查询班级横向对比数据-->
+	<select id="selectAttendanceCompareClassPartData" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo" resultType="cn.strong.leke.diag.model.teachingMonitor.attendance.AttendanceCompareBean">
+		SELECT
+		k.classId,
+		k.className,
+		SUM(IF(t.allStatus = '[0]' OR t.allStatus = '[5]', 1, 0)) AS allOn,
+		SUM(IF(t.allStatus = '[1]' OR t.allStatus = '[1,5]', 1, 0)) AS late,
+		SUM(IF(t.allStatus = '[2]', 1, 0)) AS early,
+		SUM(IF(t.allStatus = '[1,2]', 1, 0)) AS lateAndEarly,
+		(COUNT(l.teacherId))-(COUNT(al.csAttenId)) AS notClassNum
+		FROM lesson.ls_lesson l
+		LEFT JOIN lesson.ls_attendance_lesson al ON al.scId = l.courseSingleId
+		LEFT JOIN lesson.ls_attendance_teacher t ON t.csAttendId = al.csAttenId
+		LEFT JOIN lesson.ls_klass k ON k.classId = l.classId
+		WHERE l.schoolId = #{schoolId}
+		AND l.isDeleted = 0
+		AND (al.isDeleted = 0 OR al.isDeleted IS NULL)
+		AND k.classId IS NOT NULL
+		<![CDATA[
+			AND l.startTime >= DATE(#{startDate})
+			AND l.endTime < DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+		]]>
+		<include refid="baseSql"/>
+		GROUP BY k.classId;
+	</select>
+
+	<!--根据筛选条件查询全勤前5名-->
+	<select id="selectAttendanceRankFrontPartData" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo" resultType="cn.strong.leke.diag.model.teachingMonitor.attendance.AttendanceRankBean">
+		SELECT
+			l.teacherName,
+			COUNT(1) AS totalCount
+		FROM lesson.ls_lesson l
+			LEFT JOIN lesson.ls_attendance_lesson al ON al.scId = l.courseSingleId
+			LEFT JOIN lesson.ls_attendance_teacher t ON t.csAttendId = al.csAttenId
+		WHERE l.schoolId =#{schoolId}
+			AND l.isDeleted = 0
+			AND (al.isDeleted = 0 OR al.isDeleted IS NULL)
+			AND (t.allStatus = '[0]' OR t.allStatus = '[5]')
+			<![CDATA[
+				AND l.startTime >= DATE(#{startDate})
+				AND l.endTime < DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+			]]>
+			<include refid="baseSql"/>
+		GROUP BY l.teacherId
+		ORDER BY COUNT(1) DESC
+	</select>
+
+	<!--明细分页请求-->
+	<select id="selectAttendanceDetailDataPage" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo" resultType="cn.strong.leke.diag.model.teachingMonitor.attendance.AttendanceDetailBean">
+		SELECT
+		l.teacherId,
+		l.teacherName,
+		ks.subjectId,
+		ks.subjectName,
+		SUM(IF(t.allStatus = '[0]' OR t.allStatus = '[5]', 1, 0)) AS allOn,
+		SUM(IF(t.allStatus = '[1]' OR t.allStatus = '[1,5]', 1, 0)) AS late,
+		SUM(IF(t.allStatus = '[2]', 1, 0)) AS early,
+		SUM(IF(t.allStatus = '[1,2]', 1, 0)) AS lateAndEarly,
+		(COUNT(l.teacherId))-(COUNT(al.csAttenId)) AS notClassNum
+		FROM lesson.ls_lesson l
+		LEFT JOIN lesson.ls_attendance_lesson al ON al.scId = l.courseSingleId
+		LEFT JOIN lesson.ls_attendance_teacher t ON t.csAttendId = al.csAttenId
+		LEFT JOIN lesson.ls_klass_subject ks ON ks.classSubjId = l.classSubjId
+		WHERE l.schoolId = #{schoolId}
+		AND l.isDeleted = 0
+		AND (al.isDeleted = 0 OR al.isDeleted IS NULL)
+		<![CDATA[
+			AND l.startTime >= DATE(#{startDate})
+			AND l.endTime < DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+		]]>
+		<include refid="baseSql"/>
+		GROUP BY l.teacherId, ks.subjectId
+	</select>
+
+	<!--根据筛选条件查询明细数据-->
+	<select id="selectAttendanceDetailPartData" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo" resultType="cn.strong.leke.diag.model.teachingMonitor.attendance.AttendanceDetailBean">
+		SELECT
+			l.teacherId,
+			l.teacherName,
+			ks.subjectId,
+			ks.subjectName,
+			SUM(IF(t.allStatus = '[0]' OR t.allStatus = '[5]', 1, 0)) AS allOn,
+			SUM(IF(t.allStatus = '[1]' OR t.allStatus = '[1,5]', 1, 0)) AS late,
+			SUM(IF(t.allStatus = '[2]', 1, 0)) AS early,
+			SUM(IF(t.allStatus = '[1,2]', 1, 0)) AS lateAndEarly,
+			(COUNT(l.teacherId))-(COUNT(al.csAttenId)) AS notClassNum
+		FROM lesson.ls_lesson l
+			LEFT JOIN lesson.ls_attendance_lesson al ON al.scId = l.courseSingleId
+			LEFT JOIN lesson.ls_attendance_teacher t ON t.csAttendId = al.csAttenId
+			LEFT JOIN lesson.ls_klass_subject ks ON ks.classSubjId = l.classSubjId
+		WHERE l.schoolId = #{schoolId}
+		AND l.isDeleted = 0
+		AND (al.isDeleted = 0 OR al.isDeleted IS NULL)
+		<![CDATA[
+			AND l.startTime >= DATE(#{startDate})
+			AND l.endTime < DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+		]]>
+		<include refid="baseSql"/>
+		GROUP BY l.teacherId, ks.subjectId
+	</select>
+
+	<!--根据条件查询全勤率-->
+	<select id="selectAttendanceProAndDetail" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo" resultType="cn.strong.leke.diag.model.teachingMonitor.attendance.AttendanceProBean">
+		SELECT
+			l.teacherId,
+			l.teacherName,
+			ks.subjectId,
+			ks.subjectName,
+			SUM(IF(t.allStatus = '[0]' OR t.allStatus = '[5]', 1, 0)) AS allOn,
+			CONVERT((SUM(IF(t.allStatus = '[0]' OR t.allStatus = '[5]', 1, 0))/(COUNT(l.teacherId)))*100, DECIMAL) AS allOnPro,
+			SUM(IF(t.allStatus = '[1]' OR t.allStatus = '[1,5]', 1, 0)) AS late,
+			SUM(IF(t.allStatus = '[2]', 1, 0)) AS early,
+			SUM(IF(t.allStatus = '[1,2]', 1, 0)) AS lateAndEarly,
+			(COUNT(l.teacherId)-COUNT(al.csAttenId)) AS notClassNum
+		FROM lesson.ls_lesson l
+			LEFT JOIN lesson.ls_attendance_lesson al ON al.scId = l.courseSingleId
+			LEFT JOIN lesson.ls_attendance_teacher t ON t.csAttendId = al.csAttenId
+			LEFT JOIN lesson.ls_klass_subject ks ON ks.classSubjId = l.classSubjId
+		WHERE l.schoolId = #{schoolId}
+			AND l.isDeleted = 0
+			AND (al.isDeleted = 0 OR al.isDeleted IS NULL)
+			<if test="'' != teacherName and null != teacherName">
+				AND l.teacherName LIKE concat(concat('%', #{teacherName}), '%')
+			</if>
+			<![CDATA[
+				AND  l.startTime >= DATE(#{startDate})
+				AND l.endTime < DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+			]]>
+			<include refid="baseSql"/>
+		GROUP BY l.teacherId, ks.subjectId;
+	</select>
+</mapper>

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.1//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.question.dao.mybatis.AnalysisDao">
+
+	<insert id="insertAnalysis" useGeneratedKeys="true" keyProperty="analysisId"
+		parameterType="cn.strong.leke.model.question.Analysis">
+		INSERT INTO que_analysis(
+			questionId, analysisContent, isDeleted
+		) VALUES (
+			#{questionId}, #{analysisContent}, 0
+		)
+	</insert>
+	
+	<update id="deleteAnalysisByQuestionId" parameterType="long">
+		UPDATE que_analysis
+		<set>
+			isDeleted = 1
+		</set>
+		<where>
+			questionId= #{questionId}
+			AND isDeleted = 0
+		</where>
+	</update>
+	
+	<select id="findAnalysisByQuestionId" parameterType="long"
+		resultType="cn.strong.leke.model.question.Analysis">
+		SELECT 
+			analysisId, questionId, analysisContent, isDeleted
+		FROM que_analysis
+		<where>
+			AND questionId = #{questionId}
+			AND isDeleted = 0
+		</where>
+	</select>
+	
+	<update id="updateAnalysis" parameterType="cn.strong.leke.model.question.Analysis">
+		UPDATE que_analysis
+		<set>
+			analysisContent = #{analysisContent}
+		</set>
+		<where>
+			analysisId= #{analysisId}
+		</where>
+	</update>
+	
+</mapper>

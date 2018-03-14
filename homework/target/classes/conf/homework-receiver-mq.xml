@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context" xmlns:rabbit="http://www.springframework.org/schema/rabbit"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.2.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.2.xsd
+		http://www.springframework.org/schema/rabbit http://www.springframework.org/schema/rabbit/spring-rabbit-1.1.xsd">
+
+	<!-- 在线测试结果保存消息监听 -->
+	<bean class="cn.strong.leke.homework.listener.OnlinetestListener">
+		<property name="queueNames">
+			<list>
+				<value>${mq.q.onlinetest}</value>
+			</list>
+		</property>
+	</bean>
+
+	<!-- 课堂互批结果保存消息监听 -->
+	<bean class="cn.strong.leke.homework.listener.HomeworkMutualCorrectListener">
+		<property name="queueNames">
+			<list>
+				<value>${mq.q.homework.mutual.correct}</value>
+			</list>
+		</property>
+	</bean>
+
+	<!-- 学生购买课程，补充作业 -->
+	<bean class="cn.strong.leke.homework.listener.DistributeListener">
+		<property name="queueNames">
+			<list>
+				<value>${mq.q.homework.distribute}</value>
+			</list>
+		</property>
+	</bean>
+
+	<!-- 学生作业提交后续处理消息监听 -->
+	<bean class="cn.strong.leke.homework.listener.HomeworkSubmitListener">
+		<property name="queueNames">
+			<list>
+				<value>${mq.q.homework.submit}</value>
+			</list>
+		</property>
+	</bean>
+
+	<!-- -->
+	<bean class="cn.strong.leke.homework.listener.HomeworkProgressListener">
+		<property name="queueNames">
+			<list>
+				<value>${mq.q.homework.progress}</value>
+			</list>
+		</property>
+	</bean>
+
+	<!-- 批量批改数据写入消息 -->
+	<bean class="cn.strong.leke.homework.listener.HomeworkCorrectListener">
+		<property name="queueNames">
+			<list>
+				<value>${mq.q.homework.correct}</value>
+			</list>
+		</property>
+	</bean>
+
+	<!-- 答题卡数据解析消息 -->
+	<bean class="cn.strong.leke.homework.listener.HomeworkSheetParseListener">
+		<property name="queueNames">
+			<list>
+				<value>${mq.q.homework.sheettask.parse}</value>
+			</list>
+		</property>
+	</bean>
+
+	<!-- 答题卡数据写入消息 -->
+	<bean class="cn.strong.leke.homework.listener.HomeworkSheetWriteListener">
+		<property name="queueNames">
+			<list>
+				<value>${mq.q.homework.sheet.write}</value>
+			</list>
+		</property>
+	</bean>
+	
+	<!-- 监听 周月错题作业生成 -->
+	<bean class="cn.strong.leke.homework.listener.WeekHomeworkListener">
+		<property name="queueNames">
+			<list>
+				<value>${mq.q.homework.week}</value>
+			</list>
+		</property>
+	</bean>
+	
+	<!-- 监听 寒暑假作业生成 -->
+	<bean class="cn.strong.leke.homework.listener.HolidayHwListener">
+		<property name="queueNames">
+			<list>
+				<value>${mq.q.homework.holidayhw}</value>
+			</list>
+		</property>
+	</bean>
+	
+	<!-- 单课结束消息 -->
+	<bean class="cn.strong.leke.homework.listener.LessonEndListener">
+		<property name="queueNames">
+			<list>
+				<value>${mq.q.homework.lesson.end}</value>
+			</list>
+		</property>
+	</bean>
+	<!-- 单课结束处理预习作业完成状况消息 -->
+	<bean class="cn.strong.leke.homework.listener.PreviewCompleteListener">
+		<property name="queueNames">
+			<list>
+				<value>${mq.q.homework.preview.complete}</value>
+			</list>
+		</property>
+	</bean>
+	
+	<!-- 单课备课消息 -->
+	<bean class="cn.strong.leke.homework.listener.LessonBeikeListener">
+		<property name="queueNames">
+			<list>
+				<value>${mq.q.homework.lesson.beike}</value>
+			</list>
+		</property>
+	</bean>
+	<!-- 单课备课资源删除 -->
+	<bean class="cn.strong.leke.homework.listener.LessonDeleteListener">
+		<property name="queueNames">
+			<list>
+				<value>${mq.q.homework.lesson.del}</value>
+			</list>
+		</property>
+	</bean>
+
+</beans>

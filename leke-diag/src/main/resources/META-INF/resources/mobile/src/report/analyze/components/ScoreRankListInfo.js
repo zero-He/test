@@ -1,0 +1,58 @@
+var {toFixed, toRate} = require('../../../utils/number');
+var {toLevel} = require('./analyze-base');
+var SimpleTable = require('../../../react/SimpleTable');
+
+let levelNames = ['优秀', '良好', '及格', '较差', '危险', '无成绩'];
+
+class ScoreRankInfo extends React.Component {
+	markRankIndex(scoreRanks) {
+		let prev = 10000, index = 0;
+		for (var i = 0; i < scoreRanks.length; i++) {
+			let score = scoreRanks[i].score;
+			if (score != null) {
+				if (score < prev) {
+					index++;
+					prev = score;
+				}
+				scoreRanks[i].index = index;
+			} else {
+				scoreRanks[i].index = '--';
+			}
+			scoreRanks[i].level = toLevel(score);
+		}
+	}
+	render() {
+		let {scoreRanks, scope} = this.props;
+		if (scoreRanks == undefined || scoreRanks == null) {
+			return null;
+		}
+		this.markRankIndex(scoreRanks);
+
+		let columns = [
+			{ title: '名次', width: '15%', field: 'index' },
+			{ title: '姓名', width: '60%', field: (data, index) => {
+				if (data.level <= 5) {
+					return <a href={`detail/${scope}-${data.userId}.htm`}>{data.userName}</a>
+				}
+				return data.userName;
+			} },
+			{ title: '成绩', width: '25%', field: (data, index) => toFixed(data.score, 1) }
+		];
+
+		return (
+			<section id={this.props.id} className="ana-module">
+				<div className="title">班级成绩排行</div>
+				<div className="c-table">
+					<SimpleTable columns={columns} datas={[]} showHead={true} />
+					{levelNames.map((levelName, i) => {
+						let datas = scoreRanks.filter(v => v.level == i + 1);
+						var caption = <caption className={`r-${i + 1}`}>{`${levelName}(${datas.length}人)`}</caption>;
+						return <SimpleTable caption={caption} columns={columns} datas={datas} defVal="--" />;
+					})}
+				</div>
+			</section>
+		);
+	}
+}
+
+module.exports = ScoreRankInfo;

@@ -1,0 +1,23 @@
+<div class="m-search-box f-mt20">
+	<div class="item" style="height: 30px;">
+		<input type="radio" id="hour" name="typeData" data-bind="checked: query.type, checkedValue: 1"/>
+		<label for="hour">最近一个小时</label>
+		<input type="radio" id="today" name="typeData" data-bind="checked: query.type, checkedValue: 2" class="f-ml30"/>
+		<label for="today">今天</label>
+		<input type="radio" id="byday" name="typeData" data-bind="checked: query.type, checkedValue: 3" class="f-ml30"/>
+		<label for="byday">按天</label>
+		
+		<input type="text" class="u-ipt u-ipt-nm" id="endDay" name="endDay" 
+			data-bind="datepicker: {value: query.timeInput, dateFmt: 'yyyy-MM-dd'},
+				visible: query.type() == 3"  />
+	</div>
+	<div class="item j-search-box">
+		<label class="title j-area-label">地区范围：</label>
+		<input type="hidden" name="area" class="j-area-select"/>
+		<label class="title">学校：</label>
+		<input type="text" name="school" class="u-ipt u-ipt-nm j-school-select"/>
+		<button class="u-btn u-btn-nm u-btn-bg-turquoise" data-bind="click: load">查询</button>
+	</div>
+</div>
+<div id="totalMap" style="height:500px;width:100%;">
+</div>

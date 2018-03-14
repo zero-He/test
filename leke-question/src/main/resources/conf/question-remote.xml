@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+                     http://www.springframework.org/schema/beans/spring-beans-3.2.xsd">
+
+	<!-- server provider configure -->
+	<bean class="cn.strong.leke.core.webservice.WebServiceServerProvider"> 
+		<property name="basePackage" value="cn.strong.leke.question.remote" /> 
+		<property name="urlPrefix" value="/api/n/question" /> 
+	</bean>
+
+
+
+	<!-- client invoker configure -->
+	<bean class="cn.strong.leke.core.webservice.WebServiceClientInvoker">
+		<property name="services">
+			<props>
+				<prop key="cn.strong.leke.remote.service.tutor.user.IUserRemoteService">
+					${domain.tutor}/api/n/tutor/userRemoteService.ws
+				</prop>
+				<prop key="cn.strong.leke.remote.service.tutor.base.IRegionRemoteService">
+					${domain.tutor}/api/n/tutor/regionRemoteService.ws
+				</prop>
+				<prop key="cn.strong.leke.remote.service.lesson.IKlassRemoteService">
+					${domain.lesson}/api/n/lesson/klassRemoteService.ws
+				</prop>
+				<prop key="cn.strong.leke.remote.service.lesson.IStudentGroupRemoteService">
+					${domain.lesson}/api/n/lesson/studentGroupRemoteService.ws
+				</prop>
+				<prop key="cn.strong.leke.remote.service.paper.IPaperRemoteService">
+					${domain.paper}/api/n/paper/paperRemoteService.ws
+				</prop>
+				<prop key="cn.strong.leke.remote.service.repository.IRepositoryRemoteService">
+					${domain.repository}/api/n/repository/repositoryRemoteService.ws
+				</prop>
+				<prop key="cn.strong.leke.remote.service.voice.IAlbumCourseRemoteService">
+					${domain.voice}/api/n/voice/albumCourseRemoteService.ws
+				</prop>
+				<prop key="cn.strong.leke.remote.service.fs.IFileTransRemoteService">
+                    ${domain.fs}/api/n/fs/fileTransRemoteService.ws
+                </prop>
+			</props>
+		</property>
+	</bean>
+
+</beans>

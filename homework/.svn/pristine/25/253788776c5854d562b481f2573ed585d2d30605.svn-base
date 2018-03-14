@@ -1,0 +1,56 @@
+package cn.strong.leke.homework.model;
+
+import java.util.Date;
+import java.util.List;
+
+public class LayerAssign {
+
+	private Date startTime;
+	private Date closeTime;
+	private List<Section> sections;
+
+	public Date getStartTime() {
+		return startTime;
+	}
+
+	public void setStartTime(Date startTime) {
+		this.startTime = startTime;
+	}
+
+	public Date getCloseTime() {
+		return closeTime;
+	}
+
+	public void setCloseTime(Date closeTime) {
+		this.closeTime = closeTime;
+	}
+
+	public List<Section> getSections() {
+		return sections;
+	}
+
+	public void setSections(List<Section> sections) {
+		this.sections = sections;
+	}
+
+	public static class Section {
+		private List<Long> paperIds;
+		private List<LayerClazz> classes;
+
+		public List<Long> getPaperIds() {
+			return paperIds;
+		}
+
+		public void setPaperIds(List<Long> paperIds) {
+			this.paperIds = paperIds;
+		}
+
+		public List<LayerClazz> getClasses() {
+			return classes;
+		}
+
+		public void setClasses(List<LayerClazz> classes) {
+			this.classes = classes;
+		}
+	}
+}

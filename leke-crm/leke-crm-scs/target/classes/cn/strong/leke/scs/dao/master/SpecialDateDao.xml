@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.scs.dao.master.SpecialDateDao">
+
+	<sql id="all_columns">
+	   specialId
+		,date
+		,type
+		,isDeleted
+		,createdBy
+		,createdOn
+		,modifiedBy
+		,modifiedOn
+	</sql>
+	
+	<insert id="insert" parameterType="java.util.List" >  
+    	INSERT INTO 
+    		scs_special_date (<include refid="all_columns"/>)
+    	VALUES  
+	    <foreach collection="specialDateList" item="item" index="index" separator="," >  
+	   		 (NULL,#{item.date},#{item.type},0,#{item.createdBy},now(),#{item.modifiedBy},now() )
+	    </foreach>  
+	</insert>  
+	
+	<update id="delete" parameterType="string">
+		UPDATE
+			scs_special_date
+		SET 
+			isDeleted = 1,
+			modifiedBy = #{modifiedBy}, modifiedOn = now()
+		WHERE 
+			isDeleted = 0
+			<!-- date  IN 
+			<foreach item="date" collection="list" open="(" separator="," close=")">
+				#{date} 
+			</foreach> -->
+	</update>	
+	
+<!-- 	是否已存在 -->
+	<select id="queryCountByDate" parameterType="string" >
+		SELECT 
+			count(specialId)
+		FROM 
+			scs_special_date 
+		WHERE 
+			isDeleted=0 
+		AND 
+			date=#{date} 
+	</select>
+	
+	<select id="queryList" parameterType="int" resultType="String">
+		SELECT 
+			date
+		FROM 
+			scs_special_date 
+		WHERE 
+			isDeleted=0 And type=#{type}
+	<!-- 	AND 
+			date LIKE CONCAT('%', #{yearMonth}, '%')  -->
+	</select>
+	
+	
+	
+
+</mapper>

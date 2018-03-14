@@ -1,0 +1,20 @@
+function bindEvent(){
+	$(".c-kemu li").on({
+		"touchstart":function(event){
+			$(this).addClass("touching");
+		},
+		"touchend":function(){
+			$(this).removeClass("touching");
+		},
+		"touchcancel":function(){
+			$(this).removeClass("touching");
+		},
+		"click":function(){
+			var classId = $(this).data("i");
+			var className = $(this).data("n");
+			window.location.href = "manager/detail.htm?classId="+classId+"&className="+className;
+		}
+		
+	});
+}
+bindEvent();

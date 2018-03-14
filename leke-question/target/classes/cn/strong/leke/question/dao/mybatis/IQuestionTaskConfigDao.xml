@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.question.dao.mybatis.IQuestionTaskConfigDao">
+	<insert id="saveQueTaskConfig" parameterType="cn.strong.leke.question.model.QueTaskConfig" useGeneratedKeys="true" keyProperty="id">
+		INSERT INTO que_question_task_config(
+			taskCount, createdBy, createdOn, modifiedBy, modifiedOn, isDeleted
+		) VALUES (
+			#{taskCount},#{createdBy}, now(),#{modifiedBy}, now(),0
+		)
+	</insert>
+	
+	<update id="deleteQueTaskConfig" >
+		UPDATE que_question_task_config
+		<set>
+			isDeleted = 1,
+			<if test="modifiedBy != null">modifiedBy = #{modifiedBy},</if>
+			modifiedOn = now()
+		</set>
+		<where>
+			 isDeleted = 0
+		</where>
+	</update>
+	
+	<select id="queryTaskCount" resultType="int">
+		SELECT taskCount FROM que_question_task_config WHERE isDeleted=0 LIMIT 1
+	</select>
+</mapper>

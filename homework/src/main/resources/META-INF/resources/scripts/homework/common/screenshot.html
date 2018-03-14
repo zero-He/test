@@ -1,0 +1,33 @@
+<div class="z-homework-cutimg">
+	<div class="item j-sel-question">
+		<label for=""><em>*</em>题号：</label>
+		<div>
+			<select class="u-select u-select-nm" id="j_screeQuestionId"></select>
+		</div>
+	</div>
+	<div class="item">
+		<label for=""><em>*</em>题目：</label>
+		<div>
+			<p class="title cut">
+				<i></i> 请在试卷区域截取题目的题干
+			</p>
+			<input type="hidden" id="j_stemContent" value=""> <img
+				id="maximg" class="j_screenshot_img f-hide">
+		</div>
+	</div>
+	<div class="item">
+		<label for="">答题心得：</label>
+		<div>
+			<textarea
+				style="width: 99.5%; height: 90px; border: 1px solid #d9d9d9;"
+				name="exerieContent" id="j_content" />
+			<p class="tips">
+				当前输入 <em id="j_already_len">0</em>字，还可输入 <em id="j_surplus_len">120</em>字
+			</p>
+		</div>
+	</div>
+</div>
+<div class="f-tac f-mt5">
+	<input type="button" id="j_submit" name="button"
+		class="u-btn u-btn-nm u-btn-bg-turquoise" value="提交">
+</div>

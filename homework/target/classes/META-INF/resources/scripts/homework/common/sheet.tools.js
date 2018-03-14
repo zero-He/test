@@ -1,0 +1,416 @@
+
+/**
+ * 批改工具：主观题给分、填空题对错、批注
+ */
+define(function(require, exports, module) {
+	var $ = require('jquery');
+	var JSON = require('json');
+	var Utils = require('utils');
+	var Dialog = require('dialog');
+	var DFN = require('homework/sheet.dfn');
+	var scoreUtils = require("homework/homework/correctWorkScore.js");
+
+	var GRADE_TPLS = {
+		HTML : '<div class="p-grading"><div class="p-grading-body"></div><div class="p-grading-input">得分：<input type="text">&nbsp;分&nbsp;<button>确定</button></div></div>',
+		ITEM : '<em data-score="{{ITEM_VALUE}}">{{ITEM_LABEL}}</em>'
+	};
+
+	var Grading = {
+		$root : null,
+		$body : null,
+		$input : null,
+		$button : null,
+		$target : null,
+		init : function() {
+			var _this = this;
+			_this.$root = $(GRADE_TPLS.HTML).appendTo(document.body);
+			_this.$body = _this.$root.find('.p-grading-body');
+			_this.$input = _this.$root.find('input');
+			_this.$button = _this.$root.find('button');
+			_this.$body.on('click', 'em', function() {
+				var score = $(this).data('score');
+				_this.callback(score);
+				_this.close();
+				_this.afterScore();
+				return false;
+			});
+			_this.$root.click(function() {
+				return false;
+			});
+			$(document.body).click(function() {
+				_this.close();
+			});
+			$('.p-card-scrollbar').scroll(function() {
+				_this.close();
+			});
+			_this.$button.on('click', function() {
+				if (_this.valid()) {
+					_this.callback(parseFloat(_this.$input.val()));
+					_this.close();
+					_this.afterScore();
+				}
+			});
+			_this.$input.on({
+				keypress : function() {
+					if ((event.keyCode < 48 || event.keyCode > 57) && event.keyCode != 46
+							|| /\.\d$/.test($(this).val()) || $(this).val().length >= 5) {
+						event.returnValue = false;
+					}
+				},
+				keydown : function() {
+					$(this).val($(this).val().replace(/[^\d\.]/g, ''));
+				},
+				keyup : function() {
+					$(this).val($(this).val().replace(/[^\d\.]/g, ''));
+				},
+				blur : function() {
+					return $(this).val() != '';
+				}
+			});
+		},
+		// 增加快捷选项
+		initItems : function() {
+			var max = this.$target.data('total');
+			this.$body.empty();
+			var interval = max > 10 ? parseInt(max / 10) : 1;
+			for (var i = 0; i <= max; i += interval) {
+				this.$body.append(GRADE_TPLS.ITEM.replace('{{ITEM_VALUE}}', i).replace('{{ITEM_LABEL}}', i + '分'));
+			}
+			this.$body.append(GRADE_TPLS.ITEM.replace('{{ITEM_VALUE}}', max).replace('{{ITEM_LABEL}}', '满分'));
+			// 输入框和错误消息重置
+			this.$input.val('');
+			this.$root.find('.p-grading-error').remove();
+		},
+		// 定位
+		position : function() {
+			var offsets = this.$target.offset();
+			var top = offsets.top + this.$target.height() + 2;
+			var left = offsets.left + this.$target.width() - this.$root.width();
+			this.$root.css({
+				top : top + 'px',
+				left : left + 'px'
+			});
+		},
+		// 验证输入值
+		valid : function() {
+			var val = this.$input.val();
+			if (!$.isNumeric(val)) {
+				this.appendError('请输入正确的分数');
+				return false;
+			}
+			var max = this.$target.data('total');
+			if (val > max) {
+				this.appendError('你输入的分数超过最大值');
+				return false;
+			}
+			return true;
+		},
+		// 
+		appendError : function(text) {
+			$('.p-grading-error').remove();
+			var error = $('<div class=\"p-grading-error\">' + text + '</div>').appendTo(this.$root);
+			setTimeout(function() {
+				error.remove();
+			}, 2000);
+		},
+		// 关闭
+		close : function() {
+			if (this.$root) {
+				this.$root.hide();
+			}
+		},
+		callback : function(score) {
+			var total = this.$target.data('total');
+			var html, right = false;
+			if (score == total) {
+				right = true;
+				html = '<i class="p-right-all"></i>';
+			} else if (score == 0) {
+				html = '<i class="p-right-error"></i>';
+			} else {
+				html = '<i class="p-right-half"></i>';
+			}
+			html += score + '分';
+			this.$target.data('correct', true).data('score', score).data('right', right);
+			this.$target.find('.j-correctresult').html(html);
+			this.refresh();
+		},
+		afterScore : function(){
+			//就是用来被重写的
+		},
+		// 打开
+		open : function(target) {
+			if (this.$root == null) {
+				this.init();
+			}
+			this.$target = $(target);
+			this.initItems();
+			this.position();
+			this.$root.show();
+		},
+		// 重新渲染得分
+		renderScore : function(target) {
+			this.$target = $(target);
+			if (this.$target.data('correct')) {
+				this.callback(this.$target.data('score'));
+			}
+		},
+		refresh : function() {
+			var $sheet = this.$target.closest('.j-sheet');
+			$sheet.find('.p-group-title').each(function() {
+				if ($(this).data('subjective')) {
+					var score = $(this).find('.p-group-score').data('objscore');
+					$(this).next().find('.j-grading').each(function() {
+						if ($(this).data('correct')) {
+							score += $(this).data('score');
+						}
+					});
+					score = Utils.Number.toFixed(score, 2);
+					$(this).find('.p-group-score-value').html(score);
+					scoreUtils.renderTotalScore(); //渲染总分
+					
+				}
+			});
+		}
+	};
+
+	var DECISION_TPLS = '<div class="p-decision"><span class="p-right-all" data-type="right"></span><span class="p-right-error" data-type="wrong"></span></div>';
+
+	var Decision = {
+		$root : null,
+		$target : null,
+		init : function() {
+			var _this = this;
+			_this.$root = $(DECISION_TPLS).appendTo(document.body);
+			_this.$root.on('click', 'span', function() {
+				var type = $(this).data('type');
+				_this.callback(type);
+				_this.close();
+				return false;
+			});
+			$(document.body).click(function() {
+				_this.close();
+			});
+			$('.p-card-scrollbar').scroll(function() {
+				_this.close();
+			});
+		},
+		// 定位
+		position : function() {
+			var offsets = this.$target.offset();
+			var top = offsets.top - 40;
+			var left = offsets.left;
+			this.$root.css({
+				top : top + 'px',
+				left : left + 'px'
+			});
+		},
+		// 关闭
+		close : function() {
+			if (this.$root) {
+				this.$root.hide();
+			}
+		},
+		callback : function(type) {
+			var html, isRight;
+			if (type == 'right') {
+				isRight = true;
+				html = '<i class="p-right-all"></i>';
+			} else if (type == 'wrong') {
+				isRight = false;
+				html = '<i class="p-right-error"></i>';
+			} else {
+				isRight = false;
+				html = '<i class="p-right-half"></i>';
+			}
+			this.$target.data('correct', true).data('right', isRight);
+			this.$target.find('.j-correctresult').html(html);
+		},
+		// 打开
+		open : function(target) {
+			if (this.$root == null) {
+				this.init();
+			}
+			this.$target = $(target);
+			this.position(target);
+			this.$root.show();
+		},
+		renderFillbank : function(target) {
+			this.$target = $(target);
+			if (this.$target.data('correct')) {
+				this.callback(this.$target.data('right'));
+			}
+		}
+	};
+
+	var Comment = {
+		COMMENT_TPLS : '<textarea class="j-comment-text" style="width: 515px; height: 190px; padding: 5px;">{{TEXT}}</textarea>',
+		text : function($target) {
+			var text = '';
+			var comments = $target.data('comments') || [];
+			$.each(comments, function(index, comment) {
+				if (comment.type === 'text') {
+					text = comment.text;
+					return false;
+				}
+			});
+			Dialog.open({
+				title : '文字批注',
+				tpl : Comment.COMMENT_TPLS.replace("{{TEXT}}", text),
+				keepTpl : true,
+				size : 'sm',
+				btns : [{
+					className : 'btn-ok',
+					text : '确定',
+					cb : function() {
+						var text = $('.j-comment-text').val();
+						if (text == null || text == '') {
+							Utils.Notice.alert("请输入批注内容");
+							return;
+						}
+						this.close(false);
+
+						var exists = false;
+						var comments = $target.data('comments') || [];
+						$.each(comments, function(index, comment) {
+							if (comment.type === 'text') {
+								comment.text = text;
+								exists = true;
+							}
+						});
+						if (!exists) {
+							comments.push({
+								type : 'text',
+								text : text,
+								link : ''
+							});
+						}
+						$target.data('comments', comments);
+						Comment.refreshComments($target);
+					}
+				}, {
+					className : 'btn-cancel',
+					text : '取消',
+					cb : function() {
+						this.close(false);
+					}
+				}]
+			});
+		},
+		audio : function($target) {
+			Dialog.open({
+				id : "recorder",
+				title : '语音批注',
+				url : '/auth/teacher/homework/recorder.htm',
+				size : 'sm',
+				onClose : function(comment) {
+					if (comment) {
+						var comments = $target.data('comments') || [];
+						comments.push(comment);
+						$target.data('comments', comments);
+						Comment.refreshComments($target);
+					}
+				}
+			});
+		},
+		micro : function($target) {
+			Dialog.open({
+				id : "bindmc",
+				title : '微课批注',
+				url : '/auth/teacher/homework/selectmc.htm',
+				size : 'lg',
+				onClose : function(micros) {
+					if (micros) {
+						var comments = $target.data('comments') || [];
+						$.each(micros, function(i, micro) {
+							var results = $.grep(comments, function(comment) {
+								return comment.link == micro.link;
+							});
+							if (results.length == 0) {
+								comments.push(micro);
+							}
+						});
+						$target.data('comments', comments);
+						Comment.refreshComments($target);
+					}
+				}
+			});
+		},
+		refreshComments : function($target) {
+			var comments = $target.data('comments') || [];
+			if (typeof comments === 'string') {
+				comments = JSON.parse(comments);
+			}
+			if (comments.length == 0) {
+				return;
+			}
+			var html = $.map(comments, function(comment, index) {
+				if (comment.type == 'text') {
+					return '<div><span><pre>' + comment.text + '<pre></span></div>';
+				} else if (comment.type == 'audio') {
+					return '<div><dfn class="j-dfn" data-type="audio" data-url="' + comment.link
+							+ '"></dfn><i class="del" data-index="' + index + '"></i></div>';
+				} else {
+					return '<div><a target="_blank" href="' + comment.link + '">' + comment.text
+							+ '</a><i class="del" data-index="' + index + '"></i></div>';
+				}
+			}).join('');
+			var question = $target.closest('.j-question');
+			var container = question.find('.comment-area');
+			if (container.length == 0) {
+				question.find('.p-answer-input').append('<div class="p-answer-comment"><label>批注：</label><div class="comment-area"></div>');
+				container = question.find('.comment-area');
+			}
+			container.html(html);
+			DFN.init();
+
+			container.find('.edit').click(function() {
+				Comment.text($target);
+			});
+			container.find('.del').click(function() {
+				var index = $(this).data('index');
+				var comments = $target.data('comments');
+				comments.splice(index, 1);
+				$target.data('comments', comments);
+				$(this).parent().remove();
+			});
+		}
+	}
+
+	var Tools = {
+		grade : function(target) {
+			Grading.open(target);
+		},
+		decision : function(target) {
+			Decision.open(target);
+		},
+		review : function(target) {
+			$(target).append('<i title="继续订正" class="p-continuecorrection" data-pass="1"></i>&nbsp;&nbsp;<i title="通过" class="p-adopt" data-pass="0"></i>');
+		},
+		comment : function(type, target) {
+			Comment[type]($(target));
+		},
+		renderScore : function(target) {
+			Grading.renderScore($(target));
+		},
+		renderScore2 : function(target,score) {
+			Grading.$target = $(target);
+			Grading.callback(score);
+		},
+		setGradingScoreHandle :function(fn_callback){
+			if( typeof fn_callback == 'function'){
+				Grading.afterScore = function(){
+					fn_callback();
+				};
+			}
+		},
+		renderFillbank : function(target) {
+			Decision.renderFillbank($(target));
+		},
+		renderComment : function(target) {
+			Comment.refreshComments($(target));
+		}
+	}
+
+	module.exports = Tools;
+});

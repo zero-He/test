@@ -1,0 +1,190 @@
+package cn.strong.leke.homework.dao.mongo;
+
+import static com.mongodb.client.model.Filters.and;
+import static com.mongodb.client.model.Filters.eq;
+import static com.mongodb.client.model.Filters.gte;
+import static com.mongodb.client.model.Filters.lt;
+
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import org.bson.Document;
+import org.bson.conversions.Bson;
+import org.bson.types.ObjectId;
+import org.springframework.beans.factory.InitializingBean;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Repository;
+
+import cn.strong.leke.common.utils.CollectionUtils;
+import cn.strong.leke.data.mongo.BsonUtils;
+import cn.strong.leke.data.mongo.MongoPageUtils;
+import cn.strong.leke.framework.page.jdbc.Page;
+import cn.strong.leke.homework.model.mongo.Exercise;
+import cn.strong.leke.homework.model.mongo.ExerciseRankUser;
+import cn.strong.leke.homework.model.mongo.ExerciseReport;
+import cn.strong.leke.homework.model.query.ExerciseListQuery;
+
+import com.mongodb.client.AggregateIterable;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.Accumulators;
+import com.mongodb.client.model.Aggregates;
+import com.mongodb.client.model.Sorts;
+import com.mongodb.client.model.UpdateOptions;
+
+@Repository
+public class ExerciseDao implements InitializingBean {
+
+	private static final String COLL_NAME = "exercise";
+
+	@Autowired
+	private MongoDatabase db;
+	
+	private MongoCollection<Exercise> coll;
+	
+	@Override
+	public void afterPropertiesSet() throws Exception {
+		this.coll = db.getCollection(COLL_NAME, Exercise.class);
+	}
+	
+	public void updateExerciseReport(ExerciseReport report,String exerciseId) {
+		Document update = new Document().append("$set", new Document().append("report", BsonUtils.toBsonValue(report)));
+		this.coll.updateOne(eq("_id", new ObjectId(exerciseId)), update);
+	}
+	
+	public Exercise getExerciseById(String exerciseId) {
+		return this.coll.find(eq("_id", new ObjectId(exerciseId))).first();
+	}
+	
+	
+	public List<ExerciseRankUser> getExerciseRankUser(Date startDate, Date endDate, int limit, int skipt) {
+		List<Bson> pipeline = new ArrayList<Bson>();
+		pipeline.add(Aggregates.match(and(eq("isDeleted", false), eq("status", 1),lt("submitTime", endDate.getTime()),
+				gte("submitTime", startDate.getTime()))));
+		pipeline.add(Aggregates.group("$studentId", Accumulators.sum("total", "$rightNum")));
+		pipeline.add(Aggregates.match(gte("total", 1)));
+		pipeline.add(Aggregates.sort(Sorts.descending("total", "_id")));
+		pipeline.add(Aggregates.skip(skipt));
+		pipeline.add(Aggregates.limit(limit));
+		pipeline.add(Aggregates.project(and(eq("id", "$_id"),eq("total", "$total"))));
+		List<ExerciseRankUser> list = new ArrayList<ExerciseRankUser>();
+		AggregateIterable<ExerciseRankUser> result = this.coll.aggregate(pipeline, ExerciseRankUser.class);
+		if (result != null) {
+			this.coll.aggregate(pipeline, ExerciseRankUser.class).into(list);
+		}
+		return list;
+	}
+	
+	/**
+	 * 查询学生自主练习列表
+	 * @param query
+	 * @return
+	 */
+	public List<Exercise> findStuExerciseList(ExerciseListQuery query, Page page) {
+		Bson filter = and(eq("isDeleted", false), eq("status", 1),eq("studentId", query.getStudentId()));
+		if (query.getExerciseType() != null) {
+			filter = and(filter, eq("exerciseType", query.getExerciseType()));
+		}
+		if (query.getSubjectId() != null) {
+			filter = and(filter, eq("subjectId", query.getSubjectId()));
+		}
+		if (query.getStartTime() != null) {
+			filter = and(filter, gte("createdOn", query.getStartTime().getTime()));
+		}
+		if (query.getEndTime() != null) {
+			filter = and(filter, lt("createdOn", query.getEndTime().getTime()));
+		}
+		Bson sort =and(Sorts.ascending("submitState"), Sorts.descending("submitTime"));
+		return MongoPageUtils.find(this.coll, filter, sort, page);
+	}
+	
+	public Exercise getFirstStuExercise(Long studentId) {
+		Bson filter = and(eq("isDeleted", false),eq("status", 1), eq("studentId",studentId));
+		Bson sort = Sorts.ascending("submitTime");
+		return this.coll.find(filter).sort(sort).first();
+	}
+	
+	/**
+	 * 直接批量插入
+	 */
+	public void insertMany(List<Exercise> exercises) {
+		this.coll.insertMany(exercises);
+	}
+	/**
+	 * 保存题目作答和批改信息
+	 */
+	public void insertExercise(Exercise exercise) {
+		Document set = BsonUtils.toBSON(exercise);
+		this.coll.updateOne(eq("_id", new ObjectId(exercise.getExerciseId())), eq("$set", set),
+				new UpdateOptions().upsert(true));
+	}
+	
+	public BigDecimal getPrevAcuracy(Long submitTime,Long subjectId,Long studentId){
+	  Exercise preExercise = this.coll.find(and(eq("studentId", studentId), eq("isDeleted", 0), eq("status", 1), eq("subjectId", subjectId), lt("submitTime", submitTime))).sort(Sorts.descending("submitTime")).first();
+	  if(preExercise != null){
+		  return preExercise.getAccuracy();
+	  }else {
+		return null;
+	}
+	}
+	
+	/**
+	 * 存储答题信息
+	 */
+	public void saveExerciseQuestion(Exercise exercise) {
+		Document set = new Document();
+		set.append("questions", BsonUtils.toBsonValue(exercise.getQuestions()));
+		set.append("modifiedOn", exercise.getModifiedOn());
+		set.append("modifiedBy", exercise.getModifiedBy());
+		set.append("sourceType", exercise.getSourceType());
+		if (exercise.getSubmitTime() != null) {
+			set.append("submitTime", exercise.getSubmitTime());
+			set.append("submitState", exercise.getSubmitState());
+			set.append("rightNum", exercise.getRightNum());
+			set.append("report", BsonUtils.toBsonValue(exercise.getReport()));
+			set.append("accuracy", exercise.getAccuracy() == null ? null : exercise.getAccuracy().doubleValue());
+			set.append("growth", exercise.getGrowth() == null ? null : exercise.getGrowth().doubleValue());
+		}
+		Document update = new Document().append("$set", set);
+		this.coll.updateOne(eq("_id", new ObjectId(exercise.getExerciseId())), update);
+	}
+
+	/**
+	 * 查询当天提交的练习数
+	 * @return
+	 */
+	public Long getTodaySubmitCount(Date startDate, Date endDate) {
+		return this.coll.count(and(eq("isDeleted", false),eq("status", 1),gte("submitTime", startDate.getTime()), lt("submitTime", endDate.getTime())));
+	}
+	
+	/**
+	 * 查询某个学生时间段内自主练习对的题目数
+	 * @param userId
+	 * @param week
+	 * @return
+	 */
+	public Long getRightCountByIntervalTime(Long userId, Date startDate, Date endDate) {
+		List<Exercise> list = new ArrayList<Exercise>();
+		this.coll.find(and(eq("isDeleted", false),eq("status", 1),gte("submitTime", startDate.getTime()), lt("submitTime", endDate.getTime()),
+				eq("studentId", userId))).projection(and(eq("studentId", 1), eq("rightNum", 1))).into(list);
+		if(CollectionUtils.isEmpty(list))
+			return null;
+		else{
+			return list.stream().mapToLong(Exercise::getRightNum).sum();
+		}
+	}
+	
+	public List<Exercise> findExerciseByIntervalTime(Date startDate, Date endDate,Integer limit) {
+		List<Exercise> list = new ArrayList<Exercise>();
+		this.coll.
+				find(and(eq("isDeleted", false),eq("status", 1), gte("submitTime", startDate.getTime()),
+						lt("submitTime", endDate.getTime())))
+				.projection(and(eq("report", 0), eq("questions", 0)))
+				.sort(Sorts.descending("createdOn")).limit(limit)
+				.into(list);
+		return list;
+	}
+
+}

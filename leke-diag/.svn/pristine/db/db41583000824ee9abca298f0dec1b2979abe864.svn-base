@@ -1,0 +1,88 @@
+package cn.strong.leke.diag.report;
+
+import java.util.Date;
+import java.util.List;
+
+import javax.annotation.Resource;
+
+import org.springframework.stereotype.Component;
+
+import com.google.common.collect.Lists;
+
+import cn.strong.leke.common.utils.CollectionUtils;
+import cn.strong.leke.diag.manage.ReportCycleService;
+import cn.strong.leke.diag.manage.WorkDetailService;
+import cn.strong.leke.diag.model.CycleType;
+import cn.strong.leke.diag.model.StuSubjQuery;
+import cn.strong.leke.diag.model.StuSubjScore;
+import cn.strong.leke.diag.model.report.ClsSubjRptView;
+import cn.strong.leke.diag.model.report.ReportCycle;
+import cn.strong.leke.diag.model.report.ScoreRptQuery;
+import cn.strong.leke.diag.model.report.TrendModel;
+import cn.strong.leke.diag.report.unit.LogicalContext;
+import cn.strong.leke.diag.report.unit.ScoreTrendLogicalUnit;
+import cn.strong.leke.diag.service.HomeworkDtlService;
+import cn.strong.leke.diag.service.HomeworkService;
+import cn.strong.leke.remote.service.lesson.IKlassRemoteService;
+
+/**
+ * 班级成绩分析。
+ * @author  andy
+ */
+@Component
+public class HomeClassSubjScoreReportHandler implements ReportHandler<ScoreRptQuery, ClsSubjRptView> {
+
+	@Resource
+	private HomeworkService homeworkService;
+	@Resource
+	private HomeworkDtlService homeworkDtlService;
+	@Resource
+	private WorkDetailService workDetailService;
+	@Resource
+	private ReportCycleService reportCycleService;
+	@Resource
+	private IKlassRemoteService klassRemoteService;
+
+	private ScoreTrendLogicalUnit scoreTrendLogicalUnit = new ScoreTrendLogicalUnit();
+
+	@Override
+	public ClsSubjRptView execute(ScoreRptQuery query) {
+		List<Long> userIds = this.klassRemoteService.findStudentIdsByClassId(query.getClassId());
+		if (CollectionUtils.isEmpty(userIds)) {
+			return new ClsSubjRptView(false, "本班级暂无学生，无数据可供分析！");
+		}
+		ReportCycle reportCycle = this.reportCycleService.getMonthReportCycleByDate(new Date());
+
+		StuSubjQuery stuSubjQuery = new StuSubjQuery();
+		stuSubjQuery.setSubjectId(query.getSubjectId());
+		stuSubjQuery.setHomeworkType(query.getHwType());
+		stuSubjQuery.setStart(reportCycle.getStart());
+		stuSubjQuery.setEnd(reportCycle.getEnd());
+		stuSubjQuery.setUserIds(userIds);
+
+		List<StuSubjScore> scores = this.homeworkDtlService.findStuSubjScores(stuSubjQuery);
+		if (CollectionUtils.isEmpty(scores)) {
+			return new ClsSubjRptView(false, "本班级暂无作业，无数据可供分析！");
+		}
+		
+		LogicalContext context = new LogicalContext();
+		context.put("scores", scores);
+		context.put("isUnit", query.getClassId() == null);
+
+		CycleType cycleType = CycleType.resolve(reportCycle.getType());
+		List<TrendModel> trends = Lists.newArrayList();
+		for (int child : cycleType.childTypes()) {
+			CycleType childCycleType = CycleType.resolve(child);
+			List<ReportCycle> cycles = this.reportCycleService.findReportCycleByTime(reportCycle.getStart(),
+					reportCycle.getEnd(), childCycleType.value);
+			context.put("cycles", cycles);
+			context.put("label", childCycleType.name);
+			TrendModel trend = this.scoreTrendLogicalUnit.execute(context);
+			trends.add(trend);
+		}
+
+		ClsSubjRptView view = new ClsSubjRptView();
+		view.setTrends(trends);
+		return view;
+	}
+}

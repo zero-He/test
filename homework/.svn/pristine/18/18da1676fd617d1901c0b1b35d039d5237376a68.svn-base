@@ -1,0 +1,36 @@
+var jResolved = $("#jResolved").val();
+var jDoubtId = $("#jDoubtId").val();
+
+$(".media-btn").click(function(){
+	var audio = $(".do-wave").siblings()[0];
+	if(audio){
+		audio.pause();
+	}
+	$(".media-btn").removeClass("do-wave");
+	$(this).addClass("do-wave");
+	audio = $(this).siblings()[0];
+	if(audio){
+		audio.loop = false;
+		audio.addEventListener('ended', function () {  
+		     $(".media-btn").removeClass('do-wave');
+		}, false);
+		audio.play();
+	}
+});
+$(".con img").click(function(){
+	var w = $(this).width();
+	var h = $(this).height();
+	var pswpElement = document.querySelectorAll('.pswp')[0];
+	var items = [
+	    {
+	        src: this.src,
+	        w: w,
+	        h: h
+	    }
+	];
+	var options = {
+	    index: 0
+	};
+	var gallery = new PhotoSwipe(pswpElement, PhotoSwipeUI_Default, items, options);
+	gallery.init();
+});

@@ -1,0 +1,43 @@
+<div class="detail">
+	<div class="m-search-box">
+		<span class="u-title f-w60">标签名称：</span>
+		<input type="text" class="u-ipt u-ipt-nm" data-bind="value: officialTagName">
+		<input class="u-btn u-btn-nm u-btn-bg-orange" type="button" id="bAdd" value="添加" data-bind="click: function() {doAdd();}">
+	</div>
+	<div class="base_view1">
+		<div class="m-table">
+			<table>
+				<thead>
+					<tr>
+						<th width="80%">正式题库标签</th>
+						<th width="20%">操作区</th>
+					</tr>
+				</thead>
+				<tbody id="tagListContext">
+					<!-- ko foreach: officialTagList -->
+					<tr>
+						<!-- ko if: flag() -->
+						<td><input type="text" disable="disable" class="u-ipt-nm u-bd-none u-bg-color-white s-c-gray-3"
+								data-bind="value: $data.officialTagName"/></td> 
+						<td class="operation "> 
+							<a href="javascript:void(0)" class="link"
+								 data-bind="click: function() { $data.flag(!$data.flag());}">编辑</a>
+							<a href="javascript:void(0)" class="link" data-bind="click: function() {$parent.doDel($data);}">删除</a> 
+						</td> 
+						<!-- /ko -->
+						<!-- ko if: !flag() -->
+						<td><input type="text" maxlength="30" class="u-ipt-nm u-bd-color-green" data-bind="value: $data.officialTagName"/></td> 
+						<td class="operation ">
+							<a href="javascript:void(0)" class="link"
+								 data-bind="click: function() { $parent.doEdit($data);}">保存</a>
+							<a href="javascript:void(0)" class="link" data-bind="click: function() {$parent.doDel($data);}">删除</a> 
+						</td> 
+						<!-- /ko -->
+					</tr> 
+					<!-- /ko -->
+				</tbody>
+				
+			</table>
+		</div>
+	</div>
+</div>

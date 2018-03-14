@@ -1,0 +1,82 @@
+<div class="detail">
+	<div class="examination">
+		<div class="m-search-box">
+			<div class="item">
+				<label class="title">学段科目：</label>
+				<select id="stageSubject" class="u-select u-select-nm"></select>
+				<label class="title">教材章节：</label>
+				<input type="text" class="u-ipt u-ipt-nm" name="section" style="width: 200px;"
+					data-bind="value: sectionPath, click: openSectionSelect" readonly="readonly"/>
+				<a class="s-c-r" data-bind="click: doDelSection"> x </a>
+				<label class="title">录入日期：</label>
+				<input type="text" class="Wdate u-ipt u-ipt-nm"
+					data-bind="datepicker: {
+								value: query.minInputDate,
+								maxDate : query.maxInputDate,
+								dateFmt: 'yyyy-MM-dd'
+							}"/>
+				<label class="title f-w60">-</label>
+				<input type="text" class="Wdate u-ipt u-ipt-nm"
+					data-bind="datepicker: {
+								value: query.maxInputDate,
+								minDate : query.minInputDate,
+								dateFmt: 'yyyy-MM-dd'
+							}"/>
+			</div>
+			<div class="item">
+				<label class="title">录入人:</label>
+				<input type="text" class="u-ipt u-ipt-nm" data-bind="value: query.creatorName"/>
+				<label class="title">题型：</label>
+					<select name="questionTypeId" class="u-select u-select-nm"
+						data-bind="options: questionTypes,
+								   optionsText: 'questionTypeName',
+								   optionsValue: 'questionTypeId',
+								   optionsCaption: '==题型==',
+								   value: query.questionTypeId,
+								   valueAllowUnset: true"></select>
+					<label class="title">题号：</label>
+					<input name="questionId" type="text" class="u-ipt u-ipt-nm"
+						data-bind="value: query.questionId"/>
+					<input name="content" type="text" class="u-ipt u-ipt-nm" style="width: 192px;"
+						data-bind="value: query.content, i18n: {placeholder: 'que.question.searchItem.content'}"/>
+					<button class="u-btn u-btn-nm u-btn-bg-turquoise"
+						data-bind="click: doSearch2,
+										i18n: 'que.question.btn.search'"></button>
+			</div>
+		</div>
+		<div class="m-tab">
+			<ul>
+			<li class="quesTab" data-bind="css: {
+			'active': query.statusType() == 1
+			},click: function() {
+				query.statusType(1);
+				doSearch();
+			}"><a>待审核</a></li>
+			<li class="quesTab" data-bind="css: {
+			'active': query.statusType() == 4
+			},click: function() {
+				query.statusType(4);
+				doSearch();
+			}"><a>已审核</a></li>
+			<li class="quesTab" data-bind="css: {
+			'active': query.statusType() == 17
+			},click: function() {
+				query.statusType(17);
+				doSearch();
+			}"><a>导题待审核</a></li>
+			
+			</ul>
+		</div>
+		<div class="quesCutContent">
+		</div>
+		<div data-bind="if:selectAllVisiable() && (query.statusType() == 1 || query.statusType() == 17) && (query.schoolStageId() && query.subjectId())">
+			<label>
+				<input type="checkbox" class="jSelectAll">
+				<span data-bind="i18n: 'que.question.selectAll'">&nbsp;</span>
+			</label>
+			<a class="u-btn u-btn-nm u-btn-bg-turquoise"
+				data-bind="click: doCheckeds, i18n: 'que.question.btn.checkPass'"></a>
+		</div>
+	</div>
+
+</div>

@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="cn.strong.leke.question.dao.mybatis.IPressDao">
+	
+	<insert id="addPress" parameterType="cn.strong.leke.model.question.Press" 
+		useGeneratedKeys="true" keyProperty="id">
+    	INSERT INTO que_press (
+    		pressName, nickName, pressCode,
+    		isDeleted, createdBy, createdOn, modifiedBy, modifiedOn
+    	) VALUES (
+    		#{pressName}, #{nickName}, #{pressCode},
+    		0, #{createdBy}, now(), #{modifiedBy}, now()
+    	)
+    </insert>
+	
+	<select id="findAll" resultType="cn.strong.leke.model.question.Press">
+		SELECT *
+		FROM que_press a
+		WHERE a.isDeleted = 0
+	</select>
+	
+	<update id="updatePress" parameterType="cn.strong.leke.model.question.Press">
+    	UPDATE que_press
+    	<set>
+    		pressName=#{pressName},
+    		nickName=#{nickName},
+    		<if test="pressCode != null and pressCode != ''">
+    		pressCode=#{pressCode},
+    		</if>
+    		modifiedBy=#{modifiedBy},
+    		modifiedOn=now()
+    	</set>
+    	WHERE pressId = #{pressId}
+    </update>
+    
+    <update id="deletePress" parameterType="map">
+    	UPDATE que_press
+    	SET 
+    		isDeleted=1,
+    		modifiedBy=#{modifiedBy},
+    		modifiedOn=now()
+    	WHERE pressId=#{pressId}
+    </update>
+    
+    <select id="getById" parameterType="long" resultType="cn.strong.leke.model.question.Press">
+		SELECT *
+		FROM que_press a
+		WHERE a.pressId = #{pressId}
+		AND a.isDeleted = 0
+	</select>
+	
+	<select id="countByName" parameterType="string" resultType="int">
+		SELECT count(*)
+		FROM que_press a
+		WHERE a.pressName = #{pressName}
+		AND a.isDeleted = 0
+	</select>
+</mapper>

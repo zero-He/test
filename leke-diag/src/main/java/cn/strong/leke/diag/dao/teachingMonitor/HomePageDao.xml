@@ -1,0 +1,262 @@
+<?xml version="1.0" encoding="UTF-8" ?>   
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.diag.dao.teachingMonitor.HomePageDao">
+
+	<select id="findTeacherLessonAndBeike" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.teachingMonitor.HomePageDynamic">
+		SELECT 
+		  COUNT(IF(b.scId IS NULL AND a.isEnd = 1, 1, NULL)) notAttendLesson,
+		  COUNT(IF(a.isEnd = 1 AND b.scId IS NOT NULL, 1, NULL)) endLesson,
+		  COUNT(IF(NOW() BETWEEN a.startTime AND a.endTime, 1, NULL)) onLesson,
+		  COUNT(IF(a.startTime <![CDATA[>]]> NOW(), 1, NULL)) awaitingLesson,
+		  COUNT(IF(a.isPrepared = 1, 1, NULL)) prepareLesson,
+		  COUNT(IF(a.isPrepared = 0, 1, NULL)) notPrepareLesson
+		FROM lesson.ls_lesson a
+		LEFT JOIN lesson.ls_attendance_lesson b
+		ON a.courseSingleId = b.scId
+		WHERE a.startTime <![CDATA[>=]]> DATE(#{startDate})
+		AND a.startTime <![CDATA[<]]> DATE_ADD(#{startDate}, INTERVAL 1 DAY)
+		AND a.isDeleted = 0
+		AND a.schoolId = #{schoolId}
+	</select>
+	
+	<select id="findTeacherAssignHW" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.teachingMonitor.HomePageDynamic">
+		SELECT
+		  COUNT(1) assignHW
+		FROM homework.HW_HOMEWORK a
+		WHERE a.createdOn <![CDATA[>=]]> DATE(#{startDate})
+		AND a.createdOn <![CDATA[<]]> DATE_ADD(#{startDate}, INTERVAL 1 DAY)
+		AND a.isDeleted = 0
+		AND a.resType = 3
+		AND a.isSnapshot = 0
+		AND a.schoolId = #{schoolId}
+	</select>
+	
+	<select id="findTeacherCorrectHW" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.teachingMonitor.HomePageDynamic">
+		SELECT
+		  IFNULL(SUM(correctNum),0) correctHW
+		FROM
+		(
+		SELECT
+			COUNT(DISTINCT CASE WHEN z.submitNum = z.correctNum THEN z.homeworkId ELSE NULL END) correctNum
+		FROM
+		(
+			SELECT
+				a.homeworkId,
+				(
+					SELECT COUNT(1) FROM homework.HW_HOMEWORK_DTL d
+					WHERE d.homeworkId = a.homeworkId
+					AND d.submitStatus = 1
+				) submitNum,
+				(
+					SELECT COUNT(1) FROM homework.HW_HOMEWORK_DTL d
+					WHERE d.homeworkId = a.homeworkId
+					AND d.submitStatus = 1
+					AND d.correctTime IS NOT NULL
+				) correctNum
+			FROM homework.HW_HOMEWORK a, homework.HW_HOMEWORK_DTL b
+			WHERE a.homeworkId = b.homeworkId
+			AND b.correctTime <![CDATA[>=]]> DATE(#{startDate})
+			AND b.correctTime <![CDATA[<]]> DATE_ADD(#{startDate}, INTERVAL 1 DAY)
+			AND a.finishNum > 0
+			AND a.isDeleted = 0
+			AND a.resType = 3
+			AND a.isSnapshot = 0
+			AND a.subjective = 1
+			AND a.schoolId = #{schoolId}
+			AND a.closeTime <![CDATA[<=]]> DATE_ADD(#{startDate}, INTERVAL 1 DAY)
+		) z
+		UNION ALL
+		SELECT
+		  COUNT(DISTINCT a.homeworkId) correctNum
+		FROM homework.HW_HOMEWORK a, homework.HW_HOMEWORK_DTL b
+		WHERE a.finishNum = a.correctNum
+		AND a.finishNum = a.totalNum
+		AND a.homeworkId = b.homeworkId
+		AND b.correctTime <![CDATA[>=]]> DATE(#{startDate})
+		AND b.correctTime <![CDATA[<]]> DATE_ADD(#{startDate}, INTERVAL 1 DAY)
+		AND a.isDeleted = 0
+		AND a.resType = 3
+		AND a.isSnapshot = 0
+		AND a.subjective = 1
+		AND a.schoolId = #{schoolId}
+		AND a.closeTime <![CDATA[>]]> DATE_ADD(#{startDate}, INTERVAL 1 DAY)
+		)p
+	</select>
+	
+	<select id="findTeacherAwaitingCorrectHW" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.teachingMonitor.HomePageDynamic">
+		SELECT
+			COUNT(CASE WHEN z.submitNum <![CDATA[>]]> z.correctNum THEN 1 ELSE NULL END) awaitingCorrectHW
+		FROM	
+		(
+			SELECT
+				a.homeworkId,
+				a.subjective,
+				(
+					SELECT COUNT(1) FROM homework.HW_HOMEWORK_DTL d
+					WHERE d.homeworkId = a.homeworkId
+					AND d.submitStatus = 1
+				) submitNum,
+				(
+					SELECT COUNT(1) FROM homework.HW_HOMEWORK_DTL d
+					WHERE d.homeworkId = a.homeworkId
+					AND d.submitStatus = 1
+					AND d.correctTime IS NOT NULL
+				) correctNum
+			FROM homework.HW_HOMEWORK a
+			WHERE a.finishNum <![CDATA[>]]> 0
+			AND a.isDeleted = 0
+			AND a.resType = 3
+			AND a.isSnapshot = 0
+			AND a.subjective = 1
+			AND a.schoolId = #{schoolId}
+			AND a.closeTime <![CDATA[<]]> DATE_ADD(#{startDate}, INTERVAL 1 DAY)
+		) z
+	</select>
+	
+	<select id="findTeacherDoubt" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.teachingMonitor.HomePageDynamic">
+		SELECT
+		 (
+			SELECT
+				COUNT(1) resolveDoubt
+			FROM homework.HW_DOUBT a
+			WHERE a.explainTime <![CDATA[>=]]> DATE(#{startDate})
+			AND a.explainTime <![CDATA[<]]> DATE_ADD(#{startDate}, INTERVAL 1 DAY)
+			AND a.resolved = 1
+			AND a.schoolId = #{schoolId}
+			AND a.isDeleted = 0
+		 ) resolveDoubt,
+		 (
+			SELECT
+				COUNT(1) notResolveDoubt
+			FROM homework.HW_DOUBT a
+			WHERE a.createdOn <![CDATA[<]]> DATE_ADD(#{startDate}, INTERVAL 1 DAY)
+			AND a.resolved = 0
+			AND a.schoolId = #{schoolId}
+			AND a.isDeleted = 0
+			AND a.studentIsDeleted = 0
+			AND a.teacherIsDeleted = 0
+		  ) notResolveDoubt
+		FROM lesson.ls_dateAssistant limit 1
+	</select>
+	
+	<select id="findStudentAttendent" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.teachingMonitor.HomePageDynamic">
+		SELECT
+		  IFNULL(SUM(IF(a.attendState = 1 OR a.attendState = 3, 1, 0)), 0) lateStu,
+		  IFNULL(SUM(IF(a.attendState = 2 OR a.attendState = 3, 1, 0)), 0) earlyStu,
+		  IFNULL(SUM(IF(a.attendState = 4, 1, 0)), 0) notAttendStu
+		FROM lesson.ls_attendance_student a
+		WHERE a.createdOn <![CDATA[>=]]> DATE(#{startDate})
+		AND a.createdOn <![CDATA[<]]> DATE_ADD(#{startDate}, INTERVAL 1 DAY)
+		AND a.isDeleted = 0
+		AND EXISTS(SELECT 1 FROM lesson.ls_attendance_lesson b
+		           WHERE b.csAttenId = a.csAttenId
+		           AND b.schoolId = #{schoolId}
+		           AND b.isDeleted = 0)
+	</select>
+	
+	<select id="findStudentDoubt" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.teachingMonitor.HomePageDynamic">
+		SELECT 
+		  COUNT(1) doubt,
+		  COUNT(DISTINCT a.createdBy) doubtStu
+		FROM homework.HW_DOUBT a
+		WHERE a.createdOn <![CDATA[>=]]> DATE(#{startDate})
+		AND a.createdOn <![CDATA[<]]> DATE_ADD(#{startDate}, INTERVAL 1 DAY)
+		AND a.schoolId = #{schoolId}
+		AND a.isDeleted = 0
+		AND a.studentIsDeleted = 0
+	</select>
+	
+	<resultMap id="lessonScheduleList" type="cn.strong.leke.diag.model.teachingMonitor.HomePageLessonSchedule">
+        <result column="startTime" property="startTime"/>
+        <result column="lessonIndex" property="lessonIndex"/>
+        <collection property="lessonList" ofType="cn.strong.leke.diag.model.teachingMonitor.HomePageSchedule">
+            <result column="courseSingleId" property="courseSingleId" />
+            <result column="className" property="className" />
+            <result column="subjectName" property="subjectName" />
+            <result column="teacherId" property="teacherId" />
+            <result column="teacherName" property="teacherName" />
+            <result column="startDate" property="startDate" />
+            <result column="lessonTimeStr" property="lessonTimeStr" />
+            <result column="isRecord" property="isRecord" />
+            <result column="isEnd" property="isEnd" />
+            <result column="isPrepared" property="isPrepared" />
+            <result column="lessonStatus" property="lessonStatus" />
+            <result column="cwCount" property="cwCount" />
+            <result column="mcCount" property="mcCount" />
+            <result column="hwCount" property="hwCount" />
+            <result column="lessonPlan" property="lessonPlan" />
+        </collection>
+    </resultMap>
+	
+	<select id="findHomePageSchedule" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultMap="lessonScheduleList">
+		SELECT m.* FROM
+		(SELECT
+		  a.courseSingleId,
+		  a.teacherId,
+		  a.teacherName,
+		  d.className,
+		  c.subjectName,
+		  DATE_FORMAT(a.startTime,'%Y-%m-%d') startDate,
+		  DATE_FORMAT(a.startTime,'%k:%i') startTime,
+		  CONCAT(DATE_FORMAT(a.startTime,'%k:%i'), '-', DATE_FORMAT(a.endTime,'%k:%i')) lessonTimeStr,
+		  a.cwCount,
+		  a.mcCount,
+		  a.hwCount,
+		  a.isEnd,
+		  a.isRecord,
+		  a.isPrepared,
+		  CASE
+		    WHEN a.isEnd = 1 AND b.csAttenId IS NOT NULL THEN 1
+		    WHEN a.isEnd = 1 AND b.csAttenId IS NULL THEN 2
+		    WHEN a.startTime > NOW() THEN 3
+		    WHEN NOW() <![CDATA[>=]]> a.startTime AND a.isEnd = 0 THEN 4
+		  END lessonStatus
+		FROM lesson.ls_lesson a
+		INNER JOIN lesson.ls_klass_subject c
+		ON c.classSubjId = a.classSubjId
+		<if test="subjectId != null and subjectId != -1">
+		AND c.subjectId = #{subjectId}
+		</if>
+		INNER JOIN lesson.ls_klass d
+		ON d.classId = a.classId
+		AND d.isExpired = 0
+		<if test="classId != null and classId != -1">
+		AND d.classId = #{classId}
+		</if>
+		<if test="gradeId != null and gradeId != -1">
+		AND d.gradeId = #{gradeId}
+		</if>
+		LEFT JOIN lesson.ls_attendance_lesson b
+		ON a.courseSingleId = b.scId
+		WHERE a.schoolId = #{schoolId}
+		AND a.isDeleted = 0
+		AND a.startTime <![CDATA[>=]]> DATE(#{startDate})
+		AND a.startTime <![CDATA[<]]> DATE_ADD(#{startDate}, INTERVAL 1 DAY)
+		ORDER BY a.startTime, d.className)m
+		WHERE 1 = 1
+		<if test="lessonStatus != null and lessonStatus.length > 0">
+			AND m.lessonStatus IN
+			<foreach collection="lessonStatus" item="item" open="(" close=")" separator=",">
+				#{item}
+			</foreach>
+		</if>
+		<if test="isPrepared != null and isPrepared.length > 0">
+		    AND m.isPrepared IN
+			<foreach collection="isPrepared" item="item" open="(" close=")" separator=",">
+				#{item}
+			</foreach>
+		</if>
+		<if test="lessonStatus != null and lessonStatus.length == 0 and isPrepared != null and isPrepared.length == 0">
+		    AND 1 = 2
+		</if>
+	</select>
+	
+</mapper>   

@@ -1,0 +1,328 @@
+package cn.strong.leke.homework.model;
+
+import java.math.BigDecimal;
+import java.util.Date;
+
+import cn.strong.leke.model.BaseModel;
+
+/**
+ * 实体对象：学生作业表
+ */
+public class HomeworkDtl extends BaseModel {
+
+	private static final long serialVersionUID = 4161866440469448942L;
+
+	/**
+	 * 非资源库 试卷Id
+	 */
+	private String hwPaperId;
+	// 学生作业标识
+	private Long homeworkDtlId;
+	// 老师作业标识
+	private Long homeworkId;
+	// 学生标识
+	private Long studentId;
+	// 学生姓名
+	private String studentName;
+	// 开始时间
+	private Date startTime;
+	// 提交时间
+	private Date submitTime;
+	// 作业用时
+	private Integer usedTime;
+	// 提交状态。0：未提交，1：正常提交，2：延迟提交
+	private Integer submitStatus;
+	// 提交来源
+	private Integer submitSource;
+	/*批改信息*/
+	// 批改题量
+	private Integer correctCount;
+	// 批改时间
+	private Date correctTime;
+	// 批改来源
+	private Integer correctSource;
+	//批改人id
+	private Long correctUserId;
+	
+	// 批改音频文件
+	private String soundFile;
+	// 订正阶段
+	private Integer bugFixStage;
+	// 订正次数
+	private Integer bugFixCount;
+	// 订正时间
+	private Date bugFixTime;
+	// 订正来源
+	private Integer bugFixSource;
+	// 复批时间
+	private Date reviewTime;
+	// 复批来源
+	private Integer reviewSource;
+	// 总得分
+	private BigDecimal score;
+	// 总得分率
+	private BigDecimal scoreRate;
+	// 排名值
+	private Integer rank;
+	// 学校ID
+	private Long schoolId;
+	// 排序时间
+	private Date orderTime;
+	/**
+	 * 周月作业的试卷id
+	 */
+	private String paperId;
+	
+	/**
+	 * 错题题数
+	 */
+	private Long errorTotal;
+
+	public Long getHomeworkDtlId() {
+		return homeworkDtlId;
+	}
+
+	public void setHomeworkDtlId(Long homeworkDtlId) {
+		this.homeworkDtlId = homeworkDtlId;
+	}
+
+	public Long getHomeworkId() {
+		return homeworkId;
+	}
+
+	public void setHomeworkId(Long homeworkId) {
+		this.homeworkId = homeworkId;
+	}
+
+	public Long getStudentId() {
+		return studentId;
+	}
+
+	public void setStudentId(Long studentId) {
+		this.studentId = studentId;
+	}
+
+	public String getStudentName() {
+		return studentName;
+	}
+
+	public void setStudentName(String studentName) {
+		this.studentName = studentName;
+	}
+
+	public Date getStartTime() {
+		return startTime;
+	}
+
+	public void setStartTime(Date startTime) {
+		this.startTime = startTime;
+	}
+
+	public Date getSubmitTime() {
+		return submitTime;
+	}
+
+	public void setSubmitTime(Date submitTime) {
+		this.submitTime = submitTime;
+	}
+
+	public Integer getUsedTime() {
+		return usedTime;
+	}
+
+	public void setUsedTime(Integer usedTime) {
+		this.usedTime = usedTime;
+	}
+
+	public Integer getSubmitStatus() {
+		return submitStatus;
+	}
+
+	public void setSubmitStatus(Integer submitStatus) {
+		this.submitStatus = submitStatus;
+	}
+
+	public Integer getSubmitSource() {
+		return submitSource;
+	}
+
+	public void setSubmitSource(Integer submitSource) {
+		this.submitSource = submitSource;
+	}
+
+	public Integer getCorrectCount() {
+		return correctCount;
+	}
+
+	public void setCorrectCount(Integer correctCount) {
+		this.correctCount = correctCount;
+	}
+
+	public Date getCorrectTime() {
+		return correctTime;
+	}
+
+	public void setCorrectTime(Date correctTime) {
+		this.correctTime = correctTime;
+	}
+
+	public Integer getCorrectSource() {
+		return correctSource;
+	}
+
+	public void setCorrectSource(Integer correctSource) {
+		this.correctSource = correctSource;
+	}
+
+	public String getSoundFile() {
+		return soundFile;
+	}
+
+	public void setSoundFile(String soundFile) {
+		this.soundFile = soundFile;
+	}
+
+	public Integer getBugFixStage() {
+		return bugFixStage;
+	}
+
+	public void setBugFixStage(Integer bugFixStage) {
+		this.bugFixStage = bugFixStage;
+	}
+
+	public Integer getBugFixCount() {
+		return bugFixCount;
+	}
+
+	public void setBugFixCount(Integer bugFixCount) {
+		this.bugFixCount = bugFixCount;
+	}
+
+	public Date getBugFixTime() {
+		return bugFixTime;
+	}
+
+	public void setBugFixTime(Date bugFixTime) {
+		this.bugFixTime = bugFixTime;
+	}
+
+	public Integer getBugFixSource() {
+		return bugFixSource;
+	}
+
+	public void setBugFixSource(Integer bugFixSource) {
+		this.bugFixSource = bugFixSource;
+	}
+
+	public Date getReviewTime() {
+		return reviewTime;
+	}
+
+	public void setReviewTime(Date reviewTime) {
+		this.reviewTime = reviewTime;
+	}
+
+	public Integer getReviewSource() {
+		return reviewSource;
+	}
+
+	public void setReviewSource(Integer reviewSource) {
+		this.reviewSource = reviewSource;
+	}
+
+	public BigDecimal getScore() {
+		return score;
+	}
+
+	public void setScore(BigDecimal score) {
+		this.score = score;
+	}
+
+	public BigDecimal getScoreRate() {
+		return scoreRate;
+	}
+
+	public void setScoreRate(BigDecimal scoreRate) {
+		this.scoreRate = scoreRate;
+	}
+
+	public Integer getRank() {
+		return rank;
+	}
+
+	public void setRank(Integer rank) {
+		this.rank = rank;
+	}
+
+	public Long getSchoolId() {
+		return schoolId;
+	}
+
+	public void setSchoolId(Long schoolId) {
+		this.schoolId = schoolId;
+	}
+
+	public Date getOrderTime() {
+		return orderTime;
+	}
+
+	public void setOrderTime(Date orderTime) {
+		this.orderTime = orderTime;
+	}
+
+	/**
+	 * @return the paperId
+	 */
+	public String getPaperId() {
+		return paperId;
+	}
+
+	/**
+	 * @param paperId the paperId to set
+	 */
+	public void setPaperId(String paperId) {
+		this.paperId = paperId;
+	}
+
+	/**
+	 * @return the hwPaperId
+	 */
+	public String getHwPaperId() {
+		return hwPaperId;
+	}
+
+	/**
+	 * @param hwPaperId the hwPaperId to set
+	 */
+	public void setHwPaperId(String hwPaperId) {
+		this.hwPaperId = hwPaperId;
+	}
+
+	/**
+	 * @return the errorTotal
+	 */
+	public Long getErrorTotal() {
+		return errorTotal;
+	}
+
+	/**
+	 * @param errorTotal the errorTotal to set
+	 */
+	public void setErrorTotal(Long errorTotal) {
+		this.errorTotal = errorTotal;
+	}
+
+	/**
+	 * @return the correctUserId
+	 */
+	public Long getCorrectUserId() {
+		return correctUserId;
+	}
+
+	/**
+	 * @param correctUserId the correctUserId to set
+	 */
+	public void setCorrectUserId(Long correctUserId) {
+		this.correctUserId = correctUserId;
+	}
+}

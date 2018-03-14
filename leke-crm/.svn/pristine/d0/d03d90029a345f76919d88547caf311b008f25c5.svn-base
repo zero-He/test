@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8" ?>   
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.scs.dao.master.SellerMasterDao">
+
+	<insert id="insertSeller" parameterType="map">
+	<![CDATA[
+		INSERT INTO scs_seller (
+			sellerId,
+			sellerName,
+			customerNum,
+			monthAmount,
+			yearAmount,
+			totalAmount,
+			isDeleted,
+			createdBy,
+			createdOn
+		)
+		SELECT #{sellerId},
+			   #{sellerName},
+			   0,
+			   0,
+			   0,
+			   0,
+			   0,
+			   1,
+			   now()
+		  FROM DUAL
+		 WHERE NOT EXISTS (SELECT * FROM scs_seller WHERE sellerId = #{sellerId})
+	]]>
+	</insert>
+
+	<update id="updateSellerCommAmount" parameterType="map">
+	<![CDATA[
+		UPDATE scs_seller
+		   SET monthAmount = monthAmount + #{commAmount},
+		       yearAmount = yearAmount + #{commAmount},
+		       totalAmount = totalAmount + #{commAmount}
+		 WHERE sellerId = #{sellerId}
+		   AND isDeleted = 0
+	]]>
+	</update>
+
+	<update id="updateIncrementCustomerNum" >
+	
+		UPDATE scs_seller
+		   SET 
+		   <choose>
+		   		<when test="up">customerNum = customerNum + 1</when>
+		   		<otherwise>customerNum = customerNum - 1</otherwise>
+		   </choose>
+		 WHERE sellerId = #{sellerId}
+		 AND isDeleted = 0
+	</update>
+
+	
+	<update id="resetSellerMonthCommAmount">
+	<![CDATA[
+		UPDATE scs_seller
+		   SET monthAmount = 0
+		 WHERE isDeleted = 0
+	]]>
+	</update>
+
+	<update id="resetSellerYearCommAmount">
+	<![CDATA[
+		UPDATE scs_seller
+		   SET monthAmount = 0,
+		       yearAmount = 0
+		 WHERE isDeleted = 0
+	]]>
+	</update>
+
+</mapper>   

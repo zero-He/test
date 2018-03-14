@@ -1,0 +1,185 @@
+<%@ page pageEncoding="UTF-8"%>
+<%@ include file="/pages/common/tags.jsp"%>
+<!DOCTYPE html>
+<html>
+<head>
+<title>答题卡上传记录 - 乐课网</title>
+<%@ include file="/pages/common/meta.jsp"%>
+<link rel="stylesheet" href="${assets}/styles/homework/abnormal.css?t=20171115" type="text/css">
+</head>
+<body>
+	<%@ include file="/pages/header/header.jsp"%>
+	<div class="g-bd">
+		<div class="g-mn">
+			<div class="c-uploadinfo-head">
+				<h5>上传详情<span> | </span></h5>
+				<span class="item">上传时间：<b><fmt:formatDate value="${sheetTask.createdOn}" pattern="yyyy-MM-dd HH:mm" /></b></span>
+				<span class="item">本次识别作业份数：<b><c:out value="${sheetTask.validBookNum}" default="--" /></b></span>
+				<c:if test="${superuser}">
+					<a id="btnReWrite" data-id="${sheetTask.id}" class="u-btn u-btn-nm u-btn-bg-turquoise">重新写入</a>
+				</c:if>
+				<a href="${ctx}/auth/teacher/sheet/taskList.htm" class="back">返回至上传记录</a>
+			</div>
+
+			<div class="m-table m-table-center c-uploadinfo-gap">
+				<table>
+					<thead>
+						<tr>
+							<th width="30%">班级</th>
+							<th width="40%">作业标题</th>
+							<th width="20%">本次识别作业份数</th>
+							<th width="10%">操作</th>
+						</tr>
+					</thead>
+					<tbody>
+						<c:forEach var="group" items="${sheetGroups}">
+							<tr>
+								<td>${group.className}</td>
+								<td>${group.homeworkName}</td>
+								<td>${group.bookNum}</td>
+								<td class="operation"><a href="bookList.htm?taskId=${sheetTask.id}&homeworkId=${group.homeworkId}">查看</a></td>
+							</tr>
+						</c:forEach>
+					</tbody>
+				</table>
+				<c:if test="${empty sheetGroups}">
+					<div class="m-tips"><i></i><span>对不起，没有您要查询的数据</span></div>
+				</c:if>
+			</div>
+			<div class="m-tab">
+				<ul>
+					<li data-tabid="#tab-errors" class="active"><a>试卷异常（${errorBookSize}）</a></li>
+					<li data-tabid="#tab-suspect"><a>怀疑处理（${suspectBookSize}）</a></li>
+				</ul>
+			</div>
+			<div id="tab-errors" class="m-table m-table-center">
+				<table>
+					<thead>
+						<tr>
+							<th width="20%">班级</th>
+							<th width="38%">作业标题</th>
+							<th width="8%">乐号</th>
+							<th width="8%">学号</th>
+							<th width="10%">姓名</th>
+							<th width="8%">异常原因</th>
+							<th width="8%">操作</th>
+						</tr>
+					</thead>
+					<tbody>
+						<c:forEach var="sheetPage" items="${errorPages}">
+							<tr>
+								<td>未知</td>
+								<td>未知</td>
+								<td>
+								<c:if test="${not empty sheetPage.lekeNo and sheetPage.lekeNo != '-1' }">${sheetPage.lekeNo}</c:if>
+								<c:if test="${empty sheetPage.lekeNo or sheetPage.lekeNo == '-1' }">--</c:if>
+								</td>
+								<td>
+								<c:if test="${not empty sheetPage.stuno and sheetPage.stuno != '-1' }">${sheetPage.stuno}</c:if>
+								<c:if test="${empty sheetPage.stuno or sheetPage.stuno == '-1' }">--</c:if>
+								</td>
+								<td>未知</td>
+								<td>
+									<c:if test="${sheetPage.errorNo == 10101}">二维码异常</c:if>
+									<c:if test="${sheetPage.errorNo == 10102}">识别异常</c:if>
+									<c:if test="${sheetPage.errorNo == 10201}">身份异常</c:if>
+								</td>
+								<td class="operation">
+									<c:if test="${sheetPage.errorNo == 10101}"><a href="qcode/index.htm?pageId=${sheetPage.id}" target="_blank">查看</a></c:if>
+									<c:if test="${sheetPage.errorNo == 10102}"><a href="qcode/index.htm?pageId=${sheetPage.id}" target="_blank">查看</a></c:if>
+									<c:if test="${sheetPage.errorNo == 10201}"><a href="lekeno/index.htm?pageId=${sheetPage.id}" target="_blank">处理</a></c:if>
+								</td>
+							</tr>
+						</c:forEach>
+						<c:forEach var="sheetBook" items="${errorBooks}">
+							<tr>
+								<td><c:out value="${sheetBook.className}" default="未知" /></td>
+								<td><c:out value="${sheetBook.homeworkName}" default="未知" /></td>
+								<td>
+								<c:if test="${not empty sheetBook.lekeNo and sheetBook.lekeNo != '-1' }">${sheetBook.lekeNo}</c:if>
+								<c:if test="${empty sheetBook.lekeNo or sheetBook.lekeNo == '-1' }">--</c:if>
+								</td>
+								<td>
+								<c:if test="${not empty sheetBook.stuno and sheetBook.stuno != '-1' }">${sheetBook.stuno}</c:if>
+								<c:if test="${empty sheetBook.stuno or sheetBook.stuno == '-1' }">--</c:if>
+								</td>
+								<td><c:out value="${sheetBook.userName}" default="未知" /></td>
+								<td>
+									<c:if test="${sheetBook.errorNo == 20102}">作业匹配异常</c:if>
+									<c:if test="${sheetBook.errorNo == 20103}">作业重复写入</c:if>
+									<c:if test="${sheetBook.errorNo == 20201}">重页异常</c:if>
+									<c:if test="${sheetBook.errorNo == 20202}">缺页异常</c:if>
+									<c:if test="${sheetBook.errorNo == 20301}">识别异常</c:if>
+									<c:if test="${sheetBook.errorNo == 20302}">涂写异常</c:if>
+									<c:if test="${sheetBook.errorNo == 20401}">疑似异常</c:if>
+								</td>
+								<td class="operation">
+									<c:if test="${sheetBook.errorNo == 20102}"><a href="match/index.htm?bookId=${sheetBook.id}" target="_blank">查看</a></c:if>
+									<c:if test="${sheetBook.errorNo == 20103}"><a href="write/index.htm?bookId=${sheetBook.id}" target="_blank">查看</a></c:if>
+									<c:if test="${sheetBook.errorNo == 20201}"><a href="repeat/index.htm?bookId=${sheetBook.id}" target="_blank">处理</a></c:if>
+									<c:if test="${sheetBook.errorNo == 20202}">
+										<c:if test="${empty sheetBook.pageIds}">
+											<span style="color: #bbb;" title="该图片已和其他图片合并处理。">已处理</span>
+										</c:if>
+										<c:if test="${not empty sheetBook.pageIds}">
+											<a href="misspg/index.htm?bookId=${sheetBook.id}" target="_blank">查看</a>
+										</c:if>
+									</c:if>
+									<c:if test="${sheetBook.errorNo == 20301}"><a href="filling/index.htm?bookId=${sheetBook.id}" target="_blank">处理</a></c:if>
+									<c:if test="${sheetBook.errorNo == 20302}"><a href="filling/index.htm?bookId=${sheetBook.id}" target="_blank">处理</a></c:if>
+									<c:if test="${sheetBook.errorNo == 20401}"><a href="suspect/index.htm?bookId=${sheetBook.id}" target="_blank">处理</a></c:if>
+								</td>
+							</tr>
+						</c:forEach>
+					</tbody>
+				</table>
+				<c:if test="${empty errorPages and empty errorBooks}">
+					<div class="m-tips"><i></i><span>对不起，没有您要查询的数据</span></div>
+				</c:if>
+			</div>
+			<div id="tab-suspect" class="m-table m-table-center" style="display: none;">
+				<table>
+					<thead>
+						<tr>
+							<th width="20%">班级</th>
+							<th width="38%">作业标题</th>
+							<th width="8%">乐号</th>
+							<th width="8%">学号</th>
+							<th width="10%">姓名</th>
+							<th width="8%">异常原因</th>
+							<th width="8%">操作</th>
+						</tr>
+					</thead>
+					<tbody>
+						<c:forEach var="sheetBook" items="${suspectBooks}">
+							<tr>
+								<td><c:out value="${sheetBook.className}" default="未知" /></td>
+								<td><c:out value="${sheetBook.homeworkName}" default="未知" /></td>
+								<td>
+								<c:if test="${not empty sheetBook.lekeNo and sheetBook.lekeNo != '-1' }">${sheetBook.lekeNo}</c:if>
+								<c:if test="${empty sheetBook.lekeNo or sheetBook.lekeNo == '-1' }">--</c:if>
+								</td>
+								<td>
+								<c:if test="${not empty sheetBook.stuno and sheetBook.stuno != '-1' }">${sheetBook.stuno}</c:if>
+								<c:if test="${empty sheetBook.stuno or sheetBook.stuno == '-1' }">--</c:if>
+								</td>
+								<td><c:out value="${sheetBook.userName}" default="--" /></td>
+								<td>疑似异常</td>
+								<td class="operation">
+									<a href="suspect/index.htm?bookId=${sheetBook.id}" target="_blank">处理</a>
+								</td>
+							</tr>
+						</c:forEach>
+					</tbody>
+				</table>
+				<c:if test="${empty suspectBooks}">
+					<div class="m-tips"><i></i><span>对不起，没有您要查询的数据</span></div>
+				</c:if>
+			</div>
+		</div>
+	</div>
+<script>
+	seajs.use('homework/sheet/taskInfo');
+</script>
+</body>
+</html>

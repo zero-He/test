@@ -1,0 +1,24 @@
+<%@ page pageEncoding="UTF-8"%>
+<%@ include file="/pages/common/tags.jsp"%>
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <title>作业管家</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=640">
+    <link rel="stylesheet" href="${assets}/styles/mobile/v1.3.css?_t=${_t}">
+    <script src="${assets}/scripts/common/mobile/utils.js?_t=${_t}"></script>
+    <leke:context />
+</head>
+
+<body>
+    <ul class="c-kemu">
+    	<c:forEach items="${subjectList}" var="v">
+    		<li class="${v.kemu}" data-c="${v.kemu}" data-i="${v.subjectId}"><span>${v.subjectName}</span></li>
+    	</c:forEach>
+    </ul>
+    <script src="${assets}/scripts/common/mobile/zepto.min.js?_t=${_t}"></script>
+    <script src="/scripts/m/homework/manager/student.js?_t=${_t}"></script>
+</body>
+</html>

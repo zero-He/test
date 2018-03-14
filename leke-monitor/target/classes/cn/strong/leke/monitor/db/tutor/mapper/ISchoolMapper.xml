@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.1//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.monitor.db.tutor.mapper.ISchoolMapper">
+
+	<select id="count" resultType="_int">
+		SELECT COUNT(*) 
+		FROM tutor_school
+		WHERE isDeleted = 0
+	</select>
+	
+	<select id="countByNature" resultType="cn.strong.leke.monitor.db.tutor.model.NatureSchoolCount">
+		SELECT schoolNature, COUNT(*) AS cnt 
+		FROM tutor_school 
+		WHERE isDeleted = 0 
+		AND schoolCode IS NOT NULL 
+		GROUP BY schoolNature
+	</select>
+	
+	<select id="countAdded" parameterType="map"
+		resultType="_int">
+		SELECT COUNT(*) 
+		FROM tutor_school
+		WHERE isDeleted = 0
+		<![CDATA[
+		AND createdOn >= #{start}
+		AND createdOn < #{end}
+		]]>
+	</select>
+	
+	<select id="countAddedByNature" parameterType="map"
+		resultType="cn.strong.leke.monitor.db.tutor.model.NatureSchoolCount">
+		SELECT schoolNature, COUNT(*) AS cnt 
+		FROM tutor_school 
+		WHERE isDeleted = 0 
+		AND schoolCode IS NOT NULL 
+		<![CDATA[
+		AND createdOn >= #{start}
+		AND createdOn < #{end}
+		]]>
+		GROUP BY schoolNature
+	</select>
+
+</mapper>

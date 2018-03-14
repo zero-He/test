@@ -1,0 +1,159 @@
+package cn.strong.leke.homework.controller;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import javax.annotation.Resource;
+
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import cn.strong.leke.common.serialize.support.json.JsonUtils;
+import cn.strong.leke.common.utils.DateUtils;
+import cn.strong.leke.context.paper.PaperContext;
+import cn.strong.leke.context.question.QuestionContext;
+import cn.strong.leke.framework.mq.MessageSender;
+import cn.strong.leke.framework.page.jdbc.Page;
+import cn.strong.leke.framework.web.JsonResult;
+import cn.strong.leke.homework.model.ApiParamDTO;
+import cn.strong.leke.homework.model.Homework;
+import cn.strong.leke.homework.model.HomeworkData;
+import cn.strong.leke.homework.model.StudentAvgScore;
+import cn.strong.leke.homework.service.HomeworkDtlService;
+import cn.strong.leke.homework.service.HomeworkMainService;
+import cn.strong.leke.homework.service.HomeworkService;
+import cn.strong.leke.model.paper.PaperDTO;
+import cn.strong.leke.model.paper.QuestionGroup;
+import cn.strong.leke.model.paper.ScoredQuestion;
+import cn.strong.leke.model.question.QuestionDTO;
+
+@RestController
+@RequestMapping("/api/n/*")
+public class APINController {
+
+	@Resource
+	private HomeworkService homeworkService;
+	@Resource
+	private HomeworkDtlService homeworkDtlService;
+	@Resource
+	private HomeworkMainService homeworkMainService;
+	@Resource
+	private MessageSender onlinetestSender;
+
+	/**
+	 * 上传随堂作业数据
+	 * 调用者：Flash服务端
+	 */
+	@RequestMapping("upHwInfo")
+	public JsonResult upHwInfo(String data) {
+		APILogger.invoking("upHwInfo", data);
+		ApiParamDTO param = JsonUtils.fromJSON(data, ApiParamDTO.class);
+
+		HomeworkData homeworkData = new HomeworkData();
+		homeworkData.setHomeworkId(param.getHomeworkId());
+		homeworkData.setVersion(param.getVersion());
+		homeworkData.setAnswerData(param.getDetailList());
+		homeworkData.setIsDeleted(false);
+		this.homeworkMainService.saveOnlineAnswerTempData(homeworkData);
+		this.onlinetestSender.send(homeworkData.getDataId());
+
+		return new JsonResult().addDatas("homeworkId", param.getHomeworkId());
+	}
+
+	/**
+	 * 根据试卷ID列表，获取试卷及题目信息。
+	 * 调用者：课堂服务端
+	 */
+	@RequestMapping("getPaperInfo")
+	public JsonResult getPaperInfo(String data) {
+		APILogger.invoking("getPaperInfo", data);
+		ApiParamDTO param = JsonUtils.fromJSON(data, ApiParamDTO.class);
+
+		List<Map<String, Object>> list = param.getPaperIds().stream().map((Long paperId) -> {
+			PaperDTO paperDTO = PaperContext.getPaperDTO(paperId);
+
+			Map<String, Object> item = new HashMap<String, Object>();
+			item.put("paperId", paperId);
+			item.put("paperDetail", paperDTO.getDetail());
+			item.put("attachment", paperDTO.getAttachment());
+
+			List<Long> questionIds = new ArrayList<Long>();
+			for (QuestionGroup questionGroup : paperDTO.getDetail().getGroups()) {
+				for (ScoredQuestion scoredQuestion : questionGroup.getQuestions()) {
+					questionIds.add(scoredQuestion.getQuestionId());
+				}
+			}
+			List<QuestionDTO> questionList = QuestionContext.findQuestions(questionIds.toArray(new Long[0]));
+			item.put("questionList", questionList);
+			return item;
+		}).collect(Collectors.toCollection(ArrayList::new));
+		return new JsonResult().addDatas("list", list);
+	}
+
+	/**
+	 * 根据单课标识和老师标识，获取作业列表。
+	 * 调用者：课堂服务端
+	 */
+	@RequestMapping("getHwByCourseId")
+	@Deprecated
+	public JsonResult getHwByCourseId(String data) {
+		APILogger.departed("getHwByCourseId", data);
+		ApiParamDTO param = JsonUtils.fromJSON(data, ApiParamDTO.class);
+		List<Homework> homeworkList = homeworkService.getHwByCourseSingleId2(param.getTeacherId(), param.getCourseId());
+		List<Map<String, Object>> list = homeworkList.stream().map((Homework homework) -> {
+			Map<String, Object> item = new HashMap<String, Object>();
+			item.put("homeworkId", homework.getHomeworkId());
+			item.put("homeworkName", homework.getHomeworkName());
+			item.put("className", homework.getClassName());
+			item.put("paperId", homework.getPaperId());
+			item.put("closeTime", DateUtils.format(homework.getCloseTime(), DateUtils.LONG_DATE_PATTERN));
+			return item;
+		}).collect(Collectors.toCollection(ArrayList::new));
+		return new JsonResult().addDatas("list", list);
+	}
+
+	/**
+	 * 根据单课标识和老师标识，获取作业列表。
+	 * 调用者：课堂服务端
+	 */
+	@RequestMapping("getHwByLessonId")
+	public JsonResult getHwByLessonId(String data) {
+		APILogger.invoking("getHwByLessonId", data);
+		ApiParamDTO param = JsonUtils.fromJSON(data, ApiParamDTO.class);
+		List<Homework> homeworkList = null;
+		JsonResult result = new JsonResult();
+		if(param.getLessonId()!=null){
+			homeworkList = homeworkService.getHwByCourseSingleId(param.getTeacherId(), param.getLessonId());
+		}else{
+			Page page = new Page(param.getCurPage(), param.getPageSize());
+			homeworkList = homeworkService.getHwPageByCourseSingleId(param.getTeacherId(),param.getHomeworkName(),param.getHomeworkType(),page);
+			result.addDatas("page", page);
+		}
+		List<Map<String, Object>> list = homeworkList.stream().map(homework -> {
+			Map<String, Object> item = new HashMap<String, Object>();
+			item.put("homeworkId", homework.getHomeworkId());
+			item.put("homeworkName", homework.getHomeworkName());
+			item.put("homeworkType", homework.getHomeworkType());
+			item.put("className", homework.getClassName());
+			item.put("paperId", homework.getPaperId());
+			item.put("finishNum", homework.getFinishNum());
+			item.put("correctNum", homework.getCorrectNum());
+			item.put("totalNum", homework.getTotalNum());
+			item.put("closeTime", homework.getCloseTime());
+			return item;
+		}).collect(Collectors.toList());
+		return result.addDatas("list", list);
+	}
+
+	@RequestMapping("findReviewScores")
+	public JsonResult findReviewScores(String data) {
+		APILogger.invoking("findReviewScores", data);
+		ApiParamDTO apiParamDTO = JsonUtils.fromJSON(data, ApiParamDTO.class);
+		List<StudentAvgScore> reviewScores = this.homeworkDtlService
+				.findStudentAvgScoreByCourseSingleId(apiParamDTO.getCourseSingleId());
+		return new JsonResult().addDatas("reviewScores", reviewScores);
+	}
+}

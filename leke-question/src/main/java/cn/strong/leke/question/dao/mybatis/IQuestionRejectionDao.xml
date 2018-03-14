@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.question.dao.mybatis.IQuestionRejectionDao">
+	
+	<update id="processQuestionRejection" parameterType="cn.strong.leke.model.question.QuestionRejection">
+		UPDATE que_question_rejection 
+		SET isProcessed = 1, modifiedBy = #{modifiedBy}, modifiedOn = now() 
+		WHERE questionId = #{questionId}
+	</update>
+	
+	<select id="queryQueRejection" parameterType="long" resultType="cn.strong.leke.model.question.QuestionRejection">
+		SELECT * 
+		FROM que_question_rejection 
+		WHERE isDeleted = 0 AND questionId=#{questionId}
+	</select>
+	
+	<insert id="insertQuestionRejection" parameterType="cn.strong.leke.model.question.QuestionRejection"
+    	useGeneratedKeys="true" keyProperty="questionRejectionId">
+		INSERT INTO que_question_rejection(
+			questionId, rejectionContent, isProcessed,
+			isDeleted, createdBy, createdOn, modifiedBy, modifiedOn
+		) VALUES (
+			#{questionId}, #{rejectionContent}, 0,
+			0, #{createdBy}, now(), #{modifiedBy}, now()
+		)
+	</insert>
+</mapper>

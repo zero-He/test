@@ -1,0 +1,40 @@
+package cn.strong.leke.diag.report.unit;
+
+import static java.util.stream.Collectors.groupingBy;
+import static java.util.stream.Collectors.toList;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+import cn.strong.leke.diag.model.StuKnoRate;
+import cn.strong.leke.diag.model.report.KnoGraspRate;
+import cn.strong.leke.diag.util.ScoreUtils;
+
+public class ClassKnoRateLogicalUnit implements LogicalUnit<List<KnoGraspRate>> {
+
+	@Override
+	public List<KnoGraspRate> execute(LogicalContext context) {
+		Long studentId = context.getValue("studentId");
+		List<StuKnoRate> rates = context.getValue("rates");
+		rates.forEach(rate -> rate.setRightRate(rate.getRightNum() * 100 / rate.getTotalNum()));
+		Map<Long, List<StuKnoRate>> map = rates.stream().collect(groupingBy(StuKnoRate::getId, toList()));
+		List<KnoGraspRate> knoGraspRates = new ArrayList<>();
+		map.forEach((id, list) -> {
+			KnoGraspRate knoGraspRate = new KnoGraspRate();
+			knoGraspRate.setId(id);
+			String name = list.get(0).getName();
+			name = name.substring(name.lastIndexOf('-') + 1);
+			knoGraspRate.setName(name);
+			list.stream().mapToDouble(StuKnoRate::getRightRate).average()
+					.ifPresent(v -> knoGraspRate.setClassRate(ScoreUtils.toFixed(v, 1)));
+			list.stream().filter(v -> v.getUserId().equals(studentId)).findFirst().ifPresent(v -> {
+				knoGraspRate.setSelfRate(ScoreUtils.toFixed(v.getRightRate(), 1));
+				knoGraspRate.setTotalNum(v.getTotalNum());
+			});
+			knoGraspRates.add(knoGraspRate);
+		});
+		return knoGraspRates;
+	}
+
+}

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=0,minimum-scale=1.0,maximum-scale=1.0">
+<title>做作业</title>
+<style media="screen">
+body {padding: 30px 10px;}
+.menus a {display: block; font-size: 16px; height: 50px; line-height: 50px;}
+</style>
+</head>
+<body>
+    <div class="menus">
+        <a href="https://homework.leke.cn/mobile-index.html">测试环境</a>
+        <a href="test/list/list.html">作业列表</a>
+        <a href="test/work/work.html">做作业</a>
+        <a href="test/view/view.html">看作业</a>
+        <a href="test/demo/demo.html">画板</a>
+        <a href="https://homework.leke.cn/demo.html">测试环境画板</a>
+        <a href="http://lab.cubiq.org/iscroll5/demos/zoom/">测试页</a>
+    </div>
+    <script>
+    	(function() {
+    		var UA = navigator.userAgent;
+    		var isAndroid = /android|adr/gi.test(UA), isIos = /iphone|ipod|ipad/gi.test(UA) && !isAndroid;
+    		var script = document.createElement('script');
+    		if (isIos) {
+    			script.src = 'https://static.leke.cn/scripts/common/mobile/cordova/cordova-ios.js';
+    		} else {
+    			script.src = 'https://static.leke.cn/scripts/common/mobile/cordova/cordova-android.js';
+    		}
+    		document.head.appendChild(script);
+    	})();
+    </script>
+    <script>
+        document.addEventListener('deviceready', function() {
+            console.log('cordova deviceready.');
+        }, false);
+    </script>
+</body>
+</html>

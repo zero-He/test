@@ -1,0 +1,68 @@
+package cn.strong.leke.diag.dao.beike.model;
+
+public class ReviewInfo {
+
+	private Long courseSingleId;
+	private Integer total1;
+	private Integer total2;
+	private Integer total3;
+	private Integer review1;
+	private Integer review2;
+	private Integer review3;
+
+	public Long getCourseSingleId() {
+		return courseSingleId;
+	}
+
+	public void setCourseSingleId(Long courseSingleId) {
+		this.courseSingleId = courseSingleId;
+	}
+
+	public Integer getTotal1() {
+		return total1;
+	}
+
+	public void setTotal1(Integer total1) {
+		this.total1 = total1;
+	}
+
+	public Integer getTotal2() {
+		return total2;
+	}
+
+	public void setTotal2(Integer total2) {
+		this.total2 = total2;
+	}
+
+	public Integer getTotal3() {
+		return total3;
+	}
+
+	public void setTotal3(Integer total3) {
+		this.total3 = total3;
+	}
+
+	public Integer getReview1() {
+		return review1;
+	}
+
+	public void setReview1(Integer review1) {
+		this.review1 = review1;
+	}
+
+	public Integer getReview2() {
+		return review2;
+	}
+
+	public void setReview2(Integer review2) {
+		this.review2 = review2;
+	}
+
+	public Integer getReview3() {
+		return review3;
+	}
+
+	public void setReview3(Integer review3) {
+		this.review3 = review3;
+	}
+}

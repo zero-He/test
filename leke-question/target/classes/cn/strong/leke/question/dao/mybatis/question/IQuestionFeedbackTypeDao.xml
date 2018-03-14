@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.question.dao.mybatis.question.IQuestionFeedbackTypeDao">
+    
+	<insert id="saveQuestionFeedbackType" parameterType="cn.strong.leke.model.question.QuestionFeedbackType" useGeneratedKeys="true" keyProperty="id">
+		INSERT INTO que_question_feedback_type(
+			questionFeedbackId, type, isDeleted, createdBy, createdOn, modifiedBy, modifiedOn
+		) VALUES (
+			#{questionFeedbackId}, #{type}, 0,#{createdBy}, now(),#{modifiedBy}, now()
+		)
+	</insert>
+	
+	<select id="queryQueFeedbackType" parameterType="long" resultType="int">
+		SELECT 
+			DISTINCT a.type 
+		FROM
+			que_question_feedback_type a 
+		WHERE 
+			a.isDeleted = 0 
+		AND 
+			a.questionFeedbackId = #{questionFeedbackId} 
+	</select>
+	
+</mapper>

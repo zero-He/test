@@ -1,0 +1,43 @@
+<%@ page pageEncoding="UTF-8"%>
+<%@ include file="/pages/common/tags.jsp"%>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>乐课网 - 我们的快乐课堂</title>
+<%@ include file="/pages/common/meta.jsp"%>
+</head>
+<body class="m-middlepage">
+	<%@ include file="/pages/header/header-login.jsp"%>
+	<div class="con">
+		<div class="msg">
+			<div class="m-tiptext m-tiptext-block m-tiptext-success">
+				<i class="iconfont icon">󰅖 </i>
+				<div class="msg">
+					<h6>
+						${middle.title}
+						<c:if test="${not empty middle.lekeVal}">，乐豆+${middle.lekeVal}</c:if>
+						<c:if test="${not empty middle.expVal}">，经验+${middle.expVal}</c:if>
+					</h6>
+					<c:if test="${not empty middle.message}">
+						<p>${middle.message}</p>
+					</c:if>
+					<p>
+						<c:forEach var="button" items="${middle.buttons}" varStatus="status">
+							<a href="${button.link}">${button.name}</a>
+							<c:if test="${status.index > 0}">|</c:if>
+						</c:forEach>
+						<c:if test="${middle.closeWindow}">
+							|
+							<a href="javascript:window.close();">关闭窗口</a>
+						</c:if>
+					</p>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="g-foot">
+		<%@ include file="/pages/common/foot.jsp"%>
+	</div>
+</body>
+</html>

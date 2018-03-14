@@ -1,0 +1,36 @@
+<div class="m-form m-form-compact">
+<form>
+<ul>
+	<li class="form-item">
+		<label for="" class="title">出错时间：</label>
+		<div class="con">
+			<span>${timeStr}</span>
+		</div>
+	</li>
+	<li class="form-item">
+		<label for="" class="title">队列名称：</label>
+		<div class="con">
+			<span>${queueName}</span>
+		</div>
+	</li>
+	<li class="form-item">
+		<label for="" class="title">消息类型：</label>
+		<div class="con">
+			<span>${messageClass}</span>
+		</div>
+	</li>
+	<li class="form-item">
+		<label for="" class="title">消息体：</label>
+		<div class="con">
+			<pre>${messageBody}</pre>
+		</div>
+	</li>
+	<li class="form-item">
+		<label for="" class="title">异常堆栈：</label>
+		<div class="con">
+			<pre>${exceptionStack}</pre>
+		</div>
+	</li>
+</ul>
+</form>
+</div>

@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.1//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.question.dao.mybatis.IUserResGroupDao">
+
+	<sql id="all_coll">
+		userResGroupId,groupName,userId,resType,shareScope,isDeleted, createdBy, createdOn, modifiedBy, modifiedOn
+	</sql>
+
+	<insert id="insertUserResGroup" parameterType="cn.strong.leke.model.question.UserResGroup" 
+		useGeneratedKeys="true" keyProperty="userResGroupId">
+		INSERT INTO que_user_res_group(
+			<include refid="all_coll" />
+		) VALUES (
+			#{userResGroupId},#{groupName},#{userId},#{resType},#{shareScope},
+			0, #{createdBy}, now(), #{modifiedBy}, now()
+		)
+	</insert>
+	
+	<update id="deleteUserResGroup" parameterType="cn.strong.leke.model.question.UserResGroup" >
+		UPDATE 
+			que_user_res_group
+		<set>
+			isDeleted = 1,
+			modifiedBy = #{modifiedBy},
+			modifiedOn = NOW()
+		</set>
+		WHERE 
+			userResGroupId=#{userResGroupId}
+		AND 
+			createdBy = #{createdBy}
+	</update>
+	
+	<update id="updateURGroupName" parameterType="cn.strong.leke.model.question.UserResGroup" >
+		UPDATE 
+			que_user_res_group
+		<set>
+			groupName = #{groupName},
+			modifiedBy = #{userId},
+			modifiedOn = NOW()
+		</set>
+		WHERE 
+			userResGroupId = #{userResGroupId}
+		AND userId = #{userId}
+		AND	isDeleted = 0
+	</update>
+	
+	<select id="findURGroupByUserIdAndResType"  resultType="cn.strong.leke.model.question.UserResGroup">
+		SELECT 
+			<include refid="all_coll" />
+		FROM que_user_res_group q
+		WHERE 
+			q.isDeleted = 0
+		AND
+			q.userId = #{userId}
+		AND
+			q.resType = #{resType}
+	</select>
+
+</mapper>

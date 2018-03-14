@@ -1,0 +1,42 @@
+
+<div>
+	<form id="jAttendPageForm" action="" method="post" class="m-search-box">
+		<label class="title">统计时间：</label>
+		<input type="text" id="jAttendStartTime" name="startTime" class="u-ipt u-ipt-nm Wdate">
+		- <input type="text" id="jAttendEndTime" name="endTime" class="u-ipt u-ipt-nm Wdate">
+		<input type="hidden" id="jAttendTeacherId" name="teacherId" value="">
+		<input type="button" class="u-btn u-btn-nm u-btn-bg-turquoise" id="jAttendPageSearch" value="查询">
+	</form>
+	<div class="m-table m-table-center">
+		<table>
+			<thead id="jAttendPageHead">
+				<tr>
+					<th>课程名称</th>
+					<th>学科</th>
+					<th>计划日期</th>
+					<th>计划时段</th>
+					<th>计划课时</th>
+					<th>应到人数</th>
+					<th>实到人数</th>
+					<th>学生考勤</th>
+				</tr>
+			</thead>
+			<tbody id="jAttendPageBody"></tbody>
+		</table>
+		<div id="jAttendPageFoot" class="page"></div>
+	</div>
+</div>
+<script id="jAttendPageTpl" type="text/handlebars">
+{{#dataList}}
+<tr>
+	<td>{{courseName}}</td>
+	<td>{{courseSetName}}</td>
+	<td>{{fmt planStartTime 'yyyy-MM-dd'}}</td>
+	<td>{{fmt planStartTime 'HH:mm'}} ~ {{fmt planEndTime 'HH:mm'}}</td>
+	<td>{{count}}</td>
+	<td>{{totalCount}}</td>
+	<td>{{realCount}}</td>
+	<td class="operation"><a href="/auth/scs/attendance/student.htm?csAttendId={{csAttendId}}" target="_blank">详情</a></td>
+</tr>
+{{/dataList}}
+</script>

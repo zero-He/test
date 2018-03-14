@@ -1,0 +1,167 @@
+define(function(require, exports, module) {
+	var $ = require('jquery');
+	require('common/ui/ui-mask/jquery.mask');
+	var Dialog = require('dialog');
+	var WdatePicker = require('date');
+	var utils = require('utils');
+	var JSON = require('json');
+	var Mustache = require('mustache');
+	var ClassTree = require('core-business/classtree');
+	var I18n = require('homework/common/i18n');
+
+	var HWDistribute = {
+		paperUrl : ctx + '/auth/teacher/distribute/popPapers.htm',
+		saveUrl : ctx + '/auth/teacher/distribute/saveHomework.htm',
+		listUrl : ctx + '/auth/teacher/homework/homeworkList.htm',
+		successUrl : ctx + '/auth/teacher/distribute/homeworkSuccess.htm',
+		paperList : [],
+		init : function() {
+			this.fBindEvent();
+			this.fArrayValue();
+			ClassTree.fInit('jRelationGroupTree');
+		},
+		fArrayValue : function() {
+			var _self = this;
+			var paperId = $('#jPaperId').val();
+			if (paperId != null && paperId.length > 0) {
+				var aChkValue = new Array();
+				var hwJson = {};
+				hwJson.paperId = $('#jPaperId').val();
+				hwJson.paperName = $('#jPaperName').val();
+				hwJson.subjective = ($('#jSubjective').val()) == 'false' ? false : true;
+				aChkValue.push(hwJson);
+				_self.paperList = aChkValue;
+				this.getPaper(_self.paperList);
+			}
+		},
+		fBindEvent : function() {
+			var _self = this;
+			$('#jSubmit').bind('click', function() {
+				_self.fSubmitForm();
+			});
+
+			$('#jReturn').bind('click', function() {
+				history.back();
+			});
+
+			$('#jPopPapers').bind('click', function() {
+				var paperIds = $('#jPaperIds').val();
+				Dialog.open({
+					'id' : 'dPopPapers',
+					'title' : $.i18n.prop('homework.distribute.paper.select'),
+					'url' : HWDistribute.paperUrl + "?paperIds=" + paperIds,
+					'size' : 'lg',
+					onClose: function(obj){
+						_self.paperSelectCallback(obj);
+					}
+				});
+			});
+
+			$('#jStartTime').on('click', function() {
+				WdatePicker({
+					dateFmt : 'yyyy-MM-dd HH:mm:00',
+					minDate : '%y-%M-%d %h:%M:%d',
+					maxDate : $('#jCloseTime').val(),
+					readOnly : true
+				});
+			});
+
+			$('#jCloseTime').on('click', function() {
+				WdatePicker({
+					dateFmt : 'yyyy-MM-dd HH:mm:00',
+					minDate : $('#jStartTime').val(),
+					readOnly : true
+				});
+
+			});
+
+			$('#jPaperBody').on('click', '.j-parperDel', function() {
+				var $c = $(this);
+				var list = HWDistribute.paperList;
+				var nIndex = $c.parent().index();
+				list.splice(nIndex, 1);
+				HWDistribute.getPaper(list);
+			});
+		},
+
+		fSubmitForm : function() {
+			var btn = $('#jSubmit').lock();
+			var _self = this;
+			if (this.paperList == null || this.paperList.length === 0) {
+				utils.Notice.alert($.i18n.prop('homework.distribute.paper.isnull'));
+				btn.unlock();
+				return;
+			}
+
+			var homeworkType = $('#J_homeworkType').val();
+			var startTime = $('#jStartTime').val();
+			var closeTime = $('#jCloseTime').val();
+			if (startTime == '') {
+				utils.Notice.alert($.i18n.prop('homework.distribute.startTime.isnull'));
+				btn.unlock();
+				return;
+			}
+			if (closeTime == '') {
+				utils.Notice.alert($.i18n.prop('homework.distribute.closeTime.isnull'));
+				btn.unlock();
+				return;
+			}
+			if (!ClassTree.isChecked()) {
+				utils.Notice.alert($.i18n.prop('homework.distribute.student.isnull'));
+				btn.unlock();
+				return;
+			}
+
+			var classJson = JSON.stringify(ClassTree.getSelectClassList());
+			var paperIds = $.map(this.paperList, function(paper) {
+				return paper.paperId;
+			});
+			var data = {
+				'classJson' : classJson,
+				'startTime' : startTime,
+				'closeTime' : closeTime,
+				'homeworkType' : homeworkType,
+				'paperIdsJson' : JSON.stringify(paperIds)
+			}
+
+			$.post(HWDistribute.saveUrl, data, function(json) {
+				if (json.success) {
+					window.location.href = HWDistribute.successUrl;
+				}
+				btn.unlock();
+			}, "json");
+
+		},
+		getPaper : function(list) {
+			var $target = $('#jPaperBody');
+			var rTpl = $('#paperList_tpl').html();
+			var contents = '', paperIds = '';
+			$.each(list, function(i, item) {
+				var rowHtml = Mustache.render(rTpl, {
+					paperId : item.paperId,
+					paperName : item.paperName,
+					subjective : item.subjective
+				});
+				contents += rowHtml;
+				paperIds += item.paperId + ",";
+			});
+			$('#jPaperIds').val(paperIds);
+			$target.empty();
+			$target.append(contents);
+		},
+		paperSelectCallback: function(obj) {
+			$.each(obj.list, function(index, el) {
+				var paperId = el.paperId;
+				var arr = $.grep(HWDistribute.paperList, function(item, i) {
+					return paperId == item.paperId;
+				});
+				if (arr.length == 0) {
+					HWDistribute.paperList.push(el);
+				}
+			});
+			HWDistribute.getPaper(HWDistribute.paperList);
+		}
+	};
+
+	HWDistribute.init();
+});

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="cn.strong.leke.question.dao.mybatis.base.IMaterialNodeJoinDao">
+	
+	<insert id="add" parameterType="cn.strong.leke.model.question.MaterialNodeJoin" 
+		useGeneratedKeys="true" keyProperty="materialNodeJoinId">
+		INSERT INTO que_material_node_join(
+			origMaterialNodeId,destMaterialNodeId,destPath,
+			isDeleted,createdBy,createdOn,modifiedBy,modifiedOn
+		) VALUES(
+			#{origMaterialNodeId},#{destMaterialNodeId},#{destPath},
+			0,#{createdBy},NOW(),#{modifiedBy},NOW()
+		)
+	</insert>
+	
+	<update id="del" parameterType="map">
+		UPDATE 
+			que_material_node_join a 
+		SET 
+			a.isDeleted = 1,a.modifiedBy = #{userId},a.modifiedOn = NOW()
+		WHERE 
+			a.materialNodeJoinId = #{materialNodeJoinId} 
+		AND 
+			a.isDeleted = 0
+	</update>
+	
+	<select id="isExist" parameterType="map" resultType="int">
+		SELECT 
+			COUNT(*)
+		FROM 
+			que_material_node_join a
+		WHERE 
+			a.isDeleted = 0
+		AND
+			a.origMaterialNodeId = #{origMaterialNodeId}
+		AND a.destMaterialNodeId = #{destMaterialNodeId}
+	
+	</select>
+	
+	<select id="findMaterialNodeJoins" parameterType="long" resultType="cn.strong.leke.model.question.MaterialNodeJoin">
+		SELECT 
+			a.* 
+		FROM 
+			que_material_node_join a
+		WHERE 
+			a.isDeleted = 0
+		AND
+			a.origMaterialNodeId = #{origMaterialNodeId}
+		ORDER BY a.origMaterialNodeId ASC
+	</select>
+  
+</mapper>

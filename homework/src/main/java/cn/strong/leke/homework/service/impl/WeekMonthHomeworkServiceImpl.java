@@ -1,0 +1,447 @@
+package cn.strong.leke.homework.service.impl;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+import javax.annotation.Resource;
+
+import org.springframework.stereotype.Service;
+
+import cn.strong.leke.common.utils.CollectionUtils;
+import cn.strong.leke.common.utils.DateUtils;
+import cn.strong.leke.context.base.ParametersContext;
+import cn.strong.leke.context.base.UserBaseContext;
+import cn.strong.leke.context.question.QuestionContext;
+import cn.strong.leke.context.question.QuestionTypeContext;
+import cn.strong.leke.core.business.notice.NoticeHelper;
+import cn.strong.leke.homework.dao.mongo.HomeworkPaperDao;
+import cn.strong.leke.homework.dao.mongo.WorkDetailDao;
+import cn.strong.leke.homework.dao.mybatis.HomeworkDao;
+import cn.strong.leke.homework.dao.mybatis.HomeworkDtlDao;
+import cn.strong.leke.homework.model.Homework;
+import cn.strong.leke.homework.model.HomeworkDtl;
+import cn.strong.leke.homework.model.HomeworkPaper;
+import cn.strong.leke.homework.model.HomeworkType;
+import cn.strong.leke.homework.model.ResRawType;
+import cn.strong.leke.homework.model.WeekMonthHwSubject;
+import cn.strong.leke.homework.model.query.WeekMonthHwQuery;
+import cn.strong.leke.homework.service.IWeekMonthHomeworkService;
+import cn.strong.leke.homework.util.HomeworkCst;
+import cn.strong.leke.lesson.model.KlassTeacher;
+import cn.strong.leke.model.paper.PaperDetail;
+import cn.strong.leke.model.paper.QuestionGroup;
+import cn.strong.leke.model.paper.ScoredQuestion;
+import cn.strong.leke.model.question.QuestionDTO;
+import cn.strong.leke.notice.model.LetterMessage;
+import cn.strong.leke.notice.model.MessageBusinessTypes;
+import cn.strong.leke.notice.model.todo.HwAssignEvent;
+import cn.strong.leke.remote.service.lesson.IKlassRemoteService;
+
+@Service
+public class WeekMonthHomeworkServiceImpl implements IWeekMonthHomeworkService {
+
+	@Resource
+	private IKlassRemoteService klassRemoteService;
+	@Resource
+	private HomeworkDao homeworkDao;
+	@Resource
+	private HomeworkDtlDao homeworkDtlDao;
+	@Resource
+	private WorkDetailDao workDetailDao;
+	@Resource
+	private HomeworkPaperDao homeworkPaperDao;
+
+	@Override
+	public void saveClassStuWrongHomework(Long classId, Long schoolId, Integer type) {
+		if (classId == null) {
+			return;
+		}
+		List<Long> klassStus = klassRemoteService.findStudentIdsByClassId(classId);
+		if (CollectionUtils.isEmpty(klassStus)) {
+			return;
+		}
+		WeekMonthHwQuery query = new WeekMonthHwQuery();
+		query.setType(type);
+		query.setStudents(klassStus);
+		this.setQuerySFDate(query);
+		List<WeekMonthHwSubject> wrongSubjects = this.homeworkDtlDao.findNoFullScoreHwSubTeacher(query);
+		if(CollectionUtils.isEmpty(wrongSubjects)){
+			return ;
+		}
+		List<Long> subjectIds = wrongSubjects.stream().map(w -> w.getSubjectId()).collect(Collectors.toList());
+		List<KlassTeacher> klassTeacher = klassRemoteService.findKlassTeachersBySubjectIds(subjectIds, schoolId);
+		List<HomeworkStorage> listStorages = new ArrayList<HomeworkStorage>();
+		for (WeekMonthHwSubject teaSub : wrongSubjects) {
+			//查找该班级学科老师
+			 Optional<KlassTeacher> firstOptional = klassTeacher.stream()
+					.filter(st -> st.getClassId().equals(classId) && st.getSubjectId().equals(teaSub.getSubjectId()))
+					.findFirst();
+			 if(!firstOptional.isPresent()){
+				 continue;//跳过该条
+			 }
+			 KlassTeacher subKlassTeacher = firstOptional.get();
+			Homework hw = buildHw(teaSub, classId, query);
+			hw.setTeacherId(subKlassTeacher.getUserId());
+			hw.setTeacherName(subKlassTeacher.getUserName());
+			hw.setSchoolId(schoolId);
+			HomeworkStorage itemHWStorage = new HomeworkStorage();
+			itemHWStorage.setHw(hw);
+			List<HomeworkDtlStorage> dtlStorageList = new ArrayList<HomeworkDtlStorage>();
+			for (Long studentId : klassStus) {
+				query.setSubjectId(teaSub.getSubjectId());
+				query.setStudents(new ArrayList<Long>());
+				query.setStudents(Arrays.asList(studentId));
+				List<HomeworkDtl> homeworkDtls = homeworkDtlDao.findNoFullScoreHwDtlId(query);
+				if (CollectionUtils.isNotEmpty(homeworkDtls)) {
+					HomeworkPaper hwPaper = this.buildHwPapaer(homeworkDtls,type);
+					if (hwPaper != null) {
+						HomeworkDtlStorage itemDtlStorage = new HomeworkDtlStorage();
+						itemDtlStorage.setHwPaper(hwPaper);
+						itemDtlStorage.setHwDtl(buildHwDtl(studentId));
+						dtlStorageList.add(itemDtlStorage);
+					}
+				}
+			}
+			itemHWStorage.setHwDtlList(dtlStorageList);
+			listStorages.add(itemHWStorage);
+		}
+		saveAllData(listStorages);
+		//发送老师提醒
+		sendLetterMessage(listStorages, type);
+		//发送学生周月作业待办
+		sendTodo(listStorages, type);
+	}
+
+	private void saveAllData(List<HomeworkStorage> listStorages) {
+		if (CollectionUtils.isEmpty(listStorages)) {
+			return;
+		}
+		for (HomeworkStorage hwStorage : listStorages) {
+			if (CollectionUtils.isNotEmpty(hwStorage.getHwDtlList())) {
+				Homework hw = hwStorage.getHw();
+				hw.setTotalNum(hwStorage.getHwDtlList().size());
+				homeworkDao.insertHomework(hw);
+				hwStorage.getHwDtlList().forEach(dtl -> {
+					String paperId = homeworkPaperDao.insertOne(dtl.getHwPaper());
+					dtl.getHwDtl().setPaperId(paperId);
+					dtl.getHwDtl().setOrderTime(hw.getCloseTime());
+					dtl.getHwDtl().setHomeworkId(hw.getHomeworkId());
+					homeworkDtlDao.saveHomeworkDtl(dtl.getHwDtl());
+				});
+			}
+		}
+		listStorages.removeIf(v -> CollectionUtils.isEmpty(v.getHwDtlList()));
+	}
+
+	/**
+	 * 向老师发送周月错题作业提醒
+	 */
+	private void sendLetterMessage(List<HomeworkStorage> listStorages, Integer type) {
+		if (CollectionUtils.isEmpty(listStorages)) {
+			return;
+		}
+		for (HomeworkStorage hwStorage : listStorages) {
+			Homework hw = hwStorage.getHw();
+			String to = String.valueOf(hw.getTeacherId());
+			String subject = "推送作业";
+			String content = ParametersContext.getString(HomeworkCst.HOMEWORK_WEEK_MONTH_TEMPLETE);
+			LetterMessage message = new LetterMessage(to, subject, content);
+			message.addVariable("1", hw.getClassName());
+			message.addVariable("2", hw.getHomeworkName());
+			message.setBusinessType(MessageBusinessTypes.HOMEWORK);
+			NoticeHelper.send(message);
+		}
+	}
+
+	private void sendTodo(List<HomeworkStorage> listStorages, Integer type) {
+		if (CollectionUtils.isEmpty(listStorages)) {
+			return;
+		}
+		listStorages.forEach(hwStorage -> {
+			List<Long> studentIds = hwStorage.getHwDtlList().stream().map(dtl -> dtl.getHwDtl().getStudentId())
+					.collect(Collectors.toList());
+			if (CollectionUtils.isNotEmpty(studentIds)) {
+				HwAssignEvent event = new HwAssignEvent();
+				event.setCourseSingleId(null);
+				event.setHomeworkType(6);
+				event.setHomeworkName(hwStorage.getHw().getHomeworkName());
+				event.setHomeworkId(hwStorage.getHw().getHomeworkId());
+				event.setStartTime(hwStorage.getHw().getStartTime());
+				event.setStudentIds(studentIds);
+				NoticeHelper.todo(event);
+			}
+		});
+	}
+
+	//周作业是当前周的周六8:00，月作业是 1号的8:00
+	private Date getHwStartDate(Integer type) {
+		Calendar calendar = Calendar.getInstance();
+		calendar.setFirstDayOfWeek(Calendar.MONDAY);
+		if (type == 1) {
+			calendar.set(Calendar.DAY_OF_WEEK, Calendar.SATURDAY);
+		}else {
+			calendar.set(Calendar.DAY_OF_MONTH, 1);
+		}
+		calendar.set(Calendar.HOUR_OF_DAY, 8);
+		calendar.set(Calendar.MINUTE, 0);
+		calendar.set(Calendar.SECOND, 0);
+		calendar.set(Calendar.MILLISECOND, 0);
+		return calendar.getTime();
+	}
+	
+	
+	/**
+	 * 周作业是 周一8点
+	 * 月作业是 7号 8点
+	 * @param type
+	 * @return
+	 */
+	private Date getHwColseDate(Integer type,Date startDate){
+		Calendar calendar = Calendar.getInstance();
+		calendar.setFirstDayOfWeek(Calendar.MONDAY);
+		calendar.setTime(startDate);
+		if(type== 1){
+			calendar.add(Calendar.DAY_OF_MONTH, 2);
+		}else {
+			calendar.add(Calendar.DAY_OF_MONTH, 6);
+		}
+		return calendar.getTime();
+	}
+
+	private void setQuerySFDate(WeekMonthHwQuery query) {
+		Calendar calendar = Calendar.getInstance();
+		calendar.setTime(new Date());
+		calendar.setFirstDayOfWeek(Calendar.MONDAY);
+
+		if (query.getType() == HomeworkCst.HOMEWORK_WRONG_WEEK) {
+			//周五定时的任务
+			calendar.set(Calendar.HOUR_OF_DAY, 18);
+			calendar.set(Calendar.MINUTE, 0);
+			calendar.set(Calendar.SECOND, 0);
+			calendar.set(Calendar.DAY_OF_WEEK, Calendar.FRIDAY);
+			query.setEndDate(calendar.getTime());
+			calendar.add(Calendar.WEEK_OF_YEAR, -1);
+			query.setStartDate(calendar.getTime());
+		} else if (query.getType() == HomeworkCst.HOMEWORK_WRONG_MONTH) {
+			calendar.add(Calendar.MONTH, -1);
+			calendar.set(Calendar.DAY_OF_MONTH, 25);
+			calendar.set(Calendar.HOUR_OF_DAY, 0);
+			calendar.set(Calendar.MINUTE, 0);
+			calendar.set(Calendar.SECOND, 0);
+			query.setEndDate(calendar.getTime());
+			calendar.add(Calendar.MONTH, -1);
+			query.setStartDate(calendar.getTime());
+		}
+	}
+	
+	private HomeworkPaper buildHwPapaer(List<HomeworkDtl> homeworkDtls ,Integer type) {
+		List<Long> submitHwDtlIds = homeworkDtls.stream().filter(v -> v.getSubmitTime() != null)
+				.map(v -> v.getHomeworkDtlId()).collect(Collectors.toList());
+		List<Long> submitQuestionIds = this.workDetailDao.findErrorQuestions(submitHwDtlIds);
+		if(type == 2){
+			List<String> unSubmitHwPaperIds = homeworkDtls.stream().filter(v -> v.getSubmitTime() == null)
+					.map(v -> v.getHwPaperId()).collect(Collectors.toList());
+			List<Long> unSubmitQuestionIds = homeworkPaperDao.findQuestionIdByPaperIds(unSubmitHwPaperIds);
+			submitQuestionIds.addAll(unSubmitQuestionIds);
+		}
+		submitQuestionIds = submitQuestionIds.stream().distinct().collect(Collectors.toList());
+		PaperDetail paperDetail = buildPaperDetail(submitQuestionIds);
+		if (paperDetail == null) {
+			return null;
+		}
+		HomeworkPaper hwPaper = new HomeworkPaper();
+		hwPaper.setPaperDetail(paperDetail);
+		return hwPaper;
+	}
+
+	private PaperDetail buildPaperDetail(List<Long> questionIds) {
+		BigDecimal fullScore = BigDecimal.valueOf(100d);
+		PaperDetail paperDetail = new PaperDetail();
+		paperDetail.setSubjective(false);
+		paperDetail.setTotalScore(fullScore);
+		paperDetail.setHandwritten(false);
+		paperDetail.setIsQueNumPerGrp(false);
+		List<QuestionDTO> questionDTOList = QuestionContext.findQuestions(questionIds);
+		//去掉主观题 和答题卡题目
+		questionDTOList = questionDTOList.stream().filter(v ->Boolean.FALSE.equals(v.getSubjective()))
+				.collect(Collectors.toList());
+		if (CollectionUtils.isEmpty(questionDTOList)) {
+			return null;
+		}
+		paperDetail.setQuestionNum(questionDTOList.size());
+		Map<Long, List<QuestionDTO>> questionDTOGroup = questionDTOList.stream().collect(
+				Collectors.groupingBy(QuestionDTO::getQuestionTypeId));
+		int bigQuestionOrd = 1;
+		List<QuestionGroup> questionGroups = new ArrayList<QuestionGroup>();
+		for (Long qtypeId : questionDTOGroup.keySet()) {
+			QuestionGroup group = new QuestionGroup();
+			group.setGroupTitle(QuestionTypeContext.getQuestionType(qtypeId).getQuestionTypeName());
+			group.setHandwritten(false);
+			group.setQuestionNum(questionDTOGroup.get(qtypeId).size());
+			group.setScore(fullScore.multiply(BigDecimal.valueOf(group.getQuestionNum())).divide(
+					BigDecimal.valueOf(questionDTOList.size()), 2, RoundingMode.HALF_UP));
+			group.setSubjective(false);
+			group.setQuestionTypeId(qtypeId);
+			group.setOrd(bigQuestionOrd);
+			group.setOrdDesc(bigQuestionOrd + "");//转化大写编号
+			//组装该题型下的题目
+			List<ScoredQuestion> scoredQuestions = buildScoreQuestions(questionDTOGroup.get(qtypeId), group.getScore());
+			group.setQuestions(scoredQuestions);
+			bigQuestionOrd++;
+			questionGroups.add(group);
+		}
+		paperDetail.setGroups(questionGroups);
+		return paperDetail;
+	}
+
+	private List<ScoredQuestion> buildScoreQuestions(List<QuestionDTO> questions, BigDecimal totalScore) {
+		List<ScoredQuestion> scoredQuestions = new ArrayList<ScoredQuestion>();
+		int ord = 0;
+		for (QuestionDTO questionDTO : questions) {
+			ord++;
+			ScoredQuestion item = new ScoredQuestion();
+			item.setHandwritten(false);
+			item.setQuestionId(questionDTO.getQuestionId());
+			item.setQuestionTypeId(questionDTO.getQuestionTypeId());
+			item.setScore(totalScore.divide(BigDecimal.valueOf(questions.size()), 2, RoundingMode.HALF_UP));
+			item.setOrd(ord);
+			item.setHasSub(questionDTO.getHasSub());
+			if (item.getHasSub()) {
+				item.setSubs(buildScoreQuestions(questionDTO.getSubs(), item.getScore()));
+			}
+			scoredQuestions.add(item);
+		}
+		return scoredQuestions;
+	}
+
+	private Homework buildHw(WeekMonthHwSubject teaSub, Long classId, WeekMonthHwQuery query) {
+		Homework hw = new Homework();
+		hw.setSubjectId((long) teaSub.getSubjectId());
+		hw.setSubjectName(teaSub.getSubjectName());
+		hw.setSubjective(false);
+		hw.setStartTime(getHwStartDate(query.getType()));
+		hw.setCloseTime(this.getHwColseDate(query.getType(),hw.getStartTime()));
+		if (query.getType() == HomeworkCst.HOMEWORK_WRONG_WEEK) {
+			hw.setHomeworkName(DateUtils.format(query.getStartDate(), "MM月dd日-")
+					+ DateUtils.format(query.getEndDate(), "MM月dd日【" + teaSub.getSubjectName() + "】错题"));
+		} else {
+			Calendar calendar = Calendar.getInstance();
+			calendar.add(Calendar.MONTH, -1);
+			hw.setIsMonthHomework(true);
+			hw.setHomeworkName(calendar.get(Calendar.MONTH) + 1 + "月【" + teaSub.getSubjectName() + "】错题集");
+		}
+		hw.setHomeworkType(HomeworkType.AUTO.value);
+		hw.setIsVisible(true);
+		hw.setResType(HomeworkCst.HOMEWORK_RES_PAPER);
+		hw.setRawType(ResRawType.PUSH_PAPER.icon);
+		hw.setClassType(1);
+		hw.setStatus(1);
+		hw.setFinishNum(0);
+		hw.setDelayNum(0);
+		hw.setBugFixNum(0);
+		hw.setCorrectNum(0);
+		hw.setReviewNum(0);
+		hw.setTotalFixNum(0);
+		hw.setTotalNum(0);
+		hw.setIsVisible(true);
+		hw.setClassId(classId);
+		hw.setClassName(klassRemoteService.findClazzByClassIds(Arrays.asList(classId)).get(0).getClassName());
+		hw.setCreatedBy(888L);
+		hw.setCreatedOn(new Date());
+		hw.setIsDeleted(false);
+		return hw;
+	}
+	
+	private HomeworkDtl buildHwDtl(Long studentId) {
+		HomeworkDtl hwDtl = new HomeworkDtl();
+		/*	hwDtl.setHomeworkId(homeworkId);
+			hwDtl.setPaperId(paperId);*/
+		hwDtl.setStudentId(studentId);
+		hwDtl.setCreatedBy(888L);
+		hwDtl.setCreatedOn(new Date());
+		hwDtl.setIsDeleted(false);
+		hwDtl.setSubmitStatus(0);
+		hwDtl.setStudentName(UserBaseContext.getUserBaseByUserId(studentId).getUserName());
+		return hwDtl;
+	}
+
+	/*临时存储*/
+
+	private class HomeworkStorage {
+		Homework hw;
+		List<HomeworkDtlStorage> hwDtlList;
+
+		/**
+		 * @return the hw
+		 */
+		public Homework getHw() {
+			return hw;
+		}
+
+		/**
+		 * @param hw the hw to set
+		 */
+		public void setHw(Homework hw) {
+			this.hw = hw;
+		}
+
+		/**
+		 * @return the hwDtlList
+		 */
+		public List<HomeworkDtlStorage> getHwDtlList() {
+			return hwDtlList;
+		}
+
+		/**
+		 * @param hwDtlList the hwDtlList to set
+		 */
+		public void setHwDtlList(List<HomeworkDtlStorage> hwDtlList) {
+			this.hwDtlList = hwDtlList;
+		}
+
+	}
+
+	private class HomeworkDtlStorage {
+
+		HomeworkPaper hwPaper;
+		HomeworkDtl hwDtl;
+
+		/**
+		 * @return the hwDtl
+		 */
+		public HomeworkDtl getHwDtl() {
+			return hwDtl;
+		}
+
+		/**
+		 * @param hwDtl the hwDtl to set
+		 */
+		public void setHwDtl(HomeworkDtl hwDtl) {
+			this.hwDtl = hwDtl;
+		}
+
+		/**
+		 * @return the hwPaper
+		 */
+		public HomeworkPaper getHwPaper() {
+			return hwPaper;
+		}
+
+		/**
+		 * @param hwPaper the hwPaper to set
+		 */
+		public void setHwPaper(HomeworkPaper hwPaper) {
+			this.hwPaper = hwPaper;
+		}
+
+	}
+
+}

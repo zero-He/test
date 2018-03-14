@@ -1,0 +1,158 @@
+<%@ page pageEncoding="UTF-8"%>
+<%@ include file="/pages/common/tags.jsp"%>
+<!DOCTYPE html>
+<html>
+<head>
+<title><locale:message code="homework.dowork.success.title" /> - <locale:message code="common.page.header.leke" /></title>
+<%@ include file="/pages/common/meta.jsp"%>
+
+<link rel="stylesheet" href="${assets}/styles/common/global.css">
+<link rel="stylesheet" href="${assets}/styles/homework/homework.css">
+</head>
+<body>
+	<%@ include file="/pages/header/header.jsp"%>
+	<div class="m-bg"></div>
+	<div class="g-bd">
+		<%@ include file="/pages/navigate/navigate.jsp"%>
+			<input type="hidden" name="isTecher" value="${isTecher}"/> 
+			
+			<div class="g-mn">
+			<c:if test="${isTecher }">
+			 <div class="m-tab">
+			 <ul>
+			 <li ><a href="${initParam.homeworkServerName}/auth/teacher/homework/homeworkList.htm">作业</a></li>
+				<li><a href="${initParam.beikeServerName}/auth/teacher/sendmc/sendmcRecord.htm?spm=101003">微课</a></li>
+				<li class="active"><a >寒暑假作业</a></li>
+			</ul>
+			</div>
+			</c:if>
+			 <div class="m-tab">
+			
+			   <ul class="corr">
+
+				
+				    <c:choose>
+						<c:when test="${isTecher}">
+						      <c:forEach var="ts" items="${teachSubj}" varStatus="status">
+								 <c:choose>
+						   		   <c:when test="${ts.subjectId==subjectId}">
+										<li class="active" data-name="subjectId" data-subjectId="${ts.subjectId}"><a >${ts.subjectName }</a></li>
+							 	   </c:when>
+								   <c:otherwise>  
+								   		<li data-name="subjectId" data-subjectId="${ts.subjectId}"><a >${ts.subjectName }</a></li>
+						           </c:otherwise>
+								</c:choose>
+							</c:forEach> 
+				        </c:when>
+			        
+			        	<c:otherwise> 
+			                 <c:forEach var="ts" items="${classSubjectList}" varStatus="status">
+								 <c:choose>
+						   		   <c:when test="${ts.classId==classId}">
+										<li class="active" data-name="classId" data-subjectId="${ts.classId}"><a >${ts.className }</a></li>
+							 	   </c:when>
+								   <c:otherwise>  
+								   		<li data-name="classId" data-subjectId="${ts.classId}"><a >${ts.className }</a></li>
+						           </c:otherwise>
+								</c:choose>
+							</c:forEach> 
+						</c:otherwise>
+				    </c:choose>
+			    
+		          </ul> 
+		        </div>
+			    <div class="c-homework-teacherdetail">
+			       <div class="m-tab">
+				    <ul class="corrs">
+				        <c:choose>
+					        <c:when test="${isTecher}">
+				             	 <c:forEach var="ts" items="${teachSubj}" varStatus="status">
+									 <c:forEach var="cz" items="${ts.clazzList}" varStatus="czStatus" >
+										 <c:choose>
+										   <c:when test="${ts.subjectId==subjectId}">
+										   	<c:if test="${cz.classId==classId}">
+										     <li data-index=${czStatus.index } class="active"  data-name="classId" data-classId="${cz.classId}" data-subjectId="${ts.subjectId}"><a >${cz.className }</a></li>
+									 	    </c:if>
+									 	    <c:if test="${cz.classId!=classId}">
+										     <li data-index=${czStatus.index }  data-name="classId" data-classId="${cz.classId}" data-subjectId="${ts.subjectId}"><a >${cz.className }</a></li>
+									 	    </c:if>
+									 	   </c:when>
+										   <c:otherwise>  
+										   	<li style="display:none"  data-name="classId" data-index=${czStatus.index } data-classId="${cz.classId}" data-subjectId="${ts.subjectId}"><a >${cz.className }</a></li>
+									 	   </c:otherwise>
+										</c:choose>
+									</c:forEach> 
+							     </c:forEach>
+				        	</c:when>
+				        	
+				        	<c:otherwise>  
+							  <c:forEach var="ts" items="${classSubjectList}" varStatus="status">
+								 <c:forEach var="cz" items="${ts.subjectList}" varStatus="czStatus" >
+									 <c:choose>
+									   <c:when test="${ts.classId==classId}">
+										   <c:if test="${cz.subjectId==subjectId}">
+										   	<li class="active" data-name="subjectId"  data-classId="${cz.subjectId}" data-subjectId="${ts.classId}"><a >${cz.subjectName }</a></li>
+									 	   </c:if>
+									 	   <c:if test="${cz.subjectId!=subjectId}">
+										   	<li data-name="subjectId"  data-classId="${cz.subjectId}" data-subjectId="${ts.classId}"><a >${cz.subjectName }</a></li>
+									 	   </c:if>
+								 	   </c:when>
+									   <c:otherwise>  
+									   	<li style="display:none" data-name="subjectId"  data-index=${czStatus.index} data-classId="${cz.subjectId}" data-subjectId="${ts.classId}"><a >${cz.subjectName }</a></li>
+								 	   </c:otherwise>
+									</c:choose>
+								</c:forEach> 
+							  </c:forEach>
+						 	</c:otherwise>
+			        	
+			        	</c:choose>
+				    	
+		        	</ul>
+		        </div> 
+		  	<form id="myHomeworkForm" method="post">
+			   <input type="hidden" name="classId" value="${classId}"/> 
+			   <input type="hidden" name="subjectId" value="${subjectId}"/> 
+	      
+	           <div class="m-table">
+	                <table>
+		                <tr>
+	                        <th >学生姓名</th>
+	                        <th>类型</th>
+	                        <th>进度</th>
+	                        <th>开始学习时间</th>
+	                        <th>最近一次学习时间</th>
+	                        <th>操作区</th>
+	                    </tr>
+	                    	<tbody   >
+		                    	<!-- ko foreach:{data:dataList,as:'d'}  -->
+								<tr>
+			                        <td><!--ko text:d.userName --><!--/ko--></td>
+			                        <td><!--ko text:d.typeName --><!--/ko--></td>
+			                        <td>
+			                            <span class="homework-teacherdetail-progress-progress f-fl">
+			                            	<span class="homework-teacherdetail-progress-bar"data-bind="style: { width: d.p }" ></span>
+			                            </span>
+			                            <span class="homework-teacherdetail-progress-state f-fl"><!--ko text:d.p --><!--/ko--></span>
+			                        </td>
+			                        <td><!--ko text:d.firstTime --><!--/ko--></td>
+			                        <td><!--ko text:d.lastTime --><!--/ko--></td>
+			                        <td class="operation"><a data-bind="attr: { href: d.viewUrl}" >查看详情</a></td>
+		                    	</tr>
+		                    	<!-- /ko -->
+	                    	</tbody>
+		                
+				   </table>
+	               <div class="page" id="page">
+						<div class="f-hide tips f-tac" id="emptyTip">对不起，没有您要查询的数据</div>
+	                </div>
+	            </div>
+		  	</form>
+	 	</div>
+	</div>
+  </div>
+<leke:pref/>
+<script>
+	seajs.use('homework/homework/vacationHomeworkTList');
+</script>
+</body>
+</html>

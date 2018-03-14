@@ -1,0 +1,18 @@
+package cn.strong.leke.homework.dao.mybatis;
+
+import java.util.List;
+
+import org.apache.ibatis.annotations.Param;
+
+import cn.strong.leke.homework.model.ExportStatus;
+import cn.strong.leke.homework.model.Homework;
+
+public interface HomeworkStatusExportDao {
+	
+	List<ExportStatus> findExportStatus(@Param("classId")Long classId,@Param("schoolId")Long schoolId);
+	
+	Integer countExportStatus(@Param("classId")Long classId,@Param("schoolId")Long schoolId);
+	
+	List<Homework> findHomeWorkByClassId(@Param("classId")Long classId,@Param("schoolId")Long schoolId);
+
+}

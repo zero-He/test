@@ -1,0 +1,77 @@
+<div class="m-search-box">
+	<label class="title">学段学科：</label>
+	<select id="" name="stageSubject" class="u-select u-select-mini">
+        <option value="">请选择</option>
+    </select>
+	<label class="title" data-bind="i18n: 'que.question.searchItem.press'">教材版本：</label>
+	<select name="pressId" class="u-select u-select-sm"
+		data-bind="options: presses,
+				   optionsText: 'pressName',
+				   optionsValue: 'pressId',
+				   optionsCaption: '==请选择==',
+				   value: query.pressId"></select>
+	<label class="title">状态：</label>
+	<select name="status" class="u-select u-select-sm"
+		data-bind="options: statusOptions,
+				   optionsText: 'statusName',
+				   optionsValue: 'status',
+				   optionsCaption: '==请选择==',
+				   value: query.status,
+				   valueAllowUnset: true">
+	</select>
+	<input type="text" placeholder="请输入关键词" class="u-ipt u-ipt-nm" data-bind="value: query.workbookName">
+	<a class="u-btn u-btn-nm u-btn-bg-turquoise f-ml10"
+		data-bind="click: doSearch">查询</a>
+	<div class="operation">
+		<a class="u-btn u-btn-nm u-btn-bg-orange f-ml10" data-bind="click: workbookAdd">创建习题册</a>
+	</div>
+</div>
+<div class="m-table m-table-center">
+<table>
+	<thead>
+		<tr>
+			<th width="10%">学段</th>
+			<th width="10%">科目</th>
+			<th width="20%">教材版本</th>
+			<th width="15%">习题册名称</th>
+			<th width="7%">状态</th>
+			<th width="7%">封面</th>
+			<th width="31%">操作</th>
+		</tr>
+	</thead>
+	<!-- ko if: workbooks().length==0 -->
+	<tbody><tr><td colspan="6">暂无数据</td></tr></tbody>
+	<!-- /ko -->
+	<!-- ko if: workbooks().length > 0 -->
+	<tbody data-bind="foreach: workbooks">
+		<tr>
+			<td data-bind="text: $data.schoolStageName"></td>
+			<td data-bind="text: $data.subjectName"></td>
+			<td data-bind="text: $data.pressName"></td>
+			<td data-bind="text: $data.workbookName"></td>
+			<td data-bind="text: $data.statusStr"></td>
+			<td data-bind="text: $data.uploadStr"></td>
+			<td class="operation">
+				<a data-bind="attr: { href: editUrl}" target="_blank">编辑</a>
+				<a class="f-csp" data-bind="click: function(data) {$parent.workbookDel(data);}">删除</a>
+				<!-- ko if: $data.status == 0 && Leke.user.currentRoleId == 402 -->
+				<a class="f-csp" data-bind="click: function(data) {$parent.workbookUp(data);}">上架</a>
+				<!-- /ko -->
+				<!-- ko if: $data.status == 1 && Leke.user.currentRoleId == 402 -->
+				<a class="f-csp" data-bind="click: function(data) {$parent.workbookDown(data);}">下架</a>
+				<!-- /ko -->
+				<a class="f-csp" data-bind="click: function(data) {$parent.workbookEdit(data);}">重命名</a>
+				<a class="f-csp" data-bind="click: function(data) {$parent.workbookUpload(data);}">上传封面</a>
+			</td>
+		</tr>
+	</tbody>
+	<!-- /ko -->
+</table>
+</div>
+<div data-bind="component: {
+ 	name: 'leke-page',
+ 	params: { 
+ 		curPage: query.curPage,
+ 		totalSize: totalSize
+	}
+}"></div> 

@@ -1,0 +1,113 @@
+/* 
+ * 包名: cn.strong.leke.homework.service.impl
+ *
+ * 文件名：ExplainServiceImpl.java
+ *
+ * 版权所有：Copyright www.leke.cn Corporation 2014 
+ * 
+ * 创建者: luf
+ *
+ * 日期：2014-6-19
+ */
+package cn.strong.leke.homework.service.impl;
+
+import java.util.List;
+
+import javax.annotation.Resource;
+
+import org.springframework.stereotype.Service;
+
+import cn.strong.leke.common.utils.StringUtils;
+import cn.strong.leke.context.user.cst.RoleCst;
+import cn.strong.leke.core.business.notice.NoticeHelper;
+import cn.strong.leke.homework.dao.mybatis.DoubtDao;
+import cn.strong.leke.homework.dao.mybatis.ExplainDao;
+import cn.strong.leke.homework.model.DoubtDtl;
+import cn.strong.leke.homework.model.Explain;
+import cn.strong.leke.homework.service.ExplainService;
+import cn.strong.leke.notice.model.LetterMessage;
+import cn.strong.leke.notice.model.MessageBusinessTypes;
+import cn.strong.leke.notice.model.todo.DoubtStuEvent;
+import cn.strong.leke.notice.model.todo.DoubtTeaEvent;
+
+/**
+ * @author    luf
+ * @version   Avatar 
+ */
+@Service("explainServiceImpl")
+public class ExplainServiceImpl implements ExplainService {
+
+	@Resource
+	private ExplainDao explainDao;
+	@Resource
+	private DoubtDao doubtDao;
+
+	@Override
+	public boolean saveExplain(Explain explain,Long roleId) {
+		explain.setDeleted(false);
+		boolean isTeacher = RoleCst.TEACHER.equals(roleId);
+		if (isTeacher) {
+			// 如果当前用户为老师，解答问题后更新为已解决
+			if (doubtDao.isResolved(explain.getDoubtId()) == 0) {
+				doubtDao.resoveDoubt(explain.getDoubtId());
+			}
+		}
+		explain.setExplainContent(StringUtils.replaceUtf8mb4(explain.getExplainContent()));
+		boolean flag = explainDao.saveExplain(explain) > 0;
+		DoubtDtl doubt = new DoubtDtl();
+		doubt.setDoubtId(explain.getDoubtId());
+		doubt = doubtDao.getDetail(doubt);
+		//老师答疑，发送待办
+		if(isTeacher){
+			doubtDao.updateDetailExplainTime(explain.getDoubtId(),null);
+			DoubtTeaEvent event = new DoubtTeaEvent();
+			event.setDoubtId(explain.getDoubtId());
+			event.setTeacherId(explain.getCreatedBy());
+			NoticeHelper.todo(event);
+			LetterMessage message = new LetterMessage(doubt.getCreatedBy()+"", "乐答", "你的提问已回复，请前往乐答查看");
+			message.setBusinessType(MessageBusinessTypes.DOUBT);
+			NoticeHelper.send(message);
+		}else{
+			doubtDao.updateDetailExplainTime(explain.getDoubtId(),1);
+			this.todo(doubt.getDoubtId(), doubt.getTeacherId(), doubt.getDoubtTitle(), doubt.getCreatedBy(),
+					doubt.getUserName());
+		}
+		return flag;
+	}
+
+	@Override
+	public List<Explain> getExplainList(Explain explain) {
+		return explainDao.getExplainList(explain);
+	}
+
+	@Override
+	public Explain getExplainDetail(Explain explain) {
+		return explainDao.getExplainDetail(explain);
+	}
+
+	@Override
+	public Integer updateAgainDoubt(long doubtId) {
+		return explainDao.updateAgainDoubt(doubtId);
+	}
+
+	@Override
+	public boolean firstTime(Long doubtId) {
+		int count = explainDao.firstTime(doubtId);
+		if(count>0){
+			return false;
+		}
+		return true;
+	}
+	/**
+	 * 学生提问，发送待办
+	 */
+	private void todo(Long doubtId, Long teacherId, String title, Long studentId, String studentName) {
+		DoubtStuEvent event = new DoubtStuEvent();
+		event.setDoubtId(doubtId);
+		event.setTitle(title);
+		event.setTeacherId(teacherId);
+		event.setStudentId(studentId);
+		event.setStudentName(studentName);
+		NoticeHelper.todo(event);
+	}
+}

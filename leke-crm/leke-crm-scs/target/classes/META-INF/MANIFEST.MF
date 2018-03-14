@@ -1,0 +1,12 @@
+Manifest-Version: 1.0
+Implementation-Title: leke-crm-scs
+Implementation-Version: 3.0.0-SNAPSHOT
+Built-By: Administrator
+Specification-Vendor: StrongCn, Inc.
+Specification-Title: leke-crm-scs
+Implementation-Vendor-Id: cn.strong
+Build-Jdk: 1.8.0_51
+Specification-Version: 3.0.0-SNAPSHOT
+Created-By: Maven Integration for Eclipse
+Implementation-Vendor: StrongCn, Inc.
+

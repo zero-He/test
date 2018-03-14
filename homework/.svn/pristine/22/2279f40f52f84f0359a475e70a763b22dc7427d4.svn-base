@@ -1,0 +1,60 @@
+<%@ page pageEncoding="UTF-8"%>
+<%@ include file="/pages/common/tags.jsp"%>
+<%@ taglib prefix="leke" uri="http://www.leke.cn/plugins"%>
+<!DOCTYPE html>
+<html>
+<head>
+<title><locale:message code="homework.exercise.title.startpracticing" /> - <locale:message code="common.page.header.leke" /></title>
+<%@ include file="/pages/common/meta.jsp"%>
+<link rel="stylesheet" type="text/css" href="${assets}/styles/question/question-paper.css?t=${_t}">
+<link rel="stylesheet" type="text/css" href="${assets}/styles/question/question-sheet.css?t=${_t}">
+<link rel="stylesheet" type="text/css" href="${assets}/styles/question/question-show.css?t=${_t}">
+</head>
+<body>
+	<%@ include file="/pages/header/header.jsp"%>
+	<div class="g-bd">
+		<div class="g-mn p-exam">
+			<div class="p-exam-head">
+				<h1>【${exercise.subjectName}】${exerciseTitle }</h1>
+				<div class="p-props">
+					<label><locale:message code="homework.exercise.show.topicquantity" />：</label>
+					<span>${questionIds.size()}<locale:message code="homework.exercise.show.topic" /></span>
+				</div>
+				<hr>
+			</div>
+			<div class="p-exam-body p-sheet">
+				<c:set var="ord" value="0" />
+					<c:forEach var="questionId" items="${questionIds }">
+						<c:set var="ord" value="${ord + 1 }" />
+						<leke:questionResult questionId="${questionId }" sequence="${ord }" showSequence="true"
+							showOperate="true" showDoubtButton="true" editabled="true" />
+					</c:forEach>
+			</div>
+			<div class="p-exam-foot">
+				<input type="button" value="<locale:message code="homework.exercise.show.submitpractice" />" class="u-btn u-btn-lg u-btn-bg-turquoise" id="btnSubmit">
+				<input type="button" value="保存" class="u-btn u-btn-lg u-btn-bg-turquoise" id="btnSaveSnapshot">
+				<a class="u-btn u-btn-lg u-btn-bg-gray" href="javascript:window.close();"><locale:message code="homework.homework.closewindow" /></a>
+			</div>
+			<form id="exerciseForm" method="post" action="submitWork.htm">
+				<input type="hidden" name="exerciseType" value="${exercise.exerciseType }">
+				<input type="hidden" name="exerciseId" id="exerciseId" value="${exercise.exerciseId }">
+				<input type="hidden" name="exerciseName" value="${exercise.exerciseName }" id="jQuestionSource">
+				<input type="hidden" name="subjectId" value="${exercise.subjectId }">
+				<input type="hidden" name="subjectName" value="${exercise.subjectName }">
+				<input type="hidden" name="difficultyLevel" value="${exercise.difficultyLevel }">
+				<c:forEach items="${exercise.relIds }" var ="item" >
+				<input type="hidden" name="relId[]" value="${item}">
+				</c:forEach>
+				<input type="hidden" name="answerJson" id="answerJson">
+			</form>
+
+			<input type="hidden" id="jSubjectId" value="${exercise.subjectId }" />
+			<input type="hidden" id="jHomeworkServerName" value="${initParam.homeworkServerName}" />
+
+		</div>
+	</div>
+	<script type="text/javascript">
+		seajs.use('homework/exercise/doWork');
+	</script>
+</body>
+</html>

@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.monitor.core.dao.mybatis.IResourceInfoDao">
+	
+	<select id="getQuestionInfo" parameterType="java.lang.Long"
+		resultType="cn.strong.leke.monitor.mongo.resource.model.query.ResourceTopSta">
+		SELECT a.creatorName as uploadName,b.schoolStageName as stageName,c.subjectName
+		FROM question.que_question a
+		LEFT JOIN tutor.tutor_schoolStage b
+		ON a.schoolStageId = b.schoolStageId
+		LEFT JOIN tutor.tutor_subject c
+		ON a.subjectId = c.subjectId
+		WHERE a.questionId = #{resId}
+	</select>
+	<select id="getPaperInfo" parameterType="java.lang.Long"
+		resultType="cn.strong.leke.monitor.mongo.resource.model.query.ResourceTopSta">
+		SELECT a.title as resourceName,a.creatorName as uploadName,b.schoolStageName as stageName,c.subjectName
+		FROM paper.pap_paper a
+		LEFT JOIN tutor.tutor_schoolStage b
+		ON a.schoolStageId = b.schoolStageId
+		LEFT JOIN tutor.tutor_subject c
+		ON a.subjectId = c.subjectId
+		WHERE a.paperId = #{resId}
+	</select>
+	<select id="getCourseWareInfo" parameterType="java.lang.Long"
+		resultType="cn.strong.leke.monitor.mongo.resource.model.query.ResourceTopSta">
+		SELECT a.name as resourceName,a.createdName as uploadName,b.schoolStageName as stageName,c.subjectName
+		FROM beike.bk_courseware a
+		LEFT JOIN tutor.tutor_schoolStage b
+		ON a.schoolStageId = b.schoolStageId
+		LEFT JOIN tutor.tutor_subject c
+		ON a.subjectId = c.subjectId
+		WHERE a.coursewareId = #{resId}
+	</select>
+	<select id="getMicroCourseInfo" parameterType="java.lang.Long"
+		resultType="cn.strong.leke.monitor.mongo.resource.model.query.ResourceTopSta">
+		SELECT a.microcourseName as resourceName,a.createdName as uploadName,b.schoolStageName as stageName,c.subjectName
+		FROM beike.bk_microcourse a
+		LEFT JOIN tutor.tutor_schoolStage b
+		ON a.schoolStageId = b.schoolStageId
+		LEFT JOIN tutor.tutor_subject c
+		ON a.subjectId = c.subjectId
+		WHERE a.microcourseId = #{resId}
+	</select>
+	<select id="getWorkBookInfo" parameterType="java.lang.Long"
+		resultType="cn.strong.leke.monitor.mongo.resource.model.query.ResourceTopSta">
+		SELECT a.workbookName as resourceName,a.creatorName as uploadName,b.schoolStageName as stageName,c.subjectName
+		FROM question.que_workbook a
+		LEFT JOIN tutor.tutor_schoolStage b
+		ON a.schoolStageId = b.schoolStageId
+		LEFT JOIN tutor.tutor_subject c
+		ON a.subjectId = c.subjectId
+		WHERE a.workbookId = #{resId}
+	</select>
+	<select id="getBeikePkgInfo" parameterType="java.lang.Long"
+		resultType="cn.strong.leke.monitor.mongo.resource.model.query.ResourceTopSta">
+		SELECT a.beikePkgName as resourceName,a.createdName as uploadName,b.schoolStageName as stageName,c.subjectName
+		FROM beike.bk_beike_pkg a
+		LEFT JOIN tutor.tutor_schoolStage b
+		ON a.schoolStageId = b.schoolStageId
+		LEFT JOIN tutor.tutor_subject c
+		ON a.subjectId = c.subjectId
+		WHERE a.beikePkgId = #{resId}
+	</select>
+	
+	<select id="getSchoolStageByResearch" parameterType="long" 
+		resultType="cn.strong.leke.remote.model.tukor.SchoolStageRemote">
+		SELECT st.schoolStageName,st.schoolStageId 
+		FROM tutor.tutor_user_que_schoolstage_subject uss
+		LEFT OUTER JOIN tutor.tutor_schoolStage st
+		ON uss.schoolStageId = st.schoolStageId
+		WHERE uss.isDeleted =0 AND uss.userId = #{1} LIMIT 1
+	</select>
+	
+	<select id="getSubjectByResearch" parameterType="long" 
+		resultType="cn.strong.leke.remote.model.tukor.SubjectRemote">
+		SELECT su.subjectName,su.subjectId
+		FROM tutor.tutor_user_que_schoolstage_subject uss
+		LEFT OUTER JOIN tutor.tutor_subject su 
+		ON uss.subjectId = su.subjectId
+		WHERE uss.isDeleted =0 AND uss.userId = #{1} LIMIT 1
+	</select>
+</mapper>

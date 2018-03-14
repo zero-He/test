@@ -1,0 +1,40 @@
+<form class="m-form c-form">
+<ul>
+	<li>
+		<label class="title">
+			<span class="require">*</span>
+			<span data-bind="i18n: 'common.stgsbj'">学段科目</span>
+		</label>
+		<div class="con">
+			<select name="stageSubject" class="u-select u-select-nm"></select>
+		</div>
+	</li>
+	<li>
+		<label class="title">
+			<span class="require">*</span>
+			Word 文档：
+		</label>
+		<div class="con">
+			<div class="f-bfc">
+				<div class="j-process"></div>
+				<div class="j-uploader"></div>
+			</div>
+			<div>（请添加 Word 2007/2010 格式的文档 [*.docx] ）</div>
+		</div>
+	</li>
+	<li>
+		<div class="submit">
+			<button class="u-btn u-btn-nm f-mr5"
+				data-bind="click: onSubmit,
+					enable: isValid,
+					css: {
+						'u-btn-bg-turquoise': isValid,
+						'u-btn-bg-gray': !isValid()
+					}">确定</button>
+		</div>
+	</li>
+</ul>
+</form>
+<div class="m-loading" data-bind="visible: processing">
+	<i class="img"></i>
+</div>

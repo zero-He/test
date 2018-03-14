@@ -1,0 +1,19 @@
+package cn.strong.leke.diag.controller;
+
+import javax.servlet.http.HttpServletRequest;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+
+@Controller
+@RequestMapping({ "/auth/common/report/klass/", "/auth/hd/report/klass/" })
+public class ReportKlassScoreController {
+
+	@RequestMapping(value = "/score", method = RequestMethod.GET)
+	public String score(Model model, HttpServletRequest request) {
+		// 功能转移，暂时的重定向
+		return "redirect:../tchanaly/klass-score.htm";
+	}
+}

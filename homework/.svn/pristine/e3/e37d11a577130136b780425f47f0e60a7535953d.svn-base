@@ -1,0 +1,67 @@
+<%@ page pageEncoding="UTF-8"%>
+<%@ include file="/pages/common/tags.jsp"%>
+<!DOCTYPE html>
+<html>
+<head>
+<title><locale:message code="common.page.nav.ac.homework" /> - <locale:message code="common.page.header.leke" /></title>
+<%@ include file="/pages/common/meta.jsp"%>
+<link rel="stylesheet" href="${ctx}/scripts/common/ui/ui-tree/skin/default/ui-tree.css?t=${_t}" type="text/css">
+<link rel="stylesheet" href="${assets}/styles/homework/homework.css?t=${_t}" type="text/css">
+<link rel="stylesheet" type="text/css" href="${assets}/styles/beike/beike.css?t=${_t}" />
+</head>
+<body>
+	<%@ include file="/pages/header/header.jsp"%>
+	<div class="g-bd">
+		<div class="g-mn">
+			<div class="m-form">
+			<!-- 隐藏域 -->
+			<input type="hidden" name="paperIds" id="jPaperIds">
+			<input type="hidden" id="jPaperId" value="${paperId }">
+			<input type="hidden" id="jPaperName" value="${paperName }">
+			<input type="hidden" id="jSubjective" value="${subjective }">
+			<!-- 课后布置的作业，默认都是课后作业 -->
+			<input type="hidden" name="homeworkType" id="J_homeworkType" value="3" />
+				<ul>
+					<li class="form-item">
+						<label class="title"><locale:message code="homework.homework.paper" />：</label>
+						<div class="con">
+							<button id="jPopPapers" class="u-btn u-btn-nm u-btn-bg-orange"><locale:message code="homework.common.select" /></button>
+							<div class="select-book"> 
+								<div class="selected" id="jPaperBody">
+								</div>
+							</div>
+						</div>
+					</li>
+					<li class="form-item">
+						<label class="title"><locale:message code="homework.homework.startTime" />：</label>
+						<div class="con"><input type="text" class="cStartTime ipt_text width_230 Wdate" id="jStartTime" name="startTime"/></div>
+					</li>
+					<li class="form-item">
+						<label class="title"><locale:message code="homework.homework.closeTime" />：</label>
+						<div class="con"><input type="text" class="cCloseTime ipt_text width_230 Wdate" id="jCloseTime" name="closeTime"/></div>
+					</li>
+					<li class="form-item">
+						<label class="title"><locale:message code="homework.homework.students" />：</label>
+						<div class="con j-people"><div id="jRelationGroupTree"></div></div>
+					</li>
+				</ul>
+				<div class="submit">
+					<button class="u-btn u-btn-nm u-btn-bg-turquoise" id="jSubmit"><locale:message code="homework.homework.distribute.submit" /></button>
+					<c:if test="${not empty paperId }">
+					<a href="javascript:void(0);" class="u-btn u-btn-nm u-btn-bg-gray" id="jReturn"><locale:message code="homework.common.back" /></a>
+					</c:if>
+				</div>
+			</div>
+		</div>
+	</div>
+	<script id="paperList_tpl" type="x-mustache">
+		<span class="f-db">
+			<em>{{paperName}}({{#subjective}}<locale:message code="homework.homework.subjective.have" />{{/subjective}}{{^subjective}}<locale:message code="homework.homework.subjective.none" />{{/subjective}})</em>
+			<i class="j-parperDel">x</i>
+		</span>
+	</script>
+	<script type="text/javascript">
+		seajs.use('homework/distribute/hwDistribute');
+	</script>
+</body>
+</html>

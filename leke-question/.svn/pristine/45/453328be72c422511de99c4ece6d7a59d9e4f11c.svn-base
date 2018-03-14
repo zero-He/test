@@ -1,0 +1,93 @@
+<div class="z-bindingmaterial">
+	<p class="bindtips">请选择一个内容与主版本完全一致的章节进行绑定，或者内容包含主版本的章节进行绑定，即选择内容&gt;=主版本内容！</p>
+	<div class="content">
+		<div class="selectedchapter">
+			<div class="maintitle">主版本教材章节</div>
+			<div class="tree" id="destMaterialTree"></div>
+		</div>
+		<div class="chapter">
+		    <div class="bind">
+		        <div class="mainchapter">
+		            <div class="maintitle">选择要绑定的教材章节</div>
+		            <div class="screen">
+		                <div class="m-form">
+		                    <ul>
+		                        <li class="form-item">
+		                            <label for="" class="title">教材版本：</label>
+		                            <div class="con">
+			                            <select name="pressId" class="u-select u-select-sm" 
+			                            	data-bind="options: presses,
+													   optionsText: 'pressName',
+													   optionsValue: 'pressId',
+													   optionsCaption: '==请选择==',
+													   value: pressId,
+													   valueAllowUnset: true">
+										</select>
+		                            </div>
+		                        </li>
+		                        <li class="form-item">
+		                            <label for="" class="title">年纪或者课本：</label>
+		                            <div class="con">
+		                                 <select name="materialId" class="u-select u-select-sm" 
+			                            	data-bind="options: materials,
+													   optionsText: 'materialName',
+													   optionsValue: 'materialId',
+													   optionsCaption: '==请选择==',
+													   value: materialId,
+													   valueAllowUnset: true">
+										</select>
+		                            </div>
+		                        </li>
+		                    </ul>
+		                </div>
+		            </div>
+		            <div class="tree" id="origMaterialTree"></div>
+		            <div class="btn">
+		                <input value="绑定章节" class="u-btn u-btn-nm u-btn-bg-orange" type="button" data-bind="click: doBinding">
+		                <input value="复制资源" class="u-btn u-btn-nm u-btn-bg-turquoise" type="button" data-bind="click: showCopy">
+		            </div>
+		        </div>
+		        <div class="secondarychapter">
+		            <div class="maintitle">当前已绑章节</div>
+		            <div class="tree">
+		                <ul class="chapterlist" data-bind="foreach: bindingMmaterials">
+		                    <li class="item"> <span class="name" data-bind="text: destPath,attr:{ title: destPath}"></span>
+		                    	<i class="del" data-bind="click: function($data){ $component.doDelBinding($data);}">×</i>
+		                    </li>
+		                </ul>
+		            </div>
+		        </div>
+		    </div>
+		</div>
+	</div>
+	<div class="moveresource" data-bind="visible: isCopy">
+	    <div class="maintitle">当前主版本已绑资源</div>
+	    <div class="restype"><span class="name">资源类型:</span>
+	        <select name="resType" id="resType" class="u-select u-select-nm"	
+	        	data-bind="options: resTypes,
+			   optionsText: 'name',
+			   optionsValue: 'resType',
+			   optionsCaption: '==请选择==',
+			   value: resType,
+			   valueAllowUnset: true">
+	        </select>
+	    </div>
+	    <!-- ko if: resType() == 2 -->
+	    	<div data-bind="component: {name: 'mat-paper-list',params: data}"></div>
+		<!-- /ko -->
+	    <!-- ko if: resType() == 3 -->
+	    	<div data-bind="component: {name: 'mat-courseware-list',params: data}"></div>
+		<!-- /ko -->
+		<!-- ko if: resType() == 4 -->
+	    	<div data-bind="component: {name: 'mat-microcourse-list',params: data}"></div>
+		<!-- /ko -->
+		<!-- ko if: resType() == 6 -->
+	    	<div data-bind="component: {name: 'mat-beikepkg-list',params: data}"></div>
+		<!-- /ko -->
+		<!-- ko if: !resType() -->
+	    <div class="m-table m-table-center">
+		   	<p class="m-tips"><i></i><span>请先选择资源类型！</span></p>
+		</div>
+		<!-- /ko -->
+	</div>
+</div>

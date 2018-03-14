@@ -1,0 +1,449 @@
+package cn.strong.leke.homework.dao.mybatis;
+
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+
+import org.apache.ibatis.annotations.Param;
+
+import cn.strong.leke.framework.page.jdbc.Page;
+import cn.strong.leke.homework.model.ApiHwCount;
+import cn.strong.leke.homework.model.ClassSubjectHw;
+import cn.strong.leke.homework.model.Homework;
+import cn.strong.leke.homework.model.HomeworkDTO;
+import cn.strong.leke.homework.model.HomeworkQuery;
+import cn.strong.leke.homework.model.HomeworkReviewInfo;
+import cn.strong.leke.homework.model.Statistics;
+import cn.strong.leke.homework.model.SubmitInfo;
+import cn.strong.leke.homework.model.activity.BugFixHwInfo;
+import cn.strong.leke.homework.model.mobile.MPersonWorkCount;
+import cn.strong.leke.homework.model.mobile.MPersonWorkDTO;
+import cn.strong.leke.homework.model.mobile.MPersonWorkQuery;
+import cn.strong.leke.homework.model.mobile.MSchoolWorkQuery;
+import cn.strong.leke.homework.model.query.ApiHomeworkListQuery;
+import cn.strong.leke.homework.model.query.ClassHomeworkQuery;
+import cn.strong.leke.homework.model.query.HomeworkIncentiveQuery;
+import cn.strong.leke.model.base.Subject;
+import cn.strong.leke.model.wrong.HomeworkForWrong;
+import cn.strong.leke.notice.model.todo.HwAssignEvent;
+import cn.strong.leke.tutor.model.course.ScheduleQuery;
+import cn.strong.leke.tutor.model.course.ScheduleStat;
+
+/**
+ * 老师作业服务类。
+ * @author  basil
+ * @created 2014-6-24 下午7:49:50
+ * @since   v1.0.0
+ */
+public interface HomeworkDao {
+
+	/**
+	 * 描述:保存教师作业
+	 * @param homework
+	 */
+	public void insertHomework(Homework homework);
+
+	/**
+	 * 更新作业总人数。
+	 * @param homeworkId 老师作业ID
+	 */
+	public void updateHomeworkTotalNum(Long homeworkId);
+
+	/**
+	 * 递增作业的总人数
+	 * @param homeworkId
+	 * @param totalNum
+	 */
+	public void incrHomeworkTotalNum(@Param("homeworkId") Long homeworkId, @Param("totalNum") Integer totalNum);
+
+	/**
+	 * 更新老师作业统计信息
+	 * @param homeworkId 老师作业ID
+	 */
+	public void updateHomeworkStat(Map<String, Object> map);
+	
+	/**
+	 * 更新老师作业统计信息
+	 * @param homeworkId 老师作业ID
+	 */
+	public Map<String, Object> getUpdateHomeworkStatMap(Long homeworkId);
+
+	/**
+	 * 更新老师作业统计信息(复批信息)
+	 * @param homeworkId 老师作业ID
+	 */
+	public void updateHomeworkStatWithBugFix(Long homeworkId);
+
+	/**
+	 * 查询作业ID，不包括镜像数据
+	 * @param lessonId 课堂ID，必填
+	 * @param resType 资源类型，可空
+	 * @param usePhase 使用阶段，可空
+	 * @return
+	 */
+	public List<Long> findHomeworkIdsByLessonId(@Param("lessonId") Long lessonId,
+			@Param("usePhase") Integer usePhase);
+
+	/**
+	 * 根据班级ID查询作业列表。
+	 * @param classId 班级ID
+	 * @return
+	 */
+	public List<Homework> findHomeworkByClassId(Long classId);
+
+	/**
+	 * 根据单课ID查询作业列表。
+	 * @param courseSingleId 单课ID
+	 * @return
+	 */
+	public List<Homework> findHomeworkByCourseSingleId(Long courseSingleId);
+
+	/**
+	 * 多条件查询教师作业列表
+	 * @param homework
+	 * @param page
+	 * @return
+	 */
+	public List<HomeworkDTO> queryHomeworkList(HomeworkQuery homework, Page page);
+
+	/**
+	 * 根据教师作业id查询作业详情
+	 * @param homeworkId
+	 * @return
+	 */
+	public Homework getHomeworkById(Long homeworkId);
+
+	/**
+	 * 根据备课标识查询有效的作业ID
+	 * @param beikeGuid
+	 * @return
+	 */
+	public Long getHomeworkIdByBeikeGuid(String beikeGuid);
+
+	/**
+	 * 根据备课标识查询有效的作业信息
+	 * @param beikeGuid
+	 * @return
+	 */
+	public Homework getHomeworkByBeikeGuid(String beikeGuid);
+
+	/**
+	 * 根据老师ID、开始时间、结束时间查询作业统计信息。
+	 * @param teacherId
+	 * @param headTime
+	 * @param tailTime
+	 * @return
+	 */
+	public List<ApiHwCount> queryHwByMonth(@Param("teacherId") Long teacherId, @Param("headTime") Date headTime,
+			@Param("tailTime") Date tailTime);
+
+	/**
+	 * 根据老师ID、开始时间、结束时间查询作业列表数据。
+	 * @param teacherId
+	 * @param headTime
+	 * @param tailTime
+	 * @return
+	 */
+	@Deprecated
+	public List<Homework> getHwByDay(@Param("teacherId") Long teacherId, @Param("headTime") Date headTime,
+			@Param("tailTime") Date tailTime);
+
+	/**
+	 * 查询老师作业
+	 * @param query
+	 * @return
+	 */
+	public List<Homework> findTeacherHomework(ApiHomeworkListQuery query);
+	
+	/**
+	 * 统计老师作业数，待批改和待复批数
+	 * @param teacherId
+	 * @return
+	 */
+	public Map<String, Long> findTeacherHomeworkInfoTotal(Long teacherId);
+	
+	/**
+	 * 根据教师ID和单课ID，查询课堂绑定作业列表
+	 * @param teacherId 老师标识
+	 * @param lessonId 单课标识
+	 * @param resType 资源类型，可空
+	 * @return
+	 */
+	public List<Homework> findLessonWorkByLessonId(@Param("teacherId") Long teacherId, @Param("lessonId") Long lessonId,
+			@Param("resType") Integer resType, @Param("isSnapshot") Boolean isSnapshot);
+
+	/**
+	 * 根据班级ID,教师ID,作业名称，分页查询试卷作业列表。
+	 * @param classId
+	 * @param teacherId
+	 * @param homeorkName
+	 * @param page
+	 * @return
+	 */
+	public List<Homework> findPaperWorkByName(@Param("classId") Long classId, @Param("teacherId") Long teacherId,
+			@Param("homeworkName") String homeworkName, Page page);
+
+	/**
+	 * 描述:根据月份和学生标识，查询学生每日作业数量。（以截止时间为准）
+	 * @param studentId
+	 * @param headTime
+	 * @param tailTime
+	 */
+	public List<ApiHwCount> queryHwStuMonth(@Param("studentId") Long studentId, @Param("headTime") Date headTime,
+			@Param("tailTime") Date tailTime);
+
+	/**
+	 * 描述:多条件查询教务所管辖班级作业
+	 * @param homework
+	 * @param page
+	 * @return
+	 */
+	public List<HomeworkDTO> queryClassTeacherHomeworkList(ClassHomeworkQuery query, Page page);
+
+	/**
+	 * 老师：手机作业列表查询
+	 * @param query
+	 * @return
+	 */
+	public List<MPersonWorkDTO> selectMobileTeacherWorkList(MPersonWorkQuery query);
+
+	/**
+	 * 老师：手机作业列表数
+	 * @param query
+	 * @return
+	 */
+	public MPersonWorkCount selectMobileTeacherWorkCount(MPersonWorkQuery query);
+
+	/**
+	 * 根据classId和subjectId集合查出该班主任下所有的班级作业列表
+	 * @Author LIU.SHITING
+	 * @Version 2.6
+	 * @Date 2017/4/19 10:22
+	 */
+	List<HomeworkDTO> findMobileSchoolWorkList(MSchoolWorkQuery query);
+
+	/**
+	 * 描述:更新作业发布/截至时间
+	 * @author  DuanYanming
+	 * @created 2015年1月13日 下午3:52:49
+	 * @since   v1.0.0 
+	 * @param homeworkId
+	 * @param startTime
+	 * @param closeTime
+	 * @return  void
+	 */
+	public void updateHomeworkDate(@Param("homeworkId") Long homeworkId, @Param("startTime") Date startTime,
+			@Param("closeTime") Date closeTime);
+	
+	/**
+	 * 描述: 作业作废
+	 * @author  DuanYanming
+	 * @created 2015年1月14日 上午8:51:41
+	 * @since   v1.0.0 
+	 * @param homeworkId
+	 * @return  void
+	 */
+	public void updateHomeworkInvalid(@Param("homeworkId") Long homeworkId,@Param("teacherId") Long teacherId);
+	
+	/**
+	 * 根据单课ID查询作业布置信息。
+	 * @param courseSingleId
+	 * @return
+	 */
+	public List<HwAssignEvent> findHwAssignEventsByCourseSingleId(Long courseSingleId);
+
+	/**
+	 * 根据条件查询作业日历表。
+	 * @param query 查询条件
+	 * @return
+	 */
+	public List<ScheduleStat> findHomeworkScheduleByQuery(ScheduleQuery query);
+	
+	/**
+	 * 按照班级分组，查询老师批改作业数
+	 * @param teacherId
+	 * @return
+	 */
+	public List<Map<String, Object>> getCorrectHomeworks(@Param("teacherId") Long teacherId,@Param("startTime")Date startTime);
+
+	/**
+	 * 老师：统计待复批作业数
+	 * @param teacherId
+	 * @return
+	 */
+	public Integer getReCorrectNum(HomeworkQuery query);
+	
+	/**
+	 * 老师：统计待批改作业数
+	 * @param teacherId
+	 * @return
+	 */
+	public Integer getUnfinishedNum(Long teacherId);
+
+	/**老师：统计待复批作业列表
+	 * @param query
+	 * @return
+	 */
+	public List<Map<String, Object>> queryReCorrectHomeworkList(HomeworkQuery query, Page page);
+	
+	/**老师：统计待复批作业列表
+	 * @param query
+	 * @return
+	 */
+	public List<HomeworkDTO> queryReCorrectHomeworkDTOList(HomeworkQuery query, Page page);
+
+	/**
+	 * 老师： 公布试卷答案
+	 * @param homeworkId
+	 * @return
+	 */
+	public Integer saveOpenAnswer(@Param("homeworkId") Long homeworkId, @Param("teacherId") Long teacherId);
+
+	/**
+	 * 老师： 自行校对试卷
+	 * @param homeworkId
+	 * @return
+	 */
+	public Integer saveSelfCheck(@Param("homeworkId") Long homeworkId, @Param("teacherId") Long teacherId);
+
+	/**
+	 * 将单课关联的所有作业都更新为可见（课堂结束时）
+	 * @param lessonId
+	 */
+	public void updateHomeworkVisibleByLessonId(Long lessonId);
+
+	/**
+	 * 更新随堂作业为历史记录。
+	 * @param homeworkId
+	 * @param version
+	 */
+	public void updateOnlineTestIsHistory(@Param("homeworkId") Long homeworkId, @Param("version") int version);
+
+	/**
+	 * 更新作业的使用阶段
+	 * @param homeworkId
+	 * @param usePhase
+	 * @param startTime
+	 * @param closeTime
+	 * @param userId
+	 * @return
+	 */
+	public int updateHomeworkUsePhase(@Param("homeworkId") Long homeworkId, @Param("usePhase") Integer usePhase,
+			@Param("startTime") Date startTime, @Param("closeTime") Date closeTime, @Param("userId") Long userId);
+
+	/**
+	 * 查询学校中某份试卷所有作业列表，按截止时间倒序排列。
+	 * @param paperId 试卷ID
+	 * @param schoolId 学校ID
+	 * @return
+	 */
+	public List<Map<String, Object>> findHomeworkByPaperId(@Param("paperId") Long paperId,
+			@Param("schoolId") Long schoolId);
+	
+	/**
+	 * 通过行政班级Id查询学科
+	 * @param classId
+	 * @return
+	 */
+	public List<Subject> findOrganClassSubject(Long classId);
+	
+	/**
+	 * 查询作废作业
+	 * @param query
+	 * @return
+	 */
+	public List<HomeworkDTO> findDumpedHomeworkList(HomeworkQuery query,Page page);
+	
+	
+	public void delHomework(@Param("homeworkIds") List<Long> homeworkIds, @Param("teacherId") Long teacherId);
+
+	public void recoverHomework(@Param("homeworkIds") List<Long> homeworkIds, @Param("teacherId") Long teacherId);
+
+
+	/**
+	 * 根据点播课主作业，查询对应的班级和老师有没有衍生作业。
+	 * @param parentId 主作业ID
+	 * @param classId 班级ID
+	 * @param teacherId 老师ID
+	 * @return
+	 */
+	public Homework getVodDerivedHomeworkByParentId(@Param("parentId") Long parentId, @Param("classId") Long classId,
+			@Param("teacherId") Long teacherId);
+	
+	/**
+	 * api：学生作业数统计
+	 * @param studentId
+	 * @return
+	 */
+	public Statistics findStuHomeworkInfoTotal(@Param("studentId") Long studentId,@Param("subjectId") Long subjectId);
+	
+	public List<Homework> findHwCorrectInfo(HomeworkIncentiveQuery query);
+	
+	public List<HomeworkReviewInfo> findHwReviewInfo(HomeworkIncentiveQuery query);
+	
+	/**
+	 * 查询某个时间段的周作业
+	 * @param start
+	 * @param end
+	 * @return
+	 */
+	public List<ClassSubjectHw> findHolidayClassSubjects(@Param("start") Date start, @Param("end") Date end);
+	
+	public List<Long> findClassHomeworkIds(@Param("classId") Long classId, @Param("subjectId") Long subjectId);
+	
+	/**
+	 * 查询 截止日期到了之后 72小时，大于80%批改率的作业
+	 * @param start
+	 * @param end
+	 * 
+	 * @return
+	 */
+	public List<HomeworkForWrong> findWrongHwInfo(@Param("start") Date start, @Param("end") Date end);
+
+	/**
+	 * 从老师已经布置的作业里，找出学科
+	 * @param teacherId
+	 * @param schoolId
+	 * @return
+	 */
+	public List<Long> findSubjectIdFromHomework(@Param("teacherId") Long teacherId,@Param("schoolId") Long schoolId);
+
+	/**
+	 * 获取老师的作业批改份数
+	 * @param userId
+	 * @return
+	 */
+	public int getCorrectNumByUserId(Long userId);
+
+	/**
+	 * 查询课堂预习作业ID列表
+	 * @param lessonId
+	 * @return
+	 */
+	public List<Long> findPreviewHomeworkIdsByLessonId(Long lessonId);
+
+	/**
+	 * 获取学生作业的提交状态，如果学生作业不存在就创建它
+	 * @param lessonId
+	 * @param studentId
+	 * @return
+	 */
+	public List<SubmitInfo> findStudentSubmitInfoByLessonId(@Param("lessonId") Long lessonId,
+			@Param("studentId") Long studentId);
+
+	/**
+	 * 根据学生作业ID获取试卷ID，用于错题本的数据处理。
+	 * @param homeworkIds
+	 * @return
+	 */
+	public Long getPaperIdByHomeworkDtlId(Long homeworkDtlId);
+
+	/**
+	 * 根据单课删除作业
+	 * @param courseSingleId
+	 * @param userId
+	 */
+	public void delHwByCourseSinglId(@Param("courseSingleId") Long courseSingleId, @Param("userId") Long userId);
+	
+	public BugFixHwInfo getBugFixInfo(@Param("userId") Long userId, @Param("startDate") Date startDate);
+}

@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.1//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.question.dao.mybatis.MaterialDao">
+
+	<insert id="insertMaterial" useGeneratedKeys="true" keyProperty="materialId"
+		parameterType="cn.strong.leke.model.question.Material">
+		INSERT INTO que_material(
+			materialName, schoolStageId, schoolStageName, subjectId, subjectName,
+			pressId, pressName, ord,
+			isDeleted, createdBy, createdOn, modifiedBy, modifiedOn
+		) VALUES (
+			#{materialName}, #{schoolStageId}, #{schoolStageName}, #{subjectId}, #{subjectName},
+			#{pressId}, #{pressName}, #{ord},
+			0, #{createdBy}, now(), #{modifiedBy}, now()
+		)
+	</insert>
+	
+	<update id="updateMaterial" parameterType="cn.strong.leke.model.question.Material">
+		UPDATE que_material
+		<set>
+			materialName = #{materialName},
+			pressId = #{pressId},
+			pressName = #{pressName},
+			schoolStageId = #{schoolStageId},
+			schoolStageName = #{schoolStageName},
+			subjectId = #{subjectId},
+			subjectName = #{subjectName},
+			ord = #{ord},
+			<if test="modifiedBy != null">modifiedBy = #{modifiedBy},</if>
+			modifiedOn = now()
+		</set>
+		<where>
+			materialId= #{materialId}
+		</where>
+	</update>
+	
+	<update id="deleteMaterial" parameterType="cn.strong.leke.model.question.Material">
+		UPDATE que_material
+		<set>
+			isDeleted = 1,
+			<if test="modifiedBy != null">modifiedBy = #{modifiedBy},</if>
+			modifiedOn = now()
+		</set>
+		<where>
+			materialId= #{materialId}
+		</where>
+	</update>
+	
+	<select id="isExist" parameterType="cn.strong.leke.model.question.Material" resultType="int">
+		SELECT 
+			COUNT(*) 
+		FROM 
+			que_material m
+		WHERE 
+			m.isDeleted = 0
+		AND
+			m.pressId = #{pressId}
+		AND
+			m.schoolStageId = #{schoolStageId}
+		AND
+			m.subjectId = #{subjectId}
+		AND
+			m.materialName = #{materialName}
+	</select>
+	
+	<select id="countByMaterialName" resultType="int" parameterType="string">
+		SELECT COUNT(*) 
+		FROM 
+			que_material m
+		WHERE 
+			m.isDeleted = 0 
+		AND
+			m.materialName = #{materialName}
+	</select>
+	
+	<select id="queryMaterials" parameterType="cn.strong.leke.model.question.Material"
+		resultType="cn.strong.leke.model.question.Material">
+		SELECT m.*
+		FROM que_material m
+		<where>
+			<if test="materialId != null">AND materialId = #{materialId}</if>
+			<if test="materialName != null and materialName != ''">AND materialName LIKE '%'||#{materialName}||'%'</if>
+			<if test="schoolStageId != null">AND schoolStageId = #{schoolStageId}</if>
+			<if test="subjectId != null">AND subjectId = #{subjectId}</if>
+			<if test="pressId != null">AND pressId = #{pressId}</if>
+			AND isDeleted = 0
+		</where>
+		ORDER BY schoolStageId, subjectId, pressId,ord
+	</select>
+	
+	<select id="getMaterialById" parameterType="long"
+		resultType="cn.strong.leke.model.question.Material">
+		SELECT m.*
+		FROM que_material m
+		<where>
+			materialId = #{materialId}
+			AND isDeleted = 0
+		</where>
+	</select>
+	
+	<update id="updateMaterialName" parameterType="cn.strong.leke.model.question.Material">
+		UPDATE que_material
+		<set>
+			materialName = #{materialName},
+			ord = #{ord},
+			<if test="modifiedBy != null">modifiedBy = #{modifiedBy},</if>
+			modifiedOn = now()
+		</set>
+		<where>
+			materialId= #{materialId}
+		</where>
+	</update>
+
+</mapper>

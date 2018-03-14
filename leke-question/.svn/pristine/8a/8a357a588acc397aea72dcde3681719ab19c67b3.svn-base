@@ -1,0 +1,60 @@
+<div class="resourcecontent">
+	<div class="right f-ml0">
+		<div class="m-tab">
+			<ul data-bind="foreach: tabs">
+				<!-- ko if: resType != 5 -->
+				<li data-bind="css:{active: resType == 1}"><a href="#" data-bind="text: name, attr:{ href: url }"></a></li>
+				<!-- /ko -->
+			</ul>
+		</div>
+		<div class="resourceformat">
+			<span>审核状态：</span>
+			<div class="list">
+				<ul data-bind="foreach: statusTabs ">
+                    <li data-bind="text: name, css: {
+                    	fontcolor: $component.query.status() == $data.status
+                    }, click: function() {
+                    	$component.query.status($data.status);
+                    }">&nbsp;</li>
+				</ul>
+			</div>
+		</div>
+		
+		<div class="resourceformat dashed">
+			<span>学科：</span>
+			<select name="stageSubject" class="u-select u-select-nm" style="margin-top: 4px;"></select>
+		</div>
+		<div class="resourceformat dashed">
+			<span>类型：</span>
+			<div class="list">
+				<ul>
+					<li data-bind="css: {
+                   			fontcolor: $component.query.questionTypeId() == null
+                   		}, click: function() {
+                   			$component.query.questionTypeId(null);
+                   		}">全部</li>
+                    <!-- ko foreach: types -->
+                    <li data-bind="text: questionTypeName, css: {
+                    	fontcolor: $component.query.questionTypeId() == $data.questionTypeId
+                    }, click: function() {
+                    	$component.query.questionTypeId($data.questionTypeId);
+                    }">&nbsp;</li>
+                    <!-- /ko -->		
+				</ul>
+			</div>
+			<!-- ko if: types().length > 8 -->
+			<em class="more" data-bind="click: doMoreType">更多<i></i></em>
+			<!-- /ko -->
+		</div>
+		<div class="selecttype">
+		    <div class="search">
+		    	<div class="selecttext">
+		    		<input type="text" placeholder="请输入关键词" data-bind="value: query.content"/>
+		    		<a href="#" class="selectbut" data-bind="click: doSearch"></a>
+		    	</div>
+			</div>
+		</div>
+		<div class="c-resource-list j-questions">
+		</div>
+	</div>
+</div>

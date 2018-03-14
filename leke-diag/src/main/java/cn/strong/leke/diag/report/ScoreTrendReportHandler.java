@@ -1,0 +1,79 @@
+package cn.strong.leke.diag.report;
+
+import java.util.Arrays;
+import java.util.List;
+
+import javax.annotation.Resource;
+
+import org.springframework.stereotype.Component;
+
+import com.google.common.collect.Lists;
+
+import cn.strong.leke.diag.manage.ReportCycleService;
+import cn.strong.leke.diag.model.CycleType;
+import cn.strong.leke.diag.model.StuSubjQuery;
+import cn.strong.leke.diag.model.StuSubjScore;
+import cn.strong.leke.diag.model.report.ReportCycle;
+import cn.strong.leke.diag.model.report.ScoreRptQuery;
+import cn.strong.leke.diag.model.report.TrendModel;
+import cn.strong.leke.diag.report.unit.LogicalContext;
+import cn.strong.leke.diag.report.unit.ScoreTrendLogicalUnit;
+import cn.strong.leke.diag.service.HomeworkDtlService;
+import cn.strong.leke.diag.service.HomeworkService;
+import cn.strong.leke.remote.service.lesson.IKlassRemoteService;
+
+/**
+ * 成绩走势计算
+ * @author  andy
+ */
+@Component
+public class ScoreTrendReportHandler implements ReportHandler<ScoreRptQuery, List<TrendModel>> {
+
+	@Resource
+	private HomeworkService homeworkService;
+	@Resource
+	private HomeworkDtlService homeworkDtlService;
+	@Resource
+	private ReportCycleService reportCycleService;
+	@Resource
+	private IKlassRemoteService klassRemoteService;
+
+	private ScoreTrendLogicalUnit trendLogicalUnit = new ScoreTrendLogicalUnit();
+
+	@Override
+	public List<TrendModel> execute(ScoreRptQuery query) {
+		// 基本条件查询
+		Long studentId = query.getStudentId();
+		ReportCycle reportCycle = this.reportCycleService.getReportCycleById(query.getCycleId());
+		List<Long> userIds = Arrays.asList(studentId);
+		if (query.getClassId() != null) {
+			userIds = this.klassRemoteService.findStudentIdsByClassId(query.getClassId());
+		}
+
+		StuSubjQuery stuSubjQuery = new StuSubjQuery();
+		stuSubjQuery.setSubjectId(query.getSubjectId());
+		stuSubjQuery.setStart(reportCycle.getStart());
+		stuSubjQuery.setEnd(reportCycle.getEnd());
+		stuSubjQuery.setUserIds(userIds);
+
+		List<StuSubjScore> scores = this.homeworkDtlService.findStuSubjScores(stuSubjQuery);
+		LogicalContext context = new LogicalContext();
+		context.put("scores", scores);
+		context.put("studentId", studentId);
+		context.put("isUnit", query.getClassId() == null);
+
+		CycleType cycleType = CycleType.resolve(reportCycle.getType());
+		List<TrendModel> trendModels = Lists.newArrayList();
+		for (int child : cycleType.childTypes()) {
+			CycleType childCycleType = CycleType.resolve(child);
+			List<ReportCycle> cycles = this.reportCycleService.findReportCycleByTime(reportCycle.getStart(),
+					reportCycle.getEnd(), childCycleType.value);
+			context.put("cycles", cycles);
+			context.put("label", childCycleType.name);
+			TrendModel trendModel = this.trendLogicalUnit.execute(context);
+			trendModels.add(trendModel);
+		}
+
+		return trendModels;
+	}
+}

@@ -1,0 +1,404 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.diag.dao.studentMonitor.HomeworkAnalyseDao">
+
+	<sql id="baseSql">
+		AND isDeleted = 0
+		AND status = 1
+		AND resType = 3
+		AND homeworkType = 3
+		AND classId IS NOT NULL
+		AND schoolId = #{schoolId}
+		<if test="subjectId != null">
+			AND subjectId = #{subjectId}
+		</if>
+		<![CDATA[
+			AND closeTime >= DATE(#{startDate})
+			AND closeTime < DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+		]]>
+	</sql>
+
+	<sql id="queryStudentIdByParam">
+		INNER JOIN (
+			SELECT
+			kt.userId AS studentId,
+			k.classId,
+			k.className
+			FROM
+			lesson.ls_klass k,
+			lesson.ls_klass_student kt
+			WHERE
+			kt.classId = k.classId
+			AND k.isDeleted = 0
+			AND k.isExpired = 0
+			AND k.type = 1
+			AND k.schoolId = #{schoolId}
+			<if test="gradeId != null">
+				AND k.gradeId = #{gradeId}
+			</if>
+			<if test="classId != null">
+				AND kt.classId = #{classId}
+			</if>
+			AND kt.isDeleted = 0
+			AND kt.unSubTime IS NULL
+		) s ON s.studentId = hd.studentId
+	</sql>
+
+	<!--查每个学生的作业提交情况-->
+	<select id="selectStudentHomeworkSubmitStatus" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo" resultType="cn.strong.leke.diag.model.studentMonitor.StudentHomeworkSubmitBean">
+		SELECT
+		hd.studentId,
+		hd.studentName,
+		COUNT(hd.homeworkDtlId) AS stuHomeworkNum,
+		SUM(hd.submitStatus=1) AS submitNum,
+		SUM(hd.submitStatus=2) AS lateSubmitNum,
+		SUM(hd.submitStatus=0) AS noSubmitNum,
+		h.startTime,
+		h.closeTime,
+		h.classId,
+		h.className,
+		h.subjectId
+		FROM
+		homework.HW_HOMEWORK_DTL hd
+		<include refid="queryStudentIdByParam"/>
+		INNER JOIN (
+			SELECT
+			x.homeworkId,
+			x.startTime,
+			x.closeTime,
+			x.classId,
+			x.className,
+			x.subjectId
+			FROM (
+				SELECT
+				b.beikeGuid,
+				b.paperId,
+				MIN(b.homeworkId) AS homeworkId,
+				b.startTime,
+				b.closeTime,
+				b.classId,
+				b.className,
+				b.subjectId
+				FROM (
+					SELECT
+					beikeGuid
+					FROM homework.HW_HOMEWORK
+					WHERE beikeGuid IS NOT NULL
+					<include refid="baseSql"/>
+				) a,
+				homework.HW_HOMEWORK b
+				where a.beikeGuid = b.beikeGuid
+				AND b.isDeleted = 0
+				AND b.status = 1
+				AND b.resType = 3
+				GROUP BY b.beikeGuid, b.paperId
+			) x
+			UNION ALL
+			SELECT homeworkId,
+			startTime,
+			closeTime,
+			classId,
+			className,
+			subjectId
+			FROM homework.HW_HOMEWORK
+			WHERE beikeGuid IS NULL
+			<include refid="baseSql"/>
+		) h ON h.homeworkId = hd.homeworkId
+		WHERE hd.isDeleted = 0
+		GROUP BY hd.studentId
+	</select>
+
+	<!--查共需完成的班级作业份数-->
+	<select id="selectTotalOverClassHomeworkNum" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo" resultType="java.lang.Integer">
+		SELECT
+		COUNT(DISTINCT(p.homeworkId)) AS classHomeworkNum
+		FROM
+		homework.HW_HOMEWORK_DTL hd
+		<include refid="queryStudentIdByParam"/>
+		INNER JOIN (
+			SELECT
+			x.homeworkId
+			FROM (
+				SELECT
+				MIN(b.homeworkId) AS homeworkId
+				FROM (
+					SELECT
+					beikeGuid
+					FROM homework.HW_HOMEWORK
+					WHERE beikeGuid IS NOT NULL
+					<include refid="baseSql"/>
+				) a,
+				homework.HW_HOMEWORK b
+				where a.beikeGuid = b.beikeGuid
+				AND b.isDeleted = 0
+				AND b.status = 1
+				AND b.resType = 3
+				GROUP BY b.beikeGuid, b.paperId
+			) x
+			UNION ALL
+			SELECT
+			homeworkId
+			FROM homework.HW_HOMEWORK
+			WHERE beikeGuid IS NULL
+			<include refid="baseSql"/>
+		) p ON hd.homeworkId = p.homeworkId
+		WHERE hd.isDeleted = 0
+	</select>
+
+	<!--查所有学生的所有作业提交情况-->
+	<select id="selectStudentHomework" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo" resultType="cn.strong.leke.diag.model.studentMonitor.StudentHomeworkSubmitBean">
+		SELECT
+		hd.studentId,
+		hd.studentName,
+		hd.homeworkDtlId,
+		hd.submitStatus,
+		h.startTime,
+		h.closeTime,
+		h.classId,
+		h.className,
+		h.subjectId
+		FROM
+		homework.HW_HOMEWORK_DTL hd
+		<include refid="queryStudentIdByParam"/>
+		INNER JOIN (
+			SELECT
+			x.homeworkId,
+			x.startTime,
+			x.closeTime,
+			x.classId,
+			x.className,
+			x.subjectId
+			FROM (
+				SELECT
+				b.beikeGuid,
+				b.paperId,
+				MIN(b.homeworkId) AS homeworkId,
+				b.startTime,
+				b.closeTime,
+				b.classId,
+				b.className,
+				b.subjectId
+				FROM (
+					SELECT
+					beikeGuid
+					FROM homework.HW_HOMEWORK
+					WHERE beikeGuid IS NOT NULL
+					<include refid="baseSql"/>
+				) a,
+				homework.HW_HOMEWORK b
+				where a.beikeGuid = b.beikeGuid
+				AND b.isDeleted = 0
+				AND b.status = 1
+				AND b.resType = 3
+				GROUP BY b.beikeGuid, b.paperId
+			) x
+			UNION ALL
+			SELECT homeworkId,
+			startTime,
+			closeTime,
+			classId,
+			className,
+			subjectId
+			FROM homework.HW_HOMEWORK
+			WHERE beikeGuid IS NULL
+			<include refid="baseSql"/>
+		) h ON h.homeworkId = hd.homeworkId
+		WHERE hd.isDeleted = 0
+	</select>
+
+	<!--查询明细数据-->
+	<select id="selectHomeworkDetailDataPage" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo" resultType="cn.strong.leke.diag.model.studentMonitor.HomeworkDetailBean">
+		SELECT
+		hd.studentId,
+		hd.studentName,
+		COUNT(hd.homeworkDtlId) AS stuHomeworkNum,
+		SUM(hd.submitStatus=1) AS submitNum,
+		SUM(hd.submitStatus=2)	AS lateSubmitNum,
+		SUM(hd.submitStatus=0) AS noSubmitNum,
+		CONVERT((SUM(hd.submitStatus=1)/COUNT(hd.homeworkDtlId))*100,DECIMAL(10,2)) AS submitPro,
+		CONVERT((SUM(hd.submitStatus=2)/COUNT(hd.homeworkDtlId))*100,DECIMAL(10,2)) AS lateSubmitPro,
+		CONVERT((SUM(hd.submitStatus=0)/COUNT(hd.homeworkDtlId))*100,DECIMAL(10,2)) AS noSubmitPro,
+		p.startTime,
+		p.closeTime,
+		p.subjectId,
+		s.classId,
+		s.className,
+		#{startDate} AS startDate,
+		#{endDate} AS endDate
+		FROM
+		homework.HW_HOMEWORK_DTL hd
+		<include refid="queryStudentIdByParam"/>
+		INNER JOIN (
+			SELECT
+			x.homeworkId,
+			x.startTime,
+			x.closeTime,
+			x.subjectId
+			FROM (
+				SELECT
+				b.beikeGuid,
+				b.paperId,
+				MIN(b.homeworkId) AS homeworkId,
+				b.startTime,
+				b.closeTime,
+				b.classId,
+				b.className,
+				b.subjectId
+				FROM (
+					SELECT
+					beikeGuid
+					FROM homework.HW_HOMEWORK
+					WHERE beikeGuid IS NOT NULL
+					<include refid="baseSql"/>
+				) a,
+				homework.HW_HOMEWORK b
+				where a.beikeGuid = b.beikeGuid
+				AND b.isDeleted = 0
+				AND b.status = 1
+				AND b.resType = 3
+				GROUP BY b.beikeGuid, b.paperId
+			) x
+			UNION ALL
+			SELECT
+			homeworkId,
+			startTime,
+			closeTime,
+			subjectId
+			FROM homework.HW_HOMEWORK
+			WHERE beikeGuid IS NULL
+			<include refid="baseSql"/>
+		) p ON p.homeworkId = hd.homeworkId
+		WHERE
+		hd.isDeleted = 0
+		GROUP BY hd.studentId
+	</select>
+
+	<!--查看作业详情数据-->
+	<select id="selectStuHomeworkDetailData" resultType="cn.strong.leke.diag.model.studentMonitor.StuHomeworkDetailBean">
+		SELECT
+		hd.studentId,
+		hd.studentName,
+		p.homeworkId,
+		p.homeworkName,
+		p.subjectId,
+		p.subjectName,
+		p.teacherId,
+		p.teacherName,
+		p.homeworkType,
+		p.closeTime,
+		hd.submitTime,
+		hd.submitStatus,
+		hd.correctTime,
+		CONVERT(hd.scoreRate*100,DECIMAL(10,2)) AS score
+		FROM
+		homework.HW_HOMEWORK_DTL hd
+		INNER JOIN (
+			SELECT
+			x.homeworkId,
+			x.homeworkName,
+			x.subjectId,
+			x.subjectName,
+			x.teacherId,
+			x.teacherName,
+			x.homeworkType,
+			x.closeTime
+			FROM (
+				SELECT
+				b.beikeGuid,
+				b.paperId,
+				MIN(b.homeworkId) AS homeworkId,
+				b.homeworkName,
+				b.subjectId,
+				b.subjectName,
+				b.teacherId,
+				b.teacherName,
+				b.homeworkType,
+				b.closeTime
+				FROM (
+					SELECT
+					beikeGuid
+					FROM homework.HW_HOMEWORK
+					WHERE beikeGuid IS NOT NULL
+					<include refid="baseSql"/>
+				) a,
+				homework.HW_HOMEWORK b
+				where a.beikeGuid = b.beikeGuid
+				AND b.isDeleted = 0
+				AND b.status = 1
+				AND b.resType = 3
+				GROUP BY b.beikeGuid, b.paperId
+			) x
+			UNION ALL
+			SELECT
+			homeworkId,
+			homeworkName,
+			subjectId,
+			subjectName,
+			teacherId,
+			teacherName,
+			homeworkType,
+			closeTime
+			FROM homework.HW_HOMEWORK
+			WHERE beikeGuid IS NULL
+			<include refid="baseSql"/>
+		) p ON p.homeworkId = hd.homeworkId
+		WHERE
+		hd.isDeleted = 0
+		<if test="studentId != null">
+			AND hd.studentId = #{studentId}
+		</if>
+	</select>
+
+	<!--根据schoolId、gradeId、classId查学生studentId-->
+	<select id="selectStudentIdByParam" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo" resultType="java.lang.Long">
+		SELECT
+		kt.userId AS studentId
+		FROM
+		lesson.ls_klass k,
+		lesson.ls_klass_student kt
+		WHERE
+		kt.classId = k.classId
+		AND k.isDeleted = 0
+		AND k.isExpired = 0
+		AND k.type = 1
+		AND k.schoolId = #{schoolId}
+		<if test="gradeId != null">
+			AND k.gradeId = #{gradeId}
+		</if>
+		<if test="classId != null">
+			AND kt.classId = #{classId}
+		</if>
+		AND kt.isDeleted = 0
+		AND kt.unSubTime IS NULL
+	</select>
+
+	<!--根据schoolId、gradeId、classId查学生Clazz-->
+	<select id="selectClazzByParam" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo" resultType="cn.strong.leke.diag.model.teachingMonitor.ClazzBean">
+		SELECT
+			k.classId,
+			k.className
+		FROM
+			lesson.ls_klass k
+		WHERE
+			k.isDeleted = 0
+		AND k.isExpired = 0
+		AND k.type = 1
+		AND k.schoolId = #{schoolId}
+		<if test="gradeId != null">
+			AND k.gradeId = #{gradeId}
+		</if>
+		<if test="classId != null">
+			AND k.classId = #{classId}
+		</if>
+	</select>
+
+</mapper>
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,201 @@
+var React = require('common/react/react');
+var {toFixed, toRate} = require('./helper');
+var JSON = require('json');
+var Utils = require('utils');
+
+class KnoGraspFilter extends React.Component {
+	constructor(props) {
+		super(props);
+		this.handleChange = this.handleChange.bind(this);
+	}
+	handleChange() {
+		let refs = this.refs;
+		let levels = [1, 2, 3].filter(v => refs[`zw${v}`].checked);
+		if (this.props.onChange) {
+			this.props.onChange(levels);
+		}
+	}
+	render() {
+		return (
+			<ul>
+				<li><input ref="zw1" type="checkbox" id="zw_1" defaultChecked={true} onChange={this.handleChange} /><label htmlFor="zw_1">已掌握</label></li>
+				<li><input ref="zw2" type="checkbox" id="zw_2" defaultChecked={true} onChange={this.handleChange} /><label htmlFor="zw_2">掌握不牢</label></li>
+				<li><input ref="zw3" type="checkbox" id="zw_3" defaultChecked={true} onChange={this.handleChange} /><label htmlFor="zw_3">未掌握</label></li>
+			</ul>
+		);
+	}
+}
+
+var KnoGraspTableColumnDefs = {
+	name: {
+		title: '知识点名称',
+		width: '36%',
+		value: function(item) {
+			return item.name;
+		}
+	},
+	totalNum: {
+		title: '涉题数',
+		value: function(item) {
+			return item.totalNum;
+		}
+	},
+	rightNum: {
+		title: '正确题数',
+		value: function(item) {
+			return toFixed(item.rightNum, 1);
+		}
+	},
+	totalScore: {
+		title: '分值',
+		value: function(item) {
+			return toFixed(item.totalScore, 1);
+		}
+	},
+	selfScore: {
+		title: '得分',
+		value: function(item) {
+			return toFixed(item.selfScore, 1);
+		}
+	},
+	selfRate: {
+		title: '得分率',
+		value: function(item) {
+			return toFixed(item.selfRate, 1) + '%';
+		}
+	},
+	klassRate: {
+		title: '班级得分率',
+		value: function(item) {
+			return toFixed(item.classRate, 1) + '%';
+		}
+	},
+	level: {
+		title: '掌握程度',
+		value: function(item) {
+			return <i className={`ismastered ismastered-${item.level}`}></i>;
+		}
+	},
+	wrong: {
+		title: '查看错题',
+		value: function(item) {
+			return <a href={`${Leke.domain.wrongtopicServerName}/auth/student/wrong/wrongList.htm?knowledgeId=${item.id}`} target="_blank">去查看</a>;
+		}
+	},
+	exercise: {
+		title: '提升训练',
+		value: function(item) {
+			return <a href={`${Leke.domain.homeworkServerName}/auth/student/exercise/doWork2.htm?knoId=${item.id}`} target="_blank">去训练</a>;
+		}
+	}
+};
+
+class KnoGraspTable extends React.Component {
+	constructor(props) {
+		super(props);
+		this.state = {
+			levels: [1,2,3],
+			knoIds: []
+		};
+		this.handleChange = this.handleChange.bind(this);
+		this.handleCheckOne = this.handleCheckOne.bind(this);
+		this.handleCheckAll = this.handleCheckAll.bind(this);
+		this.handleClickWork = this.handleClickWork.bind(this);
+	}
+	handleChange(levels) {
+		let knoIds = this.state.knoIds;
+		if (knoIds.length) {
+			let knoRates = this.filterLevels(this.props.knoRates, levels);
+			let newKnoIds = knoRates.map(v => v.id).filter(v => knoIds.indexOf(v) >= 0);
+			this.setState({levels: levels, knoIds: newKnoIds});
+		} else {
+			this.setState({levels: levels});
+		}
+	}
+	handleCheckOne(e) {
+		let knoIds = this.state.knoIds;
+		let knoId = parseInt(e.target.value);
+		if (e.target.checked) {
+			knoIds.push(knoId);
+		} else {
+			let idx = knoIds.indexOf(knoId);
+			knoIds.splice(idx, 1);
+		}
+		this.setState({knoIds: knoIds});
+	}
+	handleCheckAll(e) {
+		if (e.target.checked) {
+			let knoIds = this.filterLevels(this.props.knoRates, this.state.levels).map(v => v.id);
+			this.setState({knoIds: knoIds});
+		} else {
+			this.setState({knoIds: []});
+		}
+	}
+	handleClickWork(e) {
+		let knoIds = this.state.knoIds;
+		if (knoIds.length > 0 && knoIds.length <= 30) {
+			let knos = this.props.knoRates.filter(v => knoIds.indexOf(v.id) >= 0).map(v => {
+				return {knoId: v.id, diff: 6 - v.level};
+			});
+			let {classId, subjectId} = this.props;
+			let data = {
+				homeworkQuestionRule: knos,
+				classId: classId,
+				subjectId: subjectId
+			};
+			let prefix = Leke.ctx + '/auth/teacher/quick/assign.htm?data=';
+			e.target.href = prefix + JSON.stringify(data);
+		} else {
+			if (knoIds.length > 30) {
+				Utils.Notice.alert('抱歉，单份提升作业勾选知识点数不能超过30个，建议分成多份作业布置');
+			}
+			e.target.href = 'javascript:void(0);';
+			e.stopPropagation();
+			e.preventDefault();
+		}
+	}
+	filterLevels(knoRates, levels) {
+		return knoRates.filter(item => levels.indexOf(item.level) >= 0);
+	}
+	render() {
+		let that = this;
+		let {levels, knoIds} = this.state;
+		let {knoRates, columns, increase} = this.props;
+		if (knoRates.length == 0) {
+			// 没有知识点分析，不做处理直接返回
+			return null;
+		}
+		columns = columns.split(',').map(v => KnoGraspTableColumnDefs[v]);
+		knoRates = this.filterLevels(knoRates, levels);
+		let rows = knoRates.map(item => {
+			return (
+				<tr key={item.id}>
+					{increase ? <td><input type="checkbox" value={item.id} onClick={that.handleCheckOne} checked={knoIds.indexOf(item.id) >= 0} /></td> : null}
+					{columns.map(column => <td className="operation">{column.value(item)}</td>)}
+				</tr>
+			);
+		});
+		return (
+			<div>
+				<div className="clear">
+					{increase ? <span className="tips">勾选知识点后，点击”布置提升作业“按钮可快速布置针对提升作业</span> : null}
+					<KnoGraspFilter onChange={this.handleChange} />
+				</div>
+				<div className="m-table m-table-center">
+					<table>
+						<thead>
+							<tr>
+								{increase ? <th><input type="checkbox" onClick={that.handleCheckAll} /></th> : null}
+								{columns.map(column => <th style={column.width ? {width: column.width} : {}}>{column.title}</th>)}
+							</tr>
+						</thead>
+						<tbody>{rows}</tbody>
+					</table>
+				</div>
+				{increase ? <a target="_blank" onClick={that.handleClickWork} className={"u-btn u-btn-auto u-btn-bg-" + (knoIds.length ? 'turquoise' : 'gray')}>布置提升作业</a> : null}
+			</div>
+		);
+	}
+}
+
+module.exports = KnoGraspTable;

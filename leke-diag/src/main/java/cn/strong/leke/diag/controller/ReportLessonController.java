@@ -1,0 +1,125 @@
+package cn.strong.leke.diag.controller;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.ResponseBody;
+
+import cn.strong.leke.common.serialize.support.json.JsonUtils;
+import cn.strong.leke.diag.dao.lesson.model.EvalQuery;
+import cn.strong.leke.diag.dao.lesson.model.EvaluateDTO;
+import cn.strong.leke.diag.dao.lesson.mybatis.AttendanceDao;
+import cn.strong.leke.diag.dao.lesson.mybatis.EvaluateDao;
+import cn.strong.leke.diag.manage.LessonBehaviorService;
+import cn.strong.leke.diag.model.report.LessonRptView;
+import cn.strong.leke.diag.report.LessonAnalyzeReportHandler;
+import cn.strong.leke.framework.page.jdbc.Page;
+import cn.strong.leke.framework.web.JsonResult;
+import cn.strong.leke.lesson.model.LessonVM;
+import cn.strong.leke.lessonlog.model.StudentBehavior;
+import cn.strong.leke.remote.service.lesson.ILessonRemoteService;
+
+/**
+ * 学生行为分析报告
+ * @author  andy
+ * @since   v1.0.0
+ */
+@Controller
+@RequestMapping({ "/auth/common/report/lesson/", "/auth/hd/report/lesson/" })
+public class ReportLessonController {
+
+	@Resource
+	private EvaluateDao evaluateDao;
+	@Resource
+	private AttendanceDao attendanceDao;
+	@Resource
+	private ILessonRemoteService lessonRemoteService;
+	@Resource
+	private LessonBehaviorService lessonBehaviorService;
+	@Resource
+	private LessonAnalyzeReportHandler lessonAnalyzeReportHandler;
+
+	/**
+	 * 学生成绩报告页面
+	 * @param model
+	 * @return
+	 */
+	@RequestMapping(value = "/main/{lessonId}-{tabIdx}")
+	public String prepare(@PathVariable("tabIdx") Integer tabIdx, @PathVariable("lessonId") Long lessonId, Model model,
+			HttpServletRequest request) {
+		LessonRptView view = this.lessonAnalyzeReportHandler.execute(lessonId);
+		Map<String, Object> ReportCst = new HashMap<>();
+		ReportCst.put("view", view);
+		ReportCst.put("tabIdx", tabIdx);
+		ReportCst.put("lessonId", lessonId);
+		ReportCst.put("device", request.getAttribute("device"));
+		model.addAttribute("ReportCst", JsonUtils.toJSON(ReportCst));
+		return "/auth/report/lesson/index";
+	}
+
+	/**
+	 * 课堂中学生行为统计
+	 * @param lessonId
+	 * @param model
+	 * @param request
+	 * @return
+	 */
+	@RequestMapping(value = "/behavior/{lessonId}")
+	public String behavior(@PathVariable("lessonId") Long lessonId, Model model) {
+		LessonVM lesson = this.lessonRemoteService.getLessonVMByLessonId(lessonId);
+		List<StudentBehavior> behaviors = this.lessonBehaviorService.findStudentBehaviorByLessonId(lessonId);
+		model.addAttribute("lesson", lesson);
+		model.addAttribute("behaviors", behaviors);
+		return "/auth/report/lesson/behaviors";
+	}
+
+	/**
+	 * 考勤名单列表
+	 * @param lessonId
+	 * @param model
+	 * @return
+	 */
+	@RequestMapping("/attendnames/{lessonId}-{status}")
+	public String attendnames(@PathVariable("lessonId") Long lessonId, @PathVariable("status") Integer status,
+			Model model) {
+		List<String> userNames = this.attendanceDao.findNamesByCourseSingleIdAndStatus(lessonId, status);
+		model.addAttribute("userNames", userNames);
+		return "/auth/report/lesson/attendnames";
+	}
+
+	/**
+	 * 课堂评价列表
+	 * @param lessonId
+	 * @param model
+	 * @return
+	 */
+	@RequestMapping(value = "/evaluate/{lessonId}", method = RequestMethod.GET)
+	public String evaluate(@PathVariable("lessonId") Long lessonId, Model model) {
+		LessonVM lesson = this.lessonRemoteService.getLessonVMByLessonId(lessonId);
+		model.addAttribute("lesson", lesson);
+		return "/auth/report/lesson/evaluate";
+	}
+
+	/**
+	 * 评价信息查询·
+	 * @param query
+	 * @param page
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping(value = "/evaluate/list", method = RequestMethod.POST)
+	public Object evaluate(EvalQuery query, Page page) {
+		List<EvaluateDTO> list = this.evaluateDao.findEvaluateByLessonId(query, page);
+		page.setDataList(list);
+		return new JsonResult().addDatas("page", page);
+	}
+}

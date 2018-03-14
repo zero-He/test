@@ -1,0 +1,203 @@
+package cn.strong.leke.homework.dao.mongo;
+
+import static com.mongodb.client.model.Accumulators.sum;
+import static com.mongodb.client.model.Filters.and;
+import static com.mongodb.client.model.Filters.eq;
+import static com.mongodb.client.model.Filters.gt;
+import static com.mongodb.client.model.Filters.in;
+import static com.mongodb.client.model.Filters.ne;
+import static com.mongodb.client.model.Projections.excludeId;
+import static com.mongodb.client.model.Projections.fields;
+import static com.mongodb.client.model.Projections.include;
+import static com.mongodb.client.model.Sorts.ascending;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+import org.bson.conversions.Bson;
+import org.bson.types.ObjectId;
+import org.springframework.beans.factory.InitializingBean;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Repository;
+
+import com.mongodb.client.AggregateIterable;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.Aggregates;
+
+import cn.strong.leke.data.mongo.BsonUtils;
+import cn.strong.leke.homework.model.SheetBook;
+import cn.strong.leke.homework.model.SheetErr;
+import cn.strong.leke.homework.model.SheetTask.SheetGroup;
+
+@Repository
+public class SheetBookDao implements InitializingBean {
+
+	private static final String COLL_NAME = "sheet.book";
+
+	@Autowired
+	private MongoDatabase db;
+	private MongoCollection<SheetBook> coll;
+
+	@Override
+	public void afterPropertiesSet() throws Exception {
+		this.coll = db.getCollection(COLL_NAME, SheetBook.class);
+	}
+
+	/**
+	 * 保存答题卡卷
+	 * @param books
+	 */
+	public void insertSheetBooks(List<SheetBook> books) {
+		books.forEach(book -> book.setId(new ObjectId().toHexString()));
+		this.coll.insertMany(books);
+	}
+
+	/**
+	 * 更新答题卡卷
+	 * @param book
+	 */
+	public void updateSheetBook(SheetBook book) {
+		Bson filter = eq("_id", new ObjectId(book.getId()));
+		Bson update = BsonUtils.toUpdateSetDoc(book);
+		this.coll.updateOne(filter, update);
+	}
+
+	/**
+	 * 删除答题卡卷
+	 * @param taskId
+	 */
+	public void deleteSheetBooks(String taskId) {
+		Bson filter = eq("taskId", taskId);
+		this.coll.deleteMany(filter);
+	}
+
+	/**
+	 * 根据ID获取答题卡卷
+	 * @param id
+	 * @return
+	 */
+	public SheetBook getSheetBookById(String id) {
+		Bson filter = eq("_id", new ObjectId(id));
+		return this.coll.find(filter).first();
+	}
+
+	/**
+	 * 获取下一个重页异常
+	 * @param taskId
+	 * @param id
+	 * @return
+	 */
+	public SheetBook getNextRepeatSheetBookById(String taskId, String id) {
+		Bson filter = and(eq("taskId", taskId), gt("_id", new ObjectId(id)), eq("errorNo", SheetErr.PAGE_REPEAT.code));
+		Bson sorter = ascending("_id");
+		return this.coll.find(filter).sort(sorter).first();
+	}
+
+	/**
+	 * 获取下一个定位点异常或者填涂异常
+	 * @param taskId
+	 * @param id
+	 * @return
+	 */
+	public SheetBook getNextFillingSheetBookById(String taskId, String id) {
+		Bson filter = and(eq("taskId", taskId), gt("_id", new ObjectId(id)),
+				in("errorNo", Arrays.asList(SheetErr.UNSHARP_POSITION.code, SheetErr.UNSHARP_FILLING.code)));
+		Bson sorter = ascending("errorNo", "_id");
+		return this.coll.find(filter).sort(sorter).first();
+	}
+
+	/**
+	 * 获取下一个定位点异常或者疑似异常
+	 * @param taskId
+	 * @param id
+	 * @return
+	 */
+	public SheetBook getNextSuspectSheetBookById(String taskId, String id) {
+		Bson filter = and(eq("taskId", taskId), gt("_id", new ObjectId(id)),
+				eq("errorNo", SheetErr.UNSHARP_SUSPECT.code));
+		Bson sorter = ascending("_id");
+		return this.coll.find(filter).sort(sorter).first();
+	}
+
+	/**
+	 * 统计解析正确的作业列表
+	 * @param taskId
+	 * @return
+	 */
+	public List<SheetGroup> findSheetGroupsByTaskId(String taskId) {
+		Bson match = Aggregates.match(and(eq("taskId", taskId), in("errorNo", 0, SheetErr.UNSHARP_SUSPECT.code)));
+		Bson project1 = Aggregates.project(include("homeworkId", "homeworkName", "classId", "classType", "className"));
+		Bson group = Aggregates.group(and(eq("homeworkId", "$homeworkId"), eq("homeworkName", "$homeworkName"),
+				eq("classId", "$classId"), eq("classType", "$classType"), eq("className", "$className")),
+				sum("bookNum", 1));
+		Bson project2 = Aggregates.project(fields(excludeId(), include("bookNum"), eq("homeworkId", "$_id.homeworkId"),
+				eq("homeworkName", "$_id.homeworkName"), eq("classId", "$_id.classId"),
+				eq("classType", "$_id.classType"), eq("className", "$_id.className")));
+		Bson sorter = Aggregates.sort(ascending("classType", "classId", "homeworkId"));
+		List<Bson> pipeline = Arrays.asList(match, project1, group, project2, sorter);
+		AggregateIterable<SheetGroup> aggregate = this.coll.aggregate(pipeline, SheetGroup.class);
+		return aggregate.into(new ArrayList<>());
+	}
+
+	/**
+	 * 获取任务中某个作业的答题卡卷列表。
+	 * @param taskId 任务ID
+	 * @param homeworkId 作业ID
+	 * @return
+	 */
+	public List<SheetBook> findSheetPagesByTaskIdAndHomeworkId(String taskId, Long homeworkId) {
+		Bson filter = and(eq("taskId", taskId), eq("homeworkId", homeworkId),
+				in("errorNo", 0, SheetErr.UNSHARP_SUSPECT.code));
+		Bson project = eq("questions", 0);
+		return this.coll.find(filter).projection(project).into(new ArrayList<>());
+	}
+
+	/**
+	 * 查询任务的无错卷ID。
+	 * @param taskId
+	 * @return
+	 */
+	public List<String> findNormalBookIdsByTaskId(String taskId) {
+		Bson filter = and(eq("taskId", taskId), eq("errorNo", 0));
+		return this.coll.find(filter).map(SheetBook::getId).into(new ArrayList<>());
+	}
+
+	/**
+	 * 查询任务的错误卷
+	 * @param taskId
+	 * @return
+	 */
+	public List<SheetBook> findErrorBooksByTaskId(String taskId) {
+		Bson filter = and(eq("taskId", taskId), gt("errorNo", 0));
+		Bson sorter = ascending("errorNo", "_id");
+		return this.coll.find(filter).sort(sorter).into(new ArrayList<>());
+	}
+
+	/**
+	 * 查找本任务下同答题卡和同学生的试卷信息。
+	 * @param taskId 任务ID
+	 * @param sheetId 答题卡ID
+	 * @param userId 用户ID
+	 * @return
+	 */
+	public SheetBook findSheetBookByCurrentTask(String taskId, String sheetId, Long userId) {
+		Bson filter = and(eq("taskId", taskId), eq("sheetId", sheetId), eq("userId", userId),
+				in("errorNo", SheetErr.PAGE_MISSING.code, SheetErr.PAGE_REPEAT.code));
+		return this.coll.find(filter).first();
+	}
+
+	/**
+	 * 查找其它任务下同答题卡和同学生的试卷信息。
+	 * @param taskId 任务ID
+	 * @param sheetId 答题卡ID
+	 * @param lekeNo 用户乐号
+	 * @return
+	 */
+	public List<SheetBook> findSheetBookByOtherTask(String taskId, String sheetId, String lekeNo) {
+		Bson filter = and(eq("sheetId", sheetId), eq("lekeNo", lekeNo), ne("taskId", taskId),
+				eq("errorNo", SheetErr.PAGE_MISSING.code));
+		return this.coll.find(filter).into(new ArrayList<>());
+	}
+}

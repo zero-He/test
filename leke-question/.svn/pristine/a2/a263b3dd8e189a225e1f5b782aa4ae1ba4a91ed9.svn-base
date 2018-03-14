@@ -1,0 +1,45 @@
+<div class="examination">
+	<div class="m-search-box">
+		<ul class="m-tab">
+			<li data-bind="css: {
+				'active': query.leagueQuestionState() == 1
+			}, click: function() {
+				query.leagueQuestionState(1);
+				doSearch();
+			}, i18n: 'que.question.tab.unChecked'"></li>
+			<li data-bind="css: {
+				'active': query.leagueQuestionState() == 2
+			}, click: function() {
+				query.leagueQuestionState(2);
+				doSearch();
+			}, i18n: 'que.question.tab.checked'"></li>
+		</ul>
+		<div class="item">
+			<label class="title" data-bind="i18n: 'que.question.searchItem.schoolStageSubject'"></label>
+			<select id="stageSubject" class="u-select u-select-nm"></select>
+			<label class="u-title f-w60" data-bind="i18n: 'que.question.searchItem.questionType'"></label>
+			<select name="questionTypeId" class="u-select u-select-sm"
+				data-bind="options: questionTypes,
+						   optionsText: 'questionTypeName',
+						   optionsValue: 'questionTypeId',
+						   optionsCaption: '==请选择题型==',
+						   value: query.questionTypeId,
+						   valueAllowUnset: true"></select>
+			<label class="u-title f-w60" data-bind="i18n: 'que.question.searchItem.questionId'"></label>
+			<input name="questionId" type="text" class="u-ipt u-ipt-nm"
+				data-bind="value: query.questionId"/>
+			<input name="content" type="text" class="u-ipt u-ipt-nm" style="width: 192px;"
+				data-bind="value: query.content, i18n: {placeholder: 'que.question.searchItem.content'}"/>
+			<button class="u-btn u-btn-nm u-btn-bg-turquoise"
+				data-bind="click: doSearch(),
+								i18n: 'que.question.btn.search'"></button>
+		</div>
+	</div>
+	<hr class="line">
+	<div class="f-mt5" style="border-top: 1px solid #cceeed;">
+		<div class="quesContent f-bfc">
+			<div class="quesStyleCut" style="min-height: 500px;margin-top:10px;">
+			</div>
+		</div>
+	</div>
+</div>

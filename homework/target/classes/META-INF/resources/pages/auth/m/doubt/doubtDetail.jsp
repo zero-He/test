@@ -1,0 +1,162 @@
+<%@ page pageEncoding="UTF-8"%>
+<%@ include file="/pages/common/tags.jsp"%>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <title>问题详情</title>
+    <link rel="stylesheet" href="${assets}/styles/mobile/global.css">
+    <link rel="stylesheet" href="${assets}/styles/mobile/doubt.css">
+	<link rel="stylesheet" href="${assets}/scripts/common/mobile/ui/photoswipe/default-skin/photoswipe.css"> 
+	<link rel="stylesheet" href="${assets}/scripts/common/mobile/ui/photoswipe/default-skin/default-skin.css"> 
+	<%@ include file="/pages/common/cordova.jsp"%>
+</head>
+<body style="padding-top:0px;" onload="onLoad();">
+	<%-- <header class="c-header">
+        <a class="back" href="list.htm?resolved=${resolved}&ticket=${ticket}"></a>
+        	问题详情
+        <a id="jExplain" class="operation" href="explain.htm?doubtId=${doubt.doubtId}&resolved=${resolved}">${word}</a>
+    </header> --%>
+    <input id="jWord" type="hidden" value="${word}">
+    <input id="jResolved" type="hidden" value="${resolved}">
+    <input id="jDoubtId" type="hidden" value="${doubt.doubtId}">
+    <article class="c-doubt-detail">
+        <!-- 学生 -->
+        <header class="identity identity--stu">
+        	<div class="img-con">
+	            <img src="${studentPhoto}" class="photo" onerror="this.src = 'https://static.leke.cn/images/index/people-photo.png'" alt="">
+        	</div>
+        	<div class="infos">
+	            <span class="name">${doubt.userName}</span>
+	            <span class="time">${doubt.createdOnString}</span>
+        	</div>
+        	<div class="operation">
+                <i data-i="${doubt.doubtId }" class="mark <c:if test="${(doubt.studentCollect==1 and currentRoleId == 100) or (doubt.teacherCollect==1 and currentRoleId == 101)}">marked</c:if>"></i>
+                <span class="spread">
+                   	 展开
+                </span>
+            </div>
+            <div class="more-info" style="height: 0px;">
+                <div>${doubt.sourceStr}：${doubt.doubtTitle}</div>
+                <div>教材：${doubt.materialPathName}</div>
+                <div>老师：${doubt.teacherName}</div>
+                <div>科目：${doubt.subjectName}</div>
+            </div>
+        </header>
+
+        <section class="question">
+            <h5 class="title">${doubt.doubtTitle}</h5>
+            <div class="con">
+                <c:if test="${doubt.doubtAudio ne '' && doubt.doubtAudio ne null}">
+                	<div class="c-media">
+	                    <audio class="audio" src="${doubt.doubtAudio}" controls="controls" loop="false" hidden="true"></audio>
+	                    <button class="media-btn">
+	                        <span class="waves">
+	                            <b class="w1"><i>1</i></b>
+	                            <b class="w2"><i>2</i></b>
+	                            <b class="w3"><i>3</i></b>
+	                        </span>
+	                    </button> 
+	                    <c:if test="${doubt.duration ne null&&doubt.duration ne ''}">
+	                    	<span class="length">${doubt.duration}</span>
+	                    </c:if>
+                	</div>
+                </c:if>
+                ${doubt.doubtContent}
+                <c:if test="${doubt.questionId ne null}">
+                	<div style="color: #999;margin-top:12px">请登录网页版乐答，查看具体问题描述。</div>
+                </c:if>
+            </div>
+        </section>
+		<c:if test="${ not empty explains}">
+			<c:forEach items="${explains}" var="explain">
+				<!-- 老师 -->
+		        <header class="identity">
+		        	<c:if test="${teacherId eq explain.createdBy}">
+		            	<img src="${teacherPhoto}" class="photo" onerror="this.src = 'https://static.leke.cn/images/index/people-photo.png'" alt="">
+		        	</c:if>
+		        	<c:if test="${teacherId ne explain.createdBy}">
+		            	<img src="${studentPhoto}" class="photo" onerror="this.src = 'https://static.leke.cn/images/index/people-photo.png'" alt="">
+		        	</c:if>
+		            <span class="name">${explain.userName}</span>
+		            <span class="time">${explain.createOnString}</span>
+		        </header>
+		
+		        <section class="answer">
+		            <div class="con">
+		               	<c:if test="${explain.expainAudio ne '' && explain.expainAudio ne null}">
+			                <div class="c-media">
+			                    <audio class="audio" src="${explain.expainAudio}" controls="controls" loop="false" hidden="true"></audio>
+			                    <button class="media-btn">
+			                        <span class="waves">
+			                            <b class="w1"><i>1</i></b>
+			                            <b class="w2"><i>2</i></b>
+			                            <b class="w3"><i>3</i></b>
+			                        </span>
+			                    </button> 
+			                    <c:if test="${explain.duration ne null&&explain.duration ne ''}">
+				                    <span class="length">${explain.duration}</span>
+			                    </c:if>
+			                </div>
+		               	</c:if>
+		               	${explain.explainContent}
+		            </div>
+		        </section>
+			</c:forEach>
+		</c:if>
+    </article>
+    <!-- Root element of PhotoSwipe. Must have class pswp. -->
+	<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+	    <!-- Background of PhotoSwipe. 
+	         It's a separate element as animating opacity is faster than rgba(). -->
+	    <div class="pswp__bg"></div>
+	    <!-- Slides wrapper with overflow:hidden. -->
+	    <div class="pswp__scroll-wrap">
+	        <!-- Container that holds slides. 
+	            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+	            Don't modify these 3 pswp__item elements, data is added later on. -->
+	        <div class="pswp__container">
+	            <div class="pswp__item"></div>
+	            <div class="pswp__item"></div>
+	            <div class="pswp__item"></div>
+	        </div>
+	        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+	        <div class="pswp__ui pswp__ui--hidden">
+	            <div class="pswp__top-bar">
+	                <!--  Controls are self-explanatory. Order can be changed. -->
+	                <div class="pswp__counter"></div>
+	                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+	                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+	                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+	                <!-- element will get class pswp__preloader--active when preloader is running -->
+	                <div class="pswp__preloader">
+	                    <div class="pswp__preloader__icn">
+	                      <div class="pswp__preloader__cut">
+	                        <div class="pswp__preloader__donut"></div>
+	                      </div>
+	                    </div>
+	                </div>
+	            </div>
+	            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+	                <div class="pswp__share-tooltip"></div> 
+	            </div>
+	            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+	            </button>
+	            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+	            </button>
+	            <div class="pswp__caption">
+	                <div class="pswp__caption__center"></div>
+	            </div>
+	        </div>
+	    </div>
+	</div>
+	<script src="${assets}/scripts/common/mobile/common.js?_t=20171115"></script>
+	<script src="${assets}/scripts/common/mobile/ui/photoswipe/photoswipe.min.js"></script> 
+	<script src="${assets}/scripts/common/mobile/ui/photoswipe/photoswipe-ui-default.min.js"></script> 
+    <script src="/scripts/m/doubt/detail.js?_tt=20171115"></script>
+
+</body>
+</html>

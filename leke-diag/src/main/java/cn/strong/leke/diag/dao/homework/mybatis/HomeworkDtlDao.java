@@ -1,0 +1,332 @@
+package cn.strong.leke.diag.dao.homework.mybatis;
+
+import java.math.BigDecimal;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+
+import org.apache.ibatis.annotations.Param;
+
+import cn.strong.leke.diag.dao.homework.model.AnalysePhase;
+import cn.strong.leke.diag.dao.homework.model.LessonExamAnaly;
+import cn.strong.leke.diag.dao.homework.model.UserWorkSubmitRate;
+import cn.strong.leke.diag.dao.homework.model.WorkDtlQuery;
+import cn.strong.leke.diag.dao.homework.model.WorkFinishAnaly;
+import cn.strong.leke.diag.model.ClassAnalysisDto;
+import cn.strong.leke.diag.model.ClassDiligentDto;
+import cn.strong.leke.diag.model.ClassSubjectScoreDto;
+import cn.strong.leke.diag.model.CourseSubjectHomeworkStatisticsStudentsDto;
+import cn.strong.leke.diag.model.CourseSubjectHomeworkStatisticsStudentsQueryDto;
+import cn.strong.leke.diag.model.HomeworkDtl;
+import cn.strong.leke.diag.model.ReviewCount;
+import cn.strong.leke.diag.model.StuAvgScoreDto;
+import cn.strong.leke.diag.model.StuDiligentDto;
+import cn.strong.leke.diag.model.StuSubjQuery;
+import cn.strong.leke.diag.model.StuSubjScore;
+import cn.strong.leke.diag.model.StuSubjWork;
+import cn.strong.leke.diag.model.StuSubjectScoreDto;
+import cn.strong.leke.diag.model.SubjectAnalysisDto;
+import cn.strong.leke.diag.model.UserRate;
+import cn.strong.leke.diag.model.UserStats;
+import cn.strong.leke.diag.model.studentMonitor.HomeworkCountBean;
+import cn.strong.leke.framework.page.jdbc.Page;
+import cn.strong.leke.remote.model.homework.HomeworkDtlRemote;
+
+public interface HomeworkDtlDao {
+
+	/**
+	 * 查询作业明细信息
+	 * @param homeworkDtlId
+	 * @return
+	 */
+	public HomeworkDtl getHomeworkDtlByHomeworkDtlId(Long homeworkDtlId);
+
+	/**
+	 * 按备课标记查询作业列表
+	 * @param beikeGuid
+	 * @param studentId
+	 * @return
+	 */
+	public List<AnalysePhase> findStudentAnalysePhasesByBeikeGuid(@Param("beikeGuid") String beikeGuid,
+			@Param("studentId") Long studentId);
+
+	/**
+	 * 根据作业ID及学生ID获取学生作业
+	 * @param homeworkId 作业ID
+	 * @param studentId 学生ID
+	 * @return
+	 */
+	public HomeworkDtl getHomeworkDtlByHomeworkIdAndStudentId(@Param("homeworkId") Long homeworkId,
+			@Param("studentId") Long studentId);
+
+	/**
+	 * 根据作业标识，查询作业统计信息
+	 * @param homeworkId
+	 * @return
+	 */
+	public List<HomeworkDtl> findHomeworkDtlByHomeworkId(Long homeworkId);
+
+	/**
+	 * 获取一批学生的学科作业成绩（分析用，成绩为得分率换算出来的分数）
+	 * @param query
+	 * @return
+	 */
+	public List<StuSubjScore> findStuSubjScores(StuSubjQuery query);
+
+	/**
+	 * 获取一批学生的学科完成情况（分析用，参与findStuSubjScores）
+	 * @param query
+	 * @return
+	 */
+	public List<Long> findHomeworkDtlIds(StuSubjQuery query);
+
+	/**
+	 * 获取一批学生的学科完成情况（分析用）
+	 * @param query
+	 * @return
+	 */
+	public List<StuSubjWork> findStuSubjWorks(StuSubjQuery query);
+
+	/**
+	 * 根据班级和学科查询学生平均成绩列表
+	 * @param classId 班级类型
+	 * @param classId 班级ID
+	 * @param subjectId 学科ID
+	 * @param teacherId 教师ID
+	 * @return
+	 */
+	public List<StuAvgScoreDto> findStuAvgScoreDtoList(@Param("classType") Long classType,
+			@Param("classId") Long classId, @Param("subjectId") Long subjectId, @Param("teacherId") Long teacherId);
+
+	/**
+	 * 根据条件查询学生作业提交情况列表
+	 * @param classId 班级类型
+	 * @param classId 班级ID
+	 * @param subjectId 学科ID
+	 * @param teacherId 教师ID
+	 * @param startTime 开始时间
+	 * @param endTime 结束时间
+	 * @return
+	 */
+	public List<StuDiligentDto> findStuDiligentDtoList(@Param("classType") Long classType,
+			@Param("classId") Long classId, @Param("subjectId") Long subjectId, @Param("teacherId") Long teacherId,
+			@Param("startTime") Date startTime, @Param("endTime") Date endTime);
+
+	/**
+	 * 根据条件查询班级作业提交情况列表
+	 * @param classIdList 班级ID列表
+	 * @param classId 班级类型
+	 * @param subjectId 学科ID
+	 * @param startTime 开始时间
+	 * @param endTime 结束时间
+	 * @return
+	 */
+	public List<ClassDiligentDto> findClassDiligentDtoList(@Param("classIdList") List<Long> classIdList,
+			@Param("classType") Long classType, @Param("subjectId") Long subjectId, @Param("startTime") Date startTime,
+			@Param("endTime") Date endTime);
+
+	/**
+	 * 根据班级统计该班级学科优劣
+	 * @param classType 班级类型
+	 * @param classId 班级ID
+	 * @return
+	 */
+	public List<SubjectAnalysisDto> findSubjectAnalysisDtoList(@Param("classType") Long classType,
+			@Param("classId") Long classId);
+
+	/**
+	 * 统计年级下所有班级学科优劣
+	 * @param classId 班级类型
+	 * @param classIdList 班级ID列表
+	 * @param subjectId 学科ID
+	 * @return
+	 */
+	public List<ClassAnalysisDto> findClassAnalysisDtoList(@Param("classType") Long classType,
+			@Param("classIdList") List<Long> classIdList, @Param("subjectId") Long subjectId);
+
+	/**
+	 * 根据班级统计该班级学生各学科平均分
+	 * @param classType 班级类型
+	 * @param classId 班级ID
+	 * @return
+	 */
+	public List<StuSubjectScoreDto> findStuSubjectScoreDtoList(@Param("classType") Long classType,
+			@Param("classId") Long classId);
+
+	/**
+	 * 统计单个学生各学科平均分
+	 * @param classType 班级类型
+	 * @param classId 班级ID
+	 * @return
+	 */
+	public List<StuSubjectScoreDto> findOneStuSubjectScoreDtoList(@Param("classType") Long classType,
+			@Param("classId") Long classId, @Param("studentId") Long studentId);
+
+	/**
+	 * 根据班级统计该班级整体各学科成绩
+	 * @param classType 班级类型
+	 * @param classId 班级ID
+	 * @return
+	 */
+	public List<ClassSubjectScoreDto> findClassSubjectScoreDtoList(@Param("classType") Long classType,
+			@Param("classId") Long classId);
+
+	/**
+	 *	
+	 * 描述:作业提交状态统计
+	 *
+	 * @author  DuanYanming
+	 * @created 2014年7月30日 上午11:07:12
+	 * @since   v1.0.0 
+	 * @param studentId
+	 * @param subjectId
+	 * @param startTime
+	 * @param endTime
+	 * @return
+	 * @return  List<Map<String,Object>>
+	 */
+	public List<Map<String, Object>> findStudentSubmitState(@Param("studentId") Long studentId,
+			@Param("subjectId") Long subjectId, @Param("classType") Long classType, @Param("classId") Long classId,
+			@Param("startTime") Date startTime, @Param("endTime") Date endTime);
+
+	/**
+	 * 查询一批学生的一段时间中某学科所有作业的平均得分率（百分制）
+	 * @param userIds 学生列表
+	 * @param subjectId 学科ID
+	 * @param startTime 开始时间
+	 * @param endTime 结束时间
+	 * @return
+	 */
+	public BigDecimal getUsersAvgScore(@Param("userIds") List<Long> userIds, @Param("subjectId") Long subjectId,
+			@Param("startTime") Date startTime, @Param("endTime") Date endTime);
+
+	/**作业勤奋报告：学生查询按照课程学科分组的作业统计信息
+	 * @param queryDto
+	 * @param page
+	 * @return
+	 */
+	List<CourseSubjectHomeworkStatisticsStudentsDto> findMyCourseSubject(
+			CourseSubjectHomeworkStatisticsStudentsQueryDto queryDto, Page page);
+
+	/** 作业勤奋报告，统计学生的所有作业统计信息
+	 * @param studentId
+	 * @param startTime
+	 * @param endTime
+	 * @return
+	 */
+	List<Map<String, Object>> findStudentHomeworkSubmitState(@Param("studentId") Long studentId,
+			@Param("startTime") Date startTime);
+
+	/**
+	 * 获取学生各学科作业完成情况。
+	 * @param userId 学生ID
+	 * @param startTime 开始时间
+	 * @param endTime 结束时间
+	 * @return
+	 */
+	public List<UserStats.SubjWork> findSubjWorkByUserId(@Param("userId") Long userId,
+			@Param("startTime") Date startTime, @Param("endTime") Date endTime);
+
+	/**
+	 * 获取学生各学科作业成绩情况。
+	 * @param userId 学生ID
+	 * @param startTime 开始时间
+	 * @param endTime 结束时间
+	 * @return
+	 */
+	public List<UserStats.SubjScore> findSubjScoreByUserId(@Param("userId") Long userId,
+			@Param("startTime") Date startTime, @Param("endTime") Date endTime);
+
+	/**
+	 * 根据作业ID ，获取所有学生作业
+	 * @param hwIds
+	 * @return
+	 */
+	List<HomeworkDtlRemote> findHwDtlByHomeworkIds(@Param("hwIds") List<Long> hwIds);
+
+	/**
+	 * 获取作业完成情况
+	 * @param studentId
+	 * @param start
+	 * @param end
+	 * @return
+	 */
+	public WorkFinishAnaly getStudentFinishAnalyByTime(@Param("studentId") Long studentId, @Param("start") Date start,
+			@Param("end") Date end);
+
+	/**
+	 * 查询作业学生成绩等级分布。
+	 * @param homeworkId
+	 * @return
+	 */
+	public LessonExamAnaly getScoreLevelsByHomeworkId(Long homeworkId);
+
+	/**
+	 * 根据条件查询作业明细列表
+	 * @param query
+	 * @param page
+	 * @return
+	 */
+	public List<Map<String, Object>> findWorkDtlsByQuery(WorkDtlQuery query, Page page);
+
+	/**
+	 * 查询班级学生某学科的作业提交率
+	 * @param userIds
+	 * @param subjectId
+	 * @return
+	 */
+	public Integer findHomeworkNumByUserIds(@Param("userIds") List<Long> userIds, @Param("teacherId") Long teacherId,
+			@Param("subjectId") Long subjectId, @Param("start") Date start, @Param("end") Date end);
+
+	/**
+	 * 查询班级学生某学科的作业提交率
+	 * @param userIds
+	 * @param subjectId
+	 * @return
+	 */
+	public List<UserWorkSubmitRate> findUserWorkSubmitRatesByUserIds(@Param("teacherId") Long teacherId, @Param("subjectId") Long subjectId,
+			@Param("start") Date start, @Param("end") Date end, @Param("classId") Long classId);
+	
+	/**
+	 * 查询班级学生某学科的作业提交统计信息
+	 * @param teacherId
+	 * @param subjectId
+	 * @param start
+	 * @param end
+	 * @param classId
+	 * @return
+	 */
+	public HomeworkCountBean findUserWorkSubmitRatesStat(@Param("teacherId") Long teacherId, @Param("subjectId") Long subjectId,
+			@Param("start") Date start, @Param("end") Date end, @Param("classId") Long classId);
+
+	/**
+	 * 查询学生作业的提交率及订正率
+	 * @param userId
+	 * @param start
+	 * @param end
+	 * @return
+	 */
+	public UserRate getUserSubmitBugFixRatesByUserIds(@Param("userId") Long userId, @Param("start") Date start,
+			@Param("end") Date end);
+
+	/**
+	 * 查询学生作业的提交率及订正率
+	 * @param userIds
+	 * @param teacherId
+	 * @param subjectId
+	 * @param start
+	 * @param end
+	 * @return
+	 */
+	public List<UserRate> findUserSubmitBugFixRatesByUserIds(@Param("userIds") List<Long> userIds,
+			@Param("teacherId") Long teacherId, @Param("subjectId") Long subjectId, @Param("start") Date start,
+			@Param("end") Date end);
+
+	/**
+	 * 查询单课下学生是否查看笔记次数
+	 * @param courseSingleIds
+	 * @return
+	 */
+	public List<ReviewCount> findStudentReviewCountByCourseSingleId(
+			@Param("courseSingleIds") List<Long> courseSingleIds);
+}

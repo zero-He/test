@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.2.xsd">
+
+	<!-- server provider configure -->
+	<bean class="cn.strong.leke.core.webservice.WebServiceServerProvider">
+		<property name="basePackage" value="cn.strong.leke.homework.remote" />
+		<property name="urlPrefix" value="/api/n/homework" />
+	</bean>
+
+	<!-- client invoker configure -->
+	<bean class="cn.strong.leke.core.webservice.WebServiceClientInvoker">
+		<property name="services">
+			<props>
+				<prop key="cn.strong.leke.remote.service.tutor.user.struct.IStructRemoteService">
+					${domain.tutor}/api/n/tutor/structRemoteService.ws
+				</prop>
+				<prop key="cn.strong.leke.remote.service.lessonlog.IAttendanceRemoteService">
+					${domain.lesson}/api/n/lesson/attendanceRemoteService.ws
+				</prop>
+				<prop key="cn.strong.leke.remote.service.tutor.base.IRoleSchoolRemoteService">
+					${domain.tutor}/api/n/tutor/roleSchoolRemoteService.ws
+				</prop>
+				<prop key="cn.strong.leke.remote.service.homework.IHomeworkRemoteService">
+					${domain.homework}/api/n/homework/homeworkRemoteService.ws
+				</prop>
+				<prop key="cn.strong.leke.remote.service.microcourse.IMicrocourseRemoteService">
+					${domain.beike}/api/n/beike/microcourseRemoteService.ws
+				</prop>
+			</props>
+		</property>
+	</bean>
+
+</beans>

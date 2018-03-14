@@ -1,0 +1,3 @@
+define(function (require, exports, module) {
+"use strict";function indexRender(t,e,i){return i+1}function normalRateRender(t,e,i){return t>=90?'<span class="positive">积极</span>':t>=60?'<span class="kind-positive">较积极</span>':'<span class="negative">不积极</span>'}var $=require("jquery"),StaticDataGrid=require("../common/StaticDataGrid"),columns=[{title:"序号",field:"index",render:indexRender},{title:"姓名",field:"studentName"},{title:"应提交作业份数",field:"stuHomeworkNum",onSort:"stuHomeworkNum"},{title:"按时提交率（份）",field:"submitNumPro",onSort:"submitNum"},{title:"延时补交率（份）",field:"lateSubmitNumPro",onSort:"lateSubmitNum"},{title:"未提交率（份）",field:"noSubmitNumPro",onSort:"noSubmitNum"}],grid=new StaticDataGrid($("#app"),{datas:Csts.datas,columns:columns});
+});

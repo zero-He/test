@@ -1,0 +1,7 @@
+
+<!-- ko foreach: knowledges-->
+<span class="q-propterty-k-item">
+	<em data-bind="text: $data.path"></em>
+	<span data-bind="attr: { kid: $data.quesKnowledgeId }" title="删除" class="q-propterty-k-delete"> X </span>
+</span>
+<!-- /ko -->

@@ -1,0 +1,275 @@
+define(function(require, exports, module) {
+	var ko = require('knockout');
+	var $ = require('jquery');
+	var _ = require('underscore');
+	var http = require('common/base/http');
+	var dialog = require('dialog');
+	var Utils = require('utils');
+	var My97 = require('date');
+	var Echart = require('echart');
+	var Chart = require('chart');
+	var LekeDate = require('common/base/date');
+	require('common/knockout/component/leke-page');
+	var PageSort = require("monitor/component/pagesort");
+	// viewModel
+	function FormVM(params) {
+		var self = this;
+		self.init();
+		self.fLoadSsForTimeChart();
+		self.listdata = ko.observableArray();
+		self.totalSize = ko.observable();
+		self.curPage = ko.observable(1);		
+//		self.areas = ko.observableArray(window.data.areas);
+		
+		self.stateChange = ko.observable(1);
+		self.disposables = ko.observableArray();// 动态监视数组对象
+		PageSort.init();
+		self.disposables.push(ko.computed(function() {
+			// 点击分页
+			var curPage = self.curPage();
+			self.loaddata();
+		}));
+	}
+	// 初始化控件
+	FormVM.prototype.init = function() {
+		var self = this;
+		var seacheDate = LekeDate.of(window.currentSystemTime);
+		 $('#startDay').val(seacheDate.add(-1, 'M').add(-1, 'd').format());
+		 $('#endDay').val(seacheDate.add(-1, 'd').format());
+		 $('#jStartTime').val(seacheDate.format('yyyy-MM'));
+		 $('#jEndTime').val(seacheDate.format('yyyy-MM'));
+        new Weekpicker({ output: '#startWeek' }).initEmpty();
+        new Weekpicker({ output: '#endWeek' }).initEmpty();
+		$('#startDay').click(function() {
+			My97({
+				dateFmt : 'yyyy-MM-dd',
+				maxDate : '#F{$dp.$D(\'endDay\');}',
+				readOnly : true
+			});
+		});
+		$('#endDay').click(function() {
+			My97({
+				dateFmt : 'yyyy-MM-dd',
+				 minDate : '#F{$dp.$D(\'startDay\')}',
+				readOnly : true
+			});
+		});
+		$('#jStartTime').click(function(){
+			My97({
+				dateFmt:'yyyy-MM',
+				maxDate:$('#jEndTime').val() || '%y-%M-%d',
+				readOnly:true,
+				isShowClear:false
+			});
+		});
+		
+		$('#jEndTime').click(function(){
+			My97({
+				dateFmt:'yyyy-MM',
+				minDate:$('#jStartTime').val(),
+				maxDate:'%y-%M-%d',
+				readOnly:true,
+				isShowClear:false
+			});
+		});
+		$(".init-menu0").hide();
+	}
+
+	
+	FormVM.prototype.fLoadSsForTimeChart = function() {
+		var _this = this;
+		$.ajax({
+			type : 'post',
+			url : ctx +'/auth/common/activeuser/loadStatisForChart.htm',
+			data : {
+				fromDate : $('#startDay').val(),
+				endDate : $('#endDay').val(),
+				cycle : $("#cycle_sel option:selected").text(),
+				d : $("#leke_device option:selected").val(),
+				roleId : $('#roleId option:selected').val(),
+				startMonth : $('#jStartTime').val(),
+				endMonth : $('#jEndTime').val(),
+				startWeek : $('#startWeek').val(),
+				endWeek : $('#endWeek').val(),
+			},
+			dataType : 'json',
+			async : true,
+			success : function(datas) {
+				var dateArr = datas.datas.dateArr;
+				var activeUsersCountArr = datas.datas.activeUsersCountArr;
+				var activeProArr = datas.datas.activeProArr;
+				if (dateArr != null && dateArr != '') {
+				Echart.init($('#barSta')[0]).setOption({
+
+						    tooltip : {
+								trigger : 'axis',
+								axisPointer : {
+									type : 'shadow'
+								}	
+							},
+							color : Chart.Color.SCORE,
+							toolbox : {
+								show : true,
+								orient : 'vertical',
+								y : 'center',
+								feature : {
+									magicType : {
+										show : true,
+										type : ['line', 'stack']
+									},
+									restore : {
+										show : true
+									},
+									saveAsImage : {
+										show : true
+									}
+								}
+							},
+							dataZoom : {
+								show : true,
+						        realtime: true,
+
+							},
+						    xAxis : [{
+						    	type : 'category',
+						    	data : dateArr
+						    }],
+						    yAxis : [{
+								type : 'value'
+							}],
+						    series : [{name:"活跃用户", type:'line', data:activeUsersCountArr}
+						    ]
+						});
+				var myEchart = Echart.init($('#barSta1')[0]).setOption({
+
+					    tooltip : {
+							trigger : 'axis',
+							axisPointer : {
+								type : 'shadow'
+							}	
+						},
+						
+						dataZoom : {
+							show : true,
+					        realtime: true,
+						},
+						color : Chart.Color.SCORE,
+						toolbox : {
+							show : true,
+							orient : 'vertical',
+							y : 'center',
+							feature : {
+								magicType : {
+									show : true,
+									type : ['line', 'stack']
+								},
+								restore : {
+									show : true
+								},
+								saveAsImage : {
+									show : true
+								}
+							}
+						},
+
+					    xAxis : [{
+					    	type : 'category',
+					    	data : dateArr
+					    }],
+					    yAxis : [{
+							type : 'value',
+							axisLabel :	{
+								formatter: '{value} %'
+							}
+						}],
+					    series : [
+					              {name:"活跃率", type:'line', data:activeProArr}
+					    ]
+					});
+			} else {
+				Echart.init($('#barSta1')[0]).setOption({});
+				$('#barSta1').html("<div class='eval-rate-pictab m-tips f-block' style='padding-top:107px;'><i></i> <span>对不起，没有您要查询的数据</span></div>")
+				Echart.init($('#barSta')[0]).setOption({});
+				$('#barSta').html("<div class='eval-rate-pictab m-tips f-block' style='padding-top:107px;'><i></i> <span>对不起，没有您要查询的数据</span></div>")
+			}
+				$('#but').removeClass('u-btn-bg-gray');
+				$('#but').addClass('u-btn-bg-turquoise');
+				$('#but1').addClass('u-btn-bg-gray');
+				$('#but1').removeClass('u-btn-bg-turquoise');
+				$('#barSta1').css({ opacity: 1 });
+				$('#barSta1').hide();
+				$('#barSta').show();
+			}
+		});
+	},
+	
+	// 异步加载数据列表
+	FormVM.prototype.loaddata = function() {
+		var self = this;
+		Utils.Notice.mask.create("正在查询请稍等");
+		if (self.curPage.peek() == undefined) {
+			return;
+		}
+		var req = $.ajax({
+			type : 'get',
+			url : 'getPlatformActiveUserData.htm',
+			data : {
+				curPage : self.curPage.peek(),
+				fromDate : $('#startDay').val(),
+				endDate : $('#endDay').val(),
+				cycle : $("#cycle_sel option:selected").text(),
+				d : $("#leke_device option:selected").val(),
+				roleId : $('#roleId option:selected').val(),
+				startMonth : $('#jStartTime').val(),
+				endMonth : $('#jEndTime').val(),
+				startWeek : $('#startWeek').val(),
+				endWeek : $('#endWeek').val(),
+			}
+		});
+		req.then(function(datas) {
+			Utils.Notice.mask.close();
+			var record = eval(datas.datas.record);
+			
+			var page = datas.datas.page;
+			self.listdata(record || []);
+			self.totalSize(page.totalSize || 0);
+		}, function(msg) {
+			Utils.Notice.alert('数据加载失败！');   
+		});
+	};
+	
+	//导出表格
+	FormVM.prototype.exportExcel = function() {
+		var self = this;
+		if (self.listdata().length > 0) {
+			var query = {
+					curPage : self.curPage.peek(),
+					fromDate : $('#startDay').val(),
+					endDate : $('#endDay').val(),
+					cycle : $("#cycle_sel option:selected").text(),
+					d : $("#leke_device option:selected").val(),
+					roleId : $('#roleId option:selected').val(),
+					startMonth : $('#jStartTime').val(),
+					endMonth : $('#jEndTime').val(),
+					startWeek : $('#startWeek').val(),
+					endWeek : $('#endWeek').val(),
+			};
+			var data = _.isString(query) ? query : JSON.stringify(query || {})
+			window.location.href = 'exportPlatformActiveUser.htm?dataJson=' + data;
+		}
+		else {
+			Utils.Notice.alert('没有数据可以导出！');
+		}
+	};
+	
+	FormVM.prototype.loadList = function() {
+		var self = this;
+		$('#barSta').show();
+		$('#barSta1').show();
+		self.loaddata();
+		$('#barSta1').css({ opacity: 0 });
+		self.fLoadSsForTimeChart();
+	};
+	
+	ko.applyBindings(new FormVM());
+});

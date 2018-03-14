@@ -1,0 +1,32 @@
+log4j.level=${ci.log4j.level}
+log4j.sql.level=${ci.log4j.sql.level}
+log4j.business.level=${ci.log4j.business.level}
+
+log4j.rootLogger=${log4j.level},E ${ci.log4j.appender.stdout}
+
+log4j.logger.cn.strong.leke=${log4j.business.level},B,E ${ci.log4j.appender.stdout}
+log4j.additivity.cn.strong.leke=false
+
+log4j.logger.org.springframework.scheduling.quartz=ERROR, E ,STDOUT
+log4j.additivity.org.springframework.scheduling.quartz=false
+
+#### STDOUT ####
+log4j.appender.STDOUT=org.apache.log4j.ConsoleAppender
+log4j.appender.STDOUT.layout=org.apache.log4j.PatternLayout
+log4j.appender.STDOUT.layout.ConversionPattern=%d [%t] %-5p [%c] - %m%n
+
+#### E ####
+log4j.appender.E=org.apache.log4j.DailyRollingFileAppender
+log4j.appender.E.File=../logs/leke-exception.log
+log4j.appender.E.Append=true
+log4j.appender.E.Threshold=ERROR
+log4j.appender.E.layout=org.apache.log4j.PatternLayout
+log4j.appender.E.layout.ConversionPattern=%d [%t] %-5p [%c] - %m%n
+
+#### B ####
+log4j.appender.B=org.apache.log4j.DailyRollingFileAppender
+log4j.appender.B.File=../logs/leke-business.log
+log4j.appender.B.Append=true
+log4j.appender.B.Threshold=${log4j.business.level}
+log4j.appender.B.layout=org.apache.log4j.PatternLayout
+log4j.appender.B.layout.ConversionPattern=%d [%t] %-5p [%c] - %m%n

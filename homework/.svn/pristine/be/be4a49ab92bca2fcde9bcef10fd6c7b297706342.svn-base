@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" ?>   
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.homework.dao.mybatis.ExerciseOldDao">
+
+	<select id="findBatchExercise" resultType="cn.strong.leke.homework.model.ExerciseOld" >
+		SELECT * FROM `HW_EXERCISE`
+		WHERE exerciseId > #{maxExerciseId}
+		ORDER BY exerciseId ASC
+		LIMIT 100000
+	</select>
+	
+	<select id="findBatchExerciseItem" resultType="cn.strong.leke.homework.model.ExerciseItem" >
+		SELECT * FROM `HW_EXERCISE_ITEM`
+		WHERE exerciseId in
+		<foreach collection="ids" item="item" open="(" separator="," close=")">
+			#{item}
+		</foreach>
+	</select>
+	
+</mapper>   

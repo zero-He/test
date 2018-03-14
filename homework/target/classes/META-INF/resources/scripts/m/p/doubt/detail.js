@@ -1,0 +1,53 @@
+$(".back").click(function(){
+	    	window.history.go(-1);
+	    });
+var jResolved = $("#jResolved").val();
+var jDoubtId = $("#jDoubtId").val();
+$(".back").click(function(){
+	window.location.href = "list.htm?resolved="+jResolved;
+});
+$("#jExplain").click(function(){
+	window.location.href = "explain.htm?doubtId="+jDoubtId+"&resolved="+jResolved;
+});
+
+$(".media-btn").click(function(){
+	var audio = $(".do-wave").parent().find(".audio")[0];
+	if(audio){
+		audio.pause();
+	}
+	$(".media-btn").removeClass("do-wave");
+	$(this).addClass("do-wave");
+	audio = $(this).parent().find(".audio")[0];
+	if(audio){
+		audio.loop = false;
+		audio.addEventListener('ended', function () {  
+		     $(".media-btn").removeClass('do-wave');
+		}, false);
+		audio.play();
+	}
+});
+$(".c-tab li").click(function(){
+	var i = $(this).data("i");
+	if(i==2){
+		window.location.href = "ask.htm";
+	}else{
+		window.location.href = "list.htm?resolved="+i;
+	}
+});
+$(".con img").click(function(){
+	var w = $(this).width();
+	var h = $(this).height();
+	var pswpElement = document.querySelectorAll('.pswp')[0];
+	var items = [
+	    {
+	        src: this.src,
+	        w: w,
+	        h: h
+	    }
+	];
+	var options = {
+	    index: 0
+	};
+	var gallery = new PhotoSwipe(pswpElement, PhotoSwipeUI_Default, items, options);
+	gallery.init();
+});

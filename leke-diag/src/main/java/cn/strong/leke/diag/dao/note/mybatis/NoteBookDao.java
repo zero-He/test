@@ -1,0 +1,62 @@
+package cn.strong.leke.diag.dao.note.mybatis;
+
+import java.util.Date;
+import java.util.List;
+
+import org.apache.ibatis.annotations.Param;
+
+import cn.strong.leke.diag.model.ReviewCount;
+import cn.strong.leke.diag.model.report.ResReviewState;
+
+public interface NoteBookDao {
+
+	/**
+	 * 获取单课笔记复习完成学生
+	 * @param courseSingleId
+	 * @return
+	 */
+	public List<Long> findNoteReadUserIdByLessonId(Long courseSingleId);
+
+	/**
+	 * 查询单课完成查看ID列表。
+	 * @param courseSingleId
+	 * @return
+	 */
+	public List<ResReviewState> findResReviewStateByCourseSingleId(Long courseSingleId);
+
+	/**
+	 * 查询学生完成查看的单课ID列表。
+	 * @param studentId
+	 * @param courseSingleIds
+	 * @return
+	 */
+	public List<ResReviewState> findResReviewStateByStudentId(@Param("studentId") Long studentId,
+			@Param("courseSingleIds") List<Long> courseSingleIds);
+
+	/**
+	 * 获取学生一段时间内写笔记的数量。
+	 * @param studentId
+	 * @param start
+	 * @param end
+	 * @return
+	 */
+	public int getStudentWriteNoteNumByTime(@Param("studentId") Long studentId, @Param("start") Date start,
+			@Param("end") Date end);
+
+	/**
+	 * 查询单课下学生是否查看笔记次数
+	 * @param userId
+	 * @param courseSingleIds
+	 * @return
+	 */
+	public List<ReviewCount> getStudentReviewCountByCourseSingleId(@Param("userId") Long userId,
+			@Param("courseSingleIds") List<Long> courseSingleIds);
+
+	/**
+	 * 查询单课下学生是否查看笔记次数
+	 * @param courseSingleIds
+	 * @return
+	 */
+	public List<ReviewCount> findStudentReviewCountByCourseSingleId(
+			@Param("courseSingleIds") List<Long> courseSingleIds);
+}

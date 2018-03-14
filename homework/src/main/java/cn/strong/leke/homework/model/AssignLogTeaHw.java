@@ -1,0 +1,83 @@
+package cn.strong.leke.homework.model;
+
+import cn.strong.leke.context.base.UserBaseContext;
+import cn.strong.leke.context.base.UserBaseHelper;
+import cn.strong.leke.model.user.User;
+
+/**
+ * 班级学生和批改老师绑定
+ * @author Zhang Fujun
+ * @date 2016年5月23日
+ */
+public class AssignLogTeaHw {
+	
+	/**
+	 * 选择的班级信息{classId，className，classType，courseSetId，groups}
+	 */
+	private String studentGroupsJson ;
+	
+	private Long teacherId;
+	private String teacherName;
+	
+	private String teacherClassName;
+
+	/**
+	 * @return the studentGroupsJson
+	 */
+	public String getStudentGroupsJson() {
+		return studentGroupsJson;
+	}
+
+	/**
+	 * @param studentGroupsJson the studentGroupsJson to set
+	 */
+	public void setStudentGroupsJson(String studentGroupsJson) {
+		this.studentGroupsJson = studentGroupsJson;
+	}
+
+	/**
+	 * @return the teacherUser
+	 */
+	public User getTeacherUser() {
+		if(this.getTeacherId() != null){
+			return UserBaseHelper.toUser(UserBaseContext.getUserBaseByUserId(this.getTeacherId()));
+		}
+		return null;
+	}
+
+	/**
+	 * @return the teacherClassName
+	 */
+	public String getTeacherClassName() {
+		return teacherClassName;
+	}
+
+	/**
+	 * @param teacherClassName the teacherClassName to set
+	 */
+	public void setTeacherClassName(String teacherClassName) {
+		this.teacherClassName = teacherClassName;
+	}
+
+	/**
+	 * @return the teacherId
+	 */
+	public Long getTeacherId() {
+		return teacherId;
+	}
+
+	/**
+	 * @param teacherId the teacherId to set
+	 */
+	public void setTeacherId(Long teacherId) {
+		this.teacherId = teacherId;
+	}
+
+	public String getTeacherName() {
+		return teacherName;
+	}
+
+	public void setTeacherName(String teacherName) {
+		this.teacherName = teacherName;
+	}
+}

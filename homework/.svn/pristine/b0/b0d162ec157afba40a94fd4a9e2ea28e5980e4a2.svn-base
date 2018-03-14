@@ -1,0 +1,248 @@
+define(function(require, exports, module){
+	var $ = require('jquery');
+	var ko = require('knockout');
+	var _ = require('underscore');
+	var WdatePicker = require('date');
+	var LekeDate = require('common/base/date');
+	var datepicker = require('common/knockout/bindings/datepicker');
+	var utils = require('utils');
+	var dialog = require('dialog');
+	var I18n = require('homework/common/i18n');
+	
+	var CST ={
+			paperUrl: window.ctx + '/auth/teacher/distribute/popPapers.htm',
+			studentGroupUrl: window.ctx + '/auth/teacher/batch/popStudentGroup.htm',
+			homeworkPostUrl: window.ctx + '/auth/teacher/batch/doDistribute.htm',
+			homeworkSuccessUrl: window.ctx + '/auth/teacher/batch/homeworkSuccess.htm'
+	};
+	function Model(){
+		var self = this;
+		self.papers = ko.observableArray();
+		self.studentGroups = ko.observableArray();
+	}
+	
+	Model.prototype.getPaperIds = function(){
+		var self = this;
+		var paperIds = '';
+		_.each(self.papers() || [],function(n){
+			paperIds += n.paperId + ',';
+		});
+		return paperIds.substring(0,(paperIds.length-1));
+	};
+	
+	function TableVM(){
+		var self = this;
+		self.list = ko.observableArray();
+		self.startTime = ko.observable(LekeDate.format(new Date(parseInt(Leke.currentSystemTime)),'yyyy-MM-dd HH:mm'));
+		self.closeTime = ko.observable();
+		self.pending = ko.observable(false);
+		self.isPass = true;
+		self.init();
+	}
+	
+	TableVM.prototype.init = function(){
+		var self = this;
+		var papers = window.CST.papers || [];
+		var model = new Model();
+		_.each(papers,function(p){
+			var urlPaper = {paperId: p.paperId,paperName: p.title,subjective: p.subjective};
+			if(urlPaper && urlPaper.paperId){
+				model.papers.push(urlPaper);
+			}
+		});
+		self.list.push(model);
+		
+	};
+	
+	TableVM.prototype.addHomework = function(){
+		var self = this;
+		self.list.push(new Model());
+	};
+	
+	TableVM.prototype.rmHomework = function($data){
+		var self = this;
+		var list = self.list;
+		if(list().length > 1){
+			list.remove($data);
+		}else{
+			utils.Notice.alert('最少保留一条');
+		}
+	};
+	
+	TableVM.prototype.saveHomework = _.throttle(function(){
+		var self = this;
+		if(!self.validation()){
+			return false;
+		}
+		var dataJson = self.toJS();
+		self.pending(true);
+		
+		var req = $.ajax({
+			type: 'post',
+			url: CST.homeworkPostUrl,
+			dataType: 'json',
+			data: {dataJson: dataJson}
+		});
+		
+		req.then(function(data){
+			if(data.success){
+				window.location.href = CST.homeworkSuccessUrl;
+			}
+			self.pending(false);
+		},function(msg){
+			utils.Notice.alert(msg);
+		});
+	},3000);
+	
+	TableVM.prototype.openPaper = function($index,$data){
+		var self = this;
+		var index = $index();
+		var model = $data;
+		var paperIds = '';
+		if(model){
+			 paperIds = model.getPaperIds();
+		}
+		var ops = {
+				id : 'dPopPapers',
+				title : $.i18n.prop('homework.distribute.paper.select'),
+				url: CST.paperUrl + "?paperIds=" + paperIds,
+				size : 'lg',
+				onClose : function(obj){
+					if (obj != undefined) {
+						self.callbackPaper(index, obj);
+					}
+				}
+		};
+		dialog.open(ops);
+	};
+	
+	TableVM.prototype.callbackPaper = function(index,obj){
+		var self = this;
+		var model = self.list()[index];
+		if(model){
+			var papers = [];
+			_.each(obj.list || [],function(n){
+					papers.push(n);
+			});
+			model.papers(papers);
+		}
+	};
+	
+	TableVM.prototype.rmPaper = function($index,$data){
+		var self = this;
+		var index = $index();
+		var model =self.list()[index];
+		model.papers.remove($data);
+	};
+	
+	TableVM.prototype.openStudentGroup = function($index,$data){
+		var self = this;
+		var index = $index();
+		var model = $data;
+		var studentGroupIds = '';
+		if(model){
+			studentGroupIds = JSON.stringify(model.studentGroups());
+		}
+		var ops = {
+				id : 'dPopStudentGroup',
+				title : $.i18n.prop('homework.distribute.student.select'),
+				url: CST.studentGroupUrl + "?studentGroupIds=" + studentGroupIds,
+				size : 'lg',
+				onClose : function(obj){
+					if (obj != undefined) {
+					self.callbackStudentGroup(index, obj);
+				}
+				}
+		};
+		dialog.open(ops);
+	};
+	
+	TableVM.prototype.callbackStudentGroup = function(index,obj){
+		var self = this;
+		var model =self.list()[index];
+		_.each(obj,function(n){
+			n.str = toFormat(n);
+		});
+		model.studentGroups.removeAll();
+		_.each(obj || [],function(n){
+			model.studentGroups.push(n);
+		});
+	};
+	
+	TableVM.prototype.rmStudentGroup = function($index,$data){
+		var self = this;
+		var index = $index();
+		var model = self.list()[index];
+		model.studentGroups.remove($data);
+	};
+	
+	TableVM.prototype.validation = function(){
+		var self = this;
+		if(!self.startTime()){
+			utils.Notice.alert('定时布置时间不能为空');
+			return false;
+		}
+		if(!self.closeTime()){
+			utils.Notice.alert('截止时间不能为空');
+			return false;
+		}
+		var list = self.list.peek();
+		for(var i = 0; i < list.length; i++){
+			var n = list[i];
+			if(!n.papers() || !n.papers().length){
+				utils.Notice.alert('第' + (i + 1) + '条记录请选择作业');
+				return false;
+			}
+			if(!n.studentGroups() || !n.studentGroups().length){
+				utils.Notice.alert('第' + (i + 1) + '条记录请选择学生');
+				return false;
+			}
+		}
+		return true;
+	};
+	
+	TableVM.prototype.toJS = function(){
+		var self = this;
+		var result = [];
+		var startTime = LekeDate.of(self.startTime()).getTime();
+		var closeTime = LekeDate.of(self.closeTime()).getTime();
+		_.each(self.list() || [] ,function(n){
+			var homeworkGroupForm = {paperIds: []};
+			_.each(n.papers() || [],function(m){
+				//试卷
+				homeworkGroupForm.paperIds.push(m.paperId);
+			});
+			var studentGroupsJson = _.map(n.studentGroups(),function(m){
+				var info = {};
+				info.classId = m.classId;
+				info.className = m.className;
+				info.classType = m.classType;
+				info.courseSetId = m.courseSetId;
+				info.groups = m.groups;
+				return info;
+			});
+			homeworkGroupForm.studentGroupsJson = JSON.stringify(studentGroupsJson);
+			homeworkGroupForm.startTime = startTime;
+			homeworkGroupForm.closeTime = closeTime;
+			result.push(homeworkGroupForm);
+		});
+		return JSON.stringify(result);
+	};
+	
+	function toFormat(obj){
+		var className = obj.className;
+		var groups = obj.groups || [];
+		if(groups.length == 0){
+			return className;
+		}else{
+			var info = '';
+			_.each(groups,function(n){
+				info += n.groupName + ',';
+			});
+			return className + ':'  + info.substring(0,info.length-1);
+		}
+	};
+	var tvm = new TableVM();
+	ko.applyBindings(tvm);
+	
+});

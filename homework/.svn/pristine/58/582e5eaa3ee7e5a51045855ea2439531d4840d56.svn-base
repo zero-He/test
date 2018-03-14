@@ -1,0 +1,468 @@
+package cn.strong.leke.homework.util;
+
+import static cn.strong.leke.model.question.QuestionTemplates.FILL_BLANK;
+import static cn.strong.leke.model.question.QuestionTemplates.HANDWRITE;
+import static cn.strong.leke.model.question.QuestionTemplates.OPENEND;
+import static cn.strong.leke.model.question.QuestionTemplates.ORAL;
+import static cn.strong.leke.model.question.QuestionTemplates.PUNCTUATE;
+import static java.util.stream.Collectors.toMap;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.function.BinaryOperator;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+import org.apache.commons.lang.StringUtils;
+
+import cn.strong.leke.common.serialize.support.json.JsonUtils;
+import cn.strong.leke.common.utils.CollectionUtils;
+import cn.strong.leke.homework.model.AnswerInfo;
+import cn.strong.leke.homework.model.PaperVisitor;
+import cn.strong.leke.model.paper.QuestionGroup;
+import cn.strong.leke.model.paper.ScoredQuestion;
+import cn.strong.leke.model.question.AnswerResult;
+import cn.strong.leke.model.question.QuestionDTO;
+import cn.strong.leke.model.question.QuestionResult;
+import cn.strong.leke.model.question.QuestionTemplates;
+import cn.strong.leke.tags.question.check.QuestionCheckAdapter;
+import cn.strong.leke.tags.question.tpl.QuestionTagUtils;
+
+public class AnswerUtils {
+
+	private static final BinaryOperator<BigDecimal> SUM = (a, b) -> a.add(b);
+
+	public static List<String> parseAnswerContent(String answerContent) {
+		if (StringUtils.isBlank(answerContent)) {
+			return new ArrayList<>();
+		}
+		return JsonUtils.readList(answerContent, String.class);
+	}
+
+	/**
+	 * 批改客观题，返回客观题总得分
+	 * @param questionResultMap
+	 * @param paper
+	 * @return
+	 */
+	public static BigDecimal correctObjectiveAnswer(Map<Long, QuestionResult> questionResultMap, PaperVisitor paper) {
+		BigDecimal studentTotalScore = new BigDecimal(0);
+		for (Long questionId : questionResultMap.keySet()) {
+			QuestionDTO questionDTO = paper.getQuestion(questionId);
+			QuestionResult questionResult = questionResultMap.get(questionId);
+			if (CollectionUtils.isNotEmpty(questionDTO.getSubs())) {
+				// 有子题
+				BigDecimal score = new BigDecimal(0), totalScore = new BigDecimal(0);
+				for (QuestionResult childQuestionResult : questionResult.getSubs()) {
+					QuestionDTO childQuestionDTO = paper.getQuestion(childQuestionResult.getQuestionId());
+					ScoredQuestion scoredQuestion = paper.getQuestionScored(childQuestionResult.getQuestionId());
+					QuestionCheckAdapter.check(childQuestionDTO, childQuestionResult, scoredQuestion);
+					if (childQuestionResult.getTotalIsRight() != null) {
+						studentTotalScore = studentTotalScore.add(childQuestionResult.getTotalResultScore());
+						score = score.add(childQuestionResult.getTotalResultScore());
+						totalScore = totalScore.add(scoredQuestion.getScore());
+					}
+				}
+				questionResult.setTotalResultScore(score);
+				if (totalScore.doubleValue() > 0) {
+					questionResult.setTotalScoreRate(
+							ScoreUtils.roundScoreRate(score.divide(totalScore, 5, RoundingMode.HALF_UP)));
+				} else {
+					questionResult.setTotalScoreRate(new BigDecimal(0));
+				}
+				
+				Boolean allChecked = questionResult.getSubs().stream().allMatch(v -> v.getTotalIsRight() != null);
+				if (allChecked) {
+					boolean totalIsRight = questionResult.getSubs().stream()
+							.allMatch(v -> Boolean.TRUE.equals(v.getTotalIsRight()));
+					questionResult.setTotalIsRight(totalIsRight);
+				}
+			} else {
+				// 无子题
+				ScoredQuestion scoredQuestion = paper.getQuestionScored(questionId);
+				QuestionCheckAdapter.check(questionDTO, questionResult, scoredQuestion);
+				if (questionResult.getTotalIsRight() != null) {
+					studentTotalScore = studentTotalScore.add(questionResult.getTotalResultScore());
+				}
+			}
+		}
+		return studentTotalScore;
+	}
+
+	/**
+	 * 填充批改信息中的空值字段。
+	 * @param questionResultMap
+	 * @param paper
+	 */
+	public static void fillQuestionResultNullable(Map<Long, QuestionResult> questionResultMap, PaperVisitor paper) {
+		for (QuestionGroup questionGroup : paper.getPaperDetail().getGroups()) {
+			for (ScoredQuestion scoredQuestion : questionGroup.getQuestions()) {
+				QuestionResult questionResult = questionResultMap.get(scoredQuestion.getQuestionId());
+				if (questionResult == null) {
+					continue;
+				}
+				if (CollectionUtils.isEmpty(scoredQuestion.getSubs())) {
+					BigDecimal scoreRate = questionResult.getTotalResultScore().divide(scoredQuestion.getScore(),
+							5, RoundingMode.HALF_UP);
+					questionResult.setTotalScoreRate(ScoreUtils.roundScoreRate(scoreRate));
+				} else {
+					BigDecimal score = new BigDecimal(0);
+					for (int i = 0; i < scoredQuestion.getSubs().size(); i++) {
+						ScoredQuestion subScoredQuestion = scoredQuestion.getSubs().get(i);
+						QuestionResult subQuestionResult = questionResult.getSubs().get(i);
+						if (subScoredQuestion.getSubjective()) {
+							BigDecimal scoreRate = subQuestionResult.getTotalResultScore().divide(
+									subScoredQuestion.getScore(), 5, RoundingMode.HALF_UP);
+							subQuestionResult.setTotalScoreRate(ScoreUtils.roundScoreRate(scoreRate));
+						}
+						score = score.add(subQuestionResult.getTotalResultScore());
+					}
+					boolean totalIsRight = questionResult.getSubs().stream()
+							.allMatch(v -> Boolean.TRUE.equals(v.getTotalIsRight()));
+					BigDecimal totalScore = scoredQuestion.getSubs().stream().map(ScoredQuestion::getScore)
+							.reduce(new BigDecimal(0), (a, b) -> a.add(b));
+					questionResult.setTotalResultScore(ScoreUtils.roundScore(score));
+					questionResult.setTotalScoreRate(ScoreUtils.roundScoreRate(score.divide(totalScore, 5,
+							RoundingMode.HALF_UP)));
+					questionResult.setTotalIsRight(totalIsRight);
+				}
+			}
+		}
+	}
+
+	public static BigDecimal correctSheetAnswer(Map<Long, QuestionResult> questionResultMap, PaperVisitor paper) {
+		for (Long questionId : questionResultMap.keySet()) {
+			QuestionResult questionResult = questionResultMap.get(questionId);
+			if (CollectionUtils.isEmpty(questionResult.getSubs())) {
+				QuestionDTO questionDTO = paper.getQuestion(questionId);
+				// 无子题
+				ScoredQuestion scoredQuestion = paper.getQuestionScored(questionId);
+				if (isSupportAutoCorrect(questionDTO)) {
+					QuestionCheckAdapter.check(questionDTO, questionResult, scoredQuestion);
+				} else {
+					BigDecimal scoreRate = questionResult.getTotalResultScore().divide(scoredQuestion.getScore(), 5,
+							RoundingMode.HALF_UP);
+					questionResult.setTotalScoreRate(ScoreUtils.roundScoreRate(scoreRate));
+				}
+				continue;
+			}
+
+			// 有子题
+			BigDecimal score = new BigDecimal(0), totalScore = new BigDecimal(0);
+			for (QuestionResult childQuestionResult : questionResult.getSubs()) {
+				QuestionDTO questionDTO = paper.getQuestion(childQuestionResult.getQuestionId());
+				ScoredQuestion scoredQuestion = paper.getQuestionScored(childQuestionResult.getQuestionId());
+				totalScore = totalScore.add(scoredQuestion.getScore());
+				if (isSupportAutoCorrect(questionDTO)) {
+					QuestionCheckAdapter.check(questionDTO, childQuestionResult, scoredQuestion);
+				} else {
+					BigDecimal scoreRate = childQuestionResult.getTotalResultScore().divide(scoredQuestion.getScore(),
+							5, RoundingMode.HALF_UP);
+					childQuestionResult.setTotalScoreRate(ScoreUtils.roundScoreRate(scoreRate));
+				}
+			}
+			score = questionResult.getSubs().stream().map(QuestionResult::getTotalResultScore).reduce(score, SUM);
+			questionResult.setTotalResultScore(score);
+			questionResult.setTotalIsRight(
+					questionResult.getSubs().stream().allMatch(v -> Boolean.TRUE.equals(v.getTotalIsRight())));
+			questionResult
+					.setTotalScoreRate(ScoreUtils.roundScoreRate(score.divide(totalScore, 5, RoundingMode.HALF_UP)));
+		}
+		return questionResultMap.values().stream().map(QuestionResult::getTotalResultScore).reduce(new BigDecimal(0),
+				SUM);
+	}
+
+	/**
+	 * 判断题目是否支持自动批改
+	 * @param questionDTO
+	 * @param isSheet
+	 * @return
+	 */
+	private static boolean isSupportAutoCorrect(QuestionDTO questionDTO) {
+		String template = questionDTO.getTemplate();
+		return QuestionTemplates.SINGLE_CHOICE.equalsIgnoreCase(template)
+				|| QuestionTemplates.MULTI_CHOICE.equalsIgnoreCase(template)
+				|| QuestionTemplates.JUDGEMENT.equalsIgnoreCase(template);
+	}
+
+	/**
+	 * 填充批改信息中的空值字段。
+	 * @param questionResultMap
+	 * @param paper
+	 */
+	public static void fillQuestionResultNullable(QuestionResult questionResult, PaperVisitor paper) {
+		ScoredQuestion scoredQuestion = paper.getQuestionScored(questionResult.getQuestionId());
+		if (scoredQuestion.getSubjective()) {
+			if (CollectionUtils.isEmpty(scoredQuestion.getSubs())) {
+				BigDecimal scoreRate = questionResult.getTotalResultScore().divide(scoredQuestion.getScore(), 5,
+						RoundingMode.HALF_UP);
+				questionResult.setTotalScoreRate(ScoreUtils.roundScoreRate(scoreRate));
+			} else {
+				BigDecimal score = new BigDecimal(0);
+				for (int i = 0; i < scoredQuestion.getSubs().size(); i++) {
+					ScoredQuestion subScoredQuestion = scoredQuestion.getSubs().get(i);
+					QuestionResult subQuestionResult = questionResult.getSubs().get(i);
+					if (subScoredQuestion.getSubjective()) {
+						BigDecimal scoreRate = subQuestionResult.getTotalResultScore()
+								.divide(subScoredQuestion.getScore(), 5, RoundingMode.HALF_UP);
+						subQuestionResult.setTotalScoreRate(ScoreUtils.roundScoreRate(scoreRate));
+					}
+					score = score.add(subQuestionResult.getTotalResultScore());
+				}
+				boolean totalIsRight = questionResult.getSubs().stream()
+						.allMatch(v -> Boolean.TRUE.equals(v.getTotalIsRight()));
+				BigDecimal totalScore = scoredQuestion.getSubs().stream().map(ScoredQuestion::getScore)
+						.reduce(new BigDecimal(0), (a, b) -> a.add(b));
+				questionResult.setTotalResultScore(ScoreUtils.roundScore(score));
+				questionResult.setTotalScoreRate(
+						ScoreUtils.roundScoreRate(score.divide(totalScore, 5, RoundingMode.HALF_UP)));
+				questionResult.setTotalIsRight(totalIsRight);
+			}
+		}
+	}
+
+	/**
+	 * 填充没有提交的题目答题结构
+	 * @param questionResultMap
+	 * @param paper
+	 */
+	public static void fillNullQuestionResult(Map<Long, QuestionResult> questionResultMap, PaperVisitor paper) {
+		for (QuestionGroup questionGroup : paper.getPaperDetail().getGroups()) {
+			for (ScoredQuestion scoredQuestion : questionGroup.getQuestions()) {
+				QuestionResult questionResult = questionResultMap.get(scoredQuestion.getQuestionId());
+				if (questionResult == null) {
+					questionResult = new QuestionResult();
+					questionResult.setQuestionId(scoredQuestion.getQuestionId());
+					if (scoredQuestion.getHasSub()) {
+						questionResult.setSubs(new ArrayList<QuestionResult>());
+						for (ScoredQuestion childScoredQuestion : scoredQuestion.getSubs()) {
+							QuestionResult questionResult2 = new QuestionResult();
+							questionResult2.setQuestionId(childScoredQuestion.getQuestionId());
+							QuestionDTO questionDTO = paper.getQuestion(childScoredQuestion.getQuestionId());
+							QuestionCheckAdapter.check(questionDTO, questionResult2, childScoredQuestion);
+							questionResult.getSubs().add(questionResult2);
+						}
+						questionResult.setTotalResultScore(new BigDecimal(0));
+						questionResult.setTotalScoreRate(new BigDecimal(0));
+						questionResult.setTotalIsRight(false);
+					} else {
+						QuestionDTO questionDTO = paper.getQuestion(scoredQuestion.getQuestionId());
+						QuestionCheckAdapter.check(questionDTO, questionResult, scoredQuestion);
+					}
+					questionResultMap.put(questionResult.getQuestionId(), questionResult);
+				}
+			}
+		}
+	}
+
+	/**
+	 * 数据结构转换
+	 * @param answerInfoList
+	 * @return
+	 */
+	public static Map<Long, QuestionResult> transAnswerInfoToQuestionResultMap(List<AnswerInfo> answerInfoList) {
+		Map<Long, QuestionResult> questionResultMap = new HashMap<Long, QuestionResult>();
+		for (AnswerInfo answerInfo : answerInfoList) {
+			QuestionResult questionResult = transAnswerInfoToQuestionResult(answerInfo);
+			questionResultMap.put(answerInfo.getQuestionId(), questionResult);
+		}
+		return questionResultMap;
+	}
+
+	/*
+	 * 数据结构转换
+	 */
+	/**
+	 * @param answerInfo
+	 * @return
+	 */
+	public static QuestionResult transAnswerInfoToQuestionResult(AnswerInfo answerInfo) {
+		QuestionResult questionResult = new QuestionResult();
+		questionResult.setQuestionId(answerInfo.getQuestionId());
+
+		if (CollectionUtils.isEmpty(answerInfo.getSubs())) {
+			if (StringUtils.isNotEmpty(answerInfo.getAnswerContent())) {
+				List<String> reply = parseAnswerContent(answerInfo.getAnswerContent());
+				questionResult.setAnswerResults(AnswerUtils.convertStringToAnswerResultList(reply, null));
+			}
+			return questionResult;
+		}
+		Function<AnswerInfo, QuestionResult> mapper = (answerInfo2) -> {
+			QuestionResult questionResult2 = new QuestionResult();
+			questionResult2.setQuestionId(answerInfo2.getQuestionId());
+			if (StringUtils.isNotEmpty(answerInfo2.getAnswerContent())) {
+				List<String> reply = parseAnswerContent(answerInfo2.getAnswerContent());
+				questionResult2.setAnswerResults(AnswerUtils.convertStringToAnswerResultList(reply, null));
+			}
+			return questionResult2;
+		};
+		questionResult.setSubs(answerInfo.getSubs().stream().map(mapper).collect(Collectors.toList()));
+		return questionResult;
+	}
+
+	public static List<AnswerResult> convertStringToAnswerResultList(List<String> answers, String correctContent) {
+		List<AnswerResult> resultList = new ArrayList<AnswerResult>();
+		for (String content : answers) {
+			AnswerResult answerResult = new AnswerResult();
+			answerResult.setMyAnswer(StringUtils.trim(content));
+			resultList.add(answerResult);
+		}
+		if (StringUtils.isNotBlank(correctContent)) {
+			List<CorrectItem> correctItemList = JsonUtils.readList(correctContent, CorrectItem.class);
+			for (int i = 0; i < correctItemList.size(); i++) {
+				CorrectItem correctItem = correctItemList.get(i);
+				AnswerResult answerResult = resultList.get(i);
+				answerResult.setIsRight(correctItem.getIsRight());
+				answerResult.setResultScore(correctItem.getScore());
+				answerResult.setCorrectContent(correctItem.getContent());
+			}
+		}
+		return resultList;
+	}
+
+	/**
+	 * 将题目批改信息对象转为JSON字符串。
+	 * @param answerResultList
+	 * @return
+	 */
+	public static String convertAnswerResultListToCorrect(List<AnswerResult> answerResultList) {
+		List<CorrectItem> correctItemList = new ArrayList<CorrectItem>();
+		for (AnswerResult answerResult : answerResultList) {
+			CorrectItem correctItem = new CorrectItem();
+			correctItem.setIsRight(answerResult.getIsRight());
+			correctItem.setScore(answerResult.getResultScore());
+			correctItem.setContent(answerResult.getCorrectContent());
+			correctItemList.add(correctItem);
+		}
+		return JsonUtils.toJSON(correctItemList);
+	}
+
+	public static void mergeQuestionResult(QuestionResult questionResult1, QuestionResult questionResult2) {
+		if (CollectionUtils.isEmpty(questionResult1.getSubs())) {
+			// 无子题
+			mergeQuestionResultProps(questionResult1, questionResult2);
+		} else {
+			// 有子题
+			if (CollectionUtils.isNotEmpty(questionResult2.getSubs())) {
+				Map<Long, QuestionResult> subMap = questionResult2.getSubs().stream()
+						.collect(toMap(QuestionResult::getQuestionId, Function.identity()));
+				for (QuestionResult subQuestionResult1 : questionResult1.getSubs()) {
+					if (subMap.containsKey(subQuestionResult1.getQuestionId())) {
+						QuestionResult subQuestionResult2 = subMap.get(subQuestionResult1.getQuestionId());
+						mergeQuestionResultProps(subQuestionResult1, subQuestionResult2);
+					}
+				}
+				if(Boolean.TRUE.equals(questionResult1.getIsPassedFix()) && questionResult1.getSubs().stream().anyMatch(v->Boolean.FALSE.equals(v.getIsPassedFix()))){
+					questionResult1.setIsPassedFix(false);
+				}
+			}
+		}
+	}
+
+	private static void mergeQuestionResultProps(QuestionResult questionResult1, QuestionResult questionResult2) {
+		if (QuestionTagUtils.isSheetAnswer(questionResult1.getAnswerResults())) {
+			if (CollectionUtils.isNotEmpty(questionResult1.getAnswerResults())) {
+				AnswerResult answerResult1 = questionResult1.getAnswerResults().get(0);
+				answerResult1.setResultScore(questionResult2.getTotalResultScore());
+				answerResult1.setIsRight(questionResult2.getTotalIsRight());
+			}
+		} else {
+			for (int i = 0; i < questionResult1.getAnswerResults().size(); i++) {
+				AnswerResult answerResult1 = questionResult1.getAnswerResults().get(i);
+				AnswerResult answerResult2 = questionResult2.getAnswerResults().get(i);
+				answerResult1.setResultScore(answerResult2.getResultScore());
+				answerResult1.setIsRight(answerResult2.getIsRight());
+				answerResult1.setCorrectContent(answerResult2.getCorrectContent());
+			}
+		}
+		questionResult1.setTotalIsRight(questionResult2.getTotalIsRight());
+		questionResult1.setTotalResultScore(questionResult2.getTotalResultScore());
+		questionResult1.setCorrectComments(questionResult2.getCorrectComments());
+	}
+
+	/**
+	 * 将题目批改信息JSON字符串转为对象。
+	 * @param answerContent
+	 * @param correctContent
+	 * @return
+	 */
+	public static List<AnswerResult> convertStringToAnswerResultList(String answerContent, String correctContent) {
+		List<String> answers = parseAnswerContent(answerContent);
+
+		List<AnswerResult> resultList = new ArrayList<AnswerResult>();
+		for (String content : answers) {
+			AnswerResult answerResult = new AnswerResult();
+			answerResult.setMyAnswer(StringUtils.trim(content));
+			resultList.add(answerResult);
+		}
+		if (StringUtils.isNotBlank(correctContent)) {
+			List<CorrectItem> correctItemList = JsonUtils.readList(correctContent, CorrectItem.class);
+			for (int i = 0; i < correctItemList.size(); i++) {
+				CorrectItem correctItem = correctItemList.get(i);
+				AnswerResult answerResult = resultList.get(i);
+				answerResult.setIsRight(correctItem.getIsRight());
+				answerResult.setResultScore(correctItem.getScore());
+				answerResult.setCorrectContent(correctItem.getContent());
+			}
+		}
+		return resultList;
+	}
+
+	private static class CorrectItem {
+
+		// 是否正确
+		private Boolean isRight;
+		// 批改得分
+		private BigDecimal score;
+		// 批改说明
+		private String content;
+
+		public Boolean getIsRight() {
+			return isRight;
+		}
+
+		public void setIsRight(Boolean isRight) {
+			this.isRight = isRight;
+		}
+
+		public BigDecimal getScore() {
+			return score;
+		}
+
+		public void setScore(BigDecimal score) {
+			this.score = score;
+		}
+
+		public String getContent() {
+			return content;
+		}
+
+		public void setContent(String content) {
+			this.content = content;
+		}
+	}
+	
+	public static List<AnswerInfo> virtualAnswerInfos(List<QuestionDTO> questions) {
+		return questions.stream().map(question -> {
+			AnswerInfo answerInfo = new AnswerInfo();
+			answerInfo.setQuestionId(question.getQuestionId());
+			if (question.getHasSub()) {
+				answerInfo.setSubs(virtualAnswerInfos(question.getSubs()));
+			} else {
+				String template = question.getTemplate();
+				List<String> answers = new ArrayList<>();
+				if (FILL_BLANK.equals(template) || PUNCTUATE.equals(template) || OPENEND.equals(template)
+						|| HANDWRITE.equals(template) || ORAL.equals(template)) {
+					question.getAnswers().forEach(v -> answers.add(""));
+				} 
+				answerInfo.setAnswerContent(JsonUtils.toJSON(answers));
+			}
+			return answerInfo;
+		}).collect(Collectors.toList());
+	}
+
+}

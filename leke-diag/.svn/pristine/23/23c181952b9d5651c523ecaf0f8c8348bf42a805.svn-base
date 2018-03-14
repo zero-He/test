@@ -1,0 +1,314 @@
+package cn.strong.leke.diag.report;
+
+import static java.util.stream.Collectors.toList;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import javax.annotation.Resource;
+
+import org.springframework.stereotype.Component;
+
+import cn.strong.leke.common.utils.DateUtils;
+import cn.strong.leke.context.user.cst.RoleCst;
+import cn.strong.leke.diag.dao.beike.model.BeikeConst;
+import cn.strong.leke.diag.dao.beike.mybatis.BeikeResourceDao;
+import cn.strong.leke.diag.dao.homework.model.WorkFinishAnaly;
+import cn.strong.leke.diag.dao.homework.mongo.ExerciseDao;
+import cn.strong.leke.diag.dao.homework.mybatis.DoubtExplainDao;
+import cn.strong.leke.diag.dao.homework.mybatis.HomeworkDtlDao;
+import cn.strong.leke.diag.dao.incentive.mongo.UserIncentiveDao;
+import cn.strong.leke.diag.dao.lesson.mongo.LessonBehaviorDao;
+import cn.strong.leke.diag.dao.lesson.mybatis.AttendanceDao;
+import cn.strong.leke.diag.dao.lesson.mybatis.EvaluateDao;
+import cn.strong.leke.diag.dao.note.mybatis.NoteBookDao;
+import cn.strong.leke.diag.dao.wrongtopic.mybatis.WrongBookDao;
+import cn.strong.leke.diag.manage.ReportCycleService;
+import cn.strong.leke.diag.model.report.BehaviorRptQuery;
+import cn.strong.leke.diag.model.report.BehaviorRptView;
+import cn.strong.leke.diag.model.report.BehaviorRptView.AchieveInfo;
+import cn.strong.leke.diag.model.report.BehaviorRptView.BehaviorInfo;
+import cn.strong.leke.diag.model.report.BehaviorRptView.OtherWiseInfo;
+import cn.strong.leke.diag.model.report.BehaviorRptView.ViewFinishAnaly;
+import cn.strong.leke.diag.model.report.ReportCycle;
+import cn.strong.leke.diag.model.report.ResReviewState;
+import cn.strong.leke.diag.model.report.StuBehaviorTransferInfo;
+import cn.strong.leke.diag.util.ScoreUtils;
+import cn.strong.leke.lesson.model.LessonVM;
+import cn.strong.leke.lesson.model.query.ScheduleQuery;
+import cn.strong.leke.lessonlog.model.AttendStatInfo;
+import cn.strong.leke.lessonlog.model.LessonBehavior;
+import cn.strong.leke.lessonlog.model.StudentBehavior;
+import cn.strong.leke.remote.service.lesson.ILessonRemoteService;
+
+@Component
+public class StudentBehaviorReportHandler implements ReportHandler<BehaviorRptQuery, BehaviorRptView> {
+
+	@Resource
+	private NoteBookDao noteBookDao;
+	@Resource
+	private ExerciseDao exerciseDao;
+	@Resource
+	private HomeworkDtlDao homeworkDtlDao;
+	@Resource
+	private DoubtExplainDao doubtExplainDao;
+	@Resource
+	private WrongBookDao wrongBookDao;
+	@Resource
+	private BeikeResourceDao beikeResourceDao;
+	@Resource
+	private EvaluateDao evaluateDao;
+	@Resource
+	private AttendanceDao attendanceDao;
+	@Resource
+	private LessonBehaviorDao lessonBehaviorDao;
+	@Resource
+	private UserIncentiveDao userIncentiveDao;
+	@Resource
+	private ReportCycleService reportCycleService;
+	@Resource
+	private ILessonRemoteService lessonRemoteService;
+
+	@Override
+	public BehaviorRptView execute(BehaviorRptQuery query) {
+		ReportCycle reportCycle = this.reportCycleService.getReportCycleById(query.getCycleId());
+		List<Long> courseSingleIds = this.findReportCycleLessonIds(query, reportCycle);
+		StuBehaviorTransferInfo transferInfo = new StuBehaviorTransferInfo();
+		transferInfo.setStudentId(query.getStudentId());
+		transferInfo.setReportCycle(reportCycle);
+		transferInfo.setCourseSingleIds(courseSingleIds);
+		this.fillOutSideBehaviorInfo(transferInfo);
+		this.fillInSideBehaviorInfo(transferInfo);
+
+		AchieveInfo achieveInfo = this.resolveAchieveInfo(transferInfo);
+
+		OtherWiseInfo otherWiseInfo = new OtherWiseInfo();
+		otherWiseInfo.setPracticeNum(transferInfo.getPracticeNum());
+		otherWiseInfo.setDoubtNum(transferInfo.getDoubtNum());
+		otherWiseInfo.setKillWrongNum(transferInfo.getKillWrongNum());
+		otherWiseInfo.setWriteNoteNum(transferInfo.getWriteNoteNum());
+
+		BehaviorRptView view = new BehaviorRptView();
+		view.setAchieveInfo(achieveInfo);
+		view.setBehaviorInfo(transferInfo.getBehaviorInfo());
+		view.setAttendStatInfo(transferInfo.getAttendStatInfo());
+		view.setViewFinishAnaly(transferInfo.getViewFinishAnaly());
+		view.setWorkFinishAnaly(transferInfo.getWorkFinishAnaly());
+		view.setOtherWiseInfo(otherWiseInfo);
+		view.setLekeVal(transferInfo.getLekeVal());
+		return view;
+	}
+
+	private void fillOutSideBehaviorInfo(StuBehaviorTransferInfo transferInfo) {
+		Long studentId = transferInfo.getStudentId();
+		Date start = transferInfo.getReportCycle().getStart(), end = transferInfo.getReportCycle().getEnd();
+
+		// 乐豆
+		Map<Long, Integer> lekeVal = this.userIncentiveDao.findTypeLekeValByUserId(studentId, start, end);
+		transferInfo.setLekeVal(lekeVal);
+		// 作业统计
+		WorkFinishAnaly wfa = this.homeworkDtlDao.getStudentFinishAnalyByTime(studentId, start, end);
+		transferInfo.setWorkFinishAnaly(wfa);
+		// 作业提交率
+		int normalNum = wfa.getNormalNum(), delayNum = wfa.getDelayNum(), totalNum = wfa.getTotalNum();
+		transferInfo.setSubmitRate(ScoreUtils.toRate(normalNum + delayNum, totalNum, 0).intValue());
+		transferInfo.setNormalRate(ScoreUtils.toRate(normalNum, totalNum, 0).intValue());
+		// 作业订正率
+		int doneBugFixNum = wfa.getDoneBugFixNum(), undoBugFixNum = wfa.getUndoBugFixNum();
+		transferInfo.setBugFixRate(ScoreUtils.toRate(doneBugFixNum, undoBugFixNum + doneBugFixNum, 0).intValue());
+		// 提问数量
+		transferInfo.setDoubtNum(this.doubtExplainDao.getStudentDoubtNumByTime(studentId, start, end));
+		// 练习题数
+		transferInfo.setPracticeNum(this.exerciseDao.getStudentPracticeNumByTime(studentId, start, end));
+		// 记笔记数量
+		transferInfo.setWriteNoteNum(this.noteBookDao.getStudentWriteNoteNumByTime(studentId, start, end));
+		// 消灭错题量
+		transferInfo.setKillWrongNum(this.wrongBookDao.getStudentKillWrongNumByTime(studentId, start, end));
+	}
+
+	private void fillInSideBehaviorInfo(StuBehaviorTransferInfo transferInfo) {
+		BehaviorInfo behaviorInfo = new BehaviorInfo();
+		transferInfo.setBehaviorInfo(behaviorInfo);
+		transferInfo.setViewFinishAnaly(new ViewFinishAnaly());
+		Long studentId = transferInfo.getStudentId();
+		List<Long> courseSingleIds = transferInfo.getCourseSingleIds();
+		if (courseSingleIds.isEmpty()) {
+			// 没有课堂时，不处理，但要设置默认数据
+			AttendStatInfo attendStatInfo = new AttendStatInfo();
+			attendStatInfo.setPlanNum(0);
+			attendStatInfo.setRealNum(0);
+			attendStatInfo.setPartNum(0);
+			attendStatInfo.setMissNum(0);
+			transferInfo.setAttendStatInfo(attendStatInfo);
+			return;
+		}
+		// 预复习统计
+		this.fillViewFinishAnaly(transferInfo);
+		// 考勤统计
+		AttendStatInfo attendStatInfo = this.attendanceDao.getAttendStatInfoByStudentId(studentId, courseSingleIds);
+		attendStatInfo.setPlanNum(courseSingleIds.size());
+		attendStatInfo.setMissNum(courseSingleIds.size() - attendStatInfo.getRealNum());
+		transferInfo.setAttendStatInfo(attendStatInfo);
+		transferInfo.setAttendRate(
+				ScoreUtils.toRate(attendStatInfo.getRealNum(), attendStatInfo.getPlanNum(), 0).intValue());
+		// 评价统计
+		transferInfo.setEvalRate(this.evaluateDao.getEvalRateByCourseSingleIds(studentId, courseSingleIds));
+		// 课中行为
+		List<LessonBehavior> behaviors = lessonBehaviorDao.findStudentBehaviorByStudentId(studentId, courseSingleIds);
+		if (behaviors.isEmpty()) {
+			// 没有课堂行为数据时，不处理
+			return;
+		}
+		// 点到率计算
+		int called = behaviors.stream().mapToInt(v -> v.getStudents().get(0).getCalled()).sum();
+		int callNum = behaviors.stream().mapToInt(LessonBehavior::getCallNum).sum();
+		transferInfo.setCalledRate(ScoreUtils.toRate(called, callNum, 0).intValue());
+		// 金榜前三计算
+		transferInfo.setTop3Num((int) behaviors.stream().filter(v -> {
+			Integer rank = v.getStudents().get(0).getRank();
+			return rank != null && rank <= 3;
+		}).count());
+		// 举手率计算
+		int raiseNum = (int) behaviors.stream().filter(v -> v.getStudents().get(0).getRaised() > 0).count();
+		transferInfo.setRaiseRate(ScoreUtils.toRate(raiseNum, behaviors.size(), 0).intValue());
+		// 献花课堂数
+		transferInfo.setFlowerNum((int) behaviors.stream().filter(v -> v.getStudents().get(0).getFlower() > 0).count());
+
+		// 课中整体行为
+		behaviorInfo.setCallNum2(behaviors.stream().mapToInt(LessonBehavior::getCallNum).sum());
+		behaviorInfo.setExamNum2(behaviors.stream().mapToInt(LessonBehavior::getExamNum).sum());
+		behaviorInfo.setQuickNum2(behaviors.stream().mapToInt(LessonBehavior::getQuickNum).sum());
+		behaviorInfo.setDiscuNum2(behaviors.stream().mapToInt(LessonBehavior::getDiscuNum).sum());
+		// 学生课中行为
+		List<StudentBehavior> students = behaviors.stream().map(v -> v.getStudents().get(0)).collect(toList());
+		behaviorInfo.setCallNum1(students.stream().mapToInt(StudentBehavior::getCalled).sum());
+		behaviorInfo.setExamNum1(students.stream().mapToInt(StudentBehavior::getExamNum).sum());
+		behaviorInfo.setQuickNum1(students.stream().mapToInt(StudentBehavior::getQuickNum).sum());
+		behaviorInfo.setDiscuNum1(students.stream().mapToInt(StudentBehavior::getDiscuNum).sum());
+		behaviorInfo.setRaised(students.stream().mapToInt(StudentBehavior::getRaised).sum());
+		behaviorInfo.setAuthed(students.stream().mapToInt(StudentBehavior::getAuthed).sum());
+		behaviorInfo.setNoteNum(students.stream().mapToInt(StudentBehavior::getNoteNum).sum());
+		behaviorInfo.setFlowerNum(students.stream().mapToInt(StudentBehavior::getFlower).sum());
+		behaviorInfo.setEvalNum((int) students.stream().filter(StudentBehavior::getIsEval).count());
+		behaviorInfo.setRank1((int) students.stream().filter(v -> v.getRank() != null && v.getRank() == 1).count());
+		behaviorInfo.setRank2((int) students.stream().filter(v -> v.getRank() != null && v.getRank() == 2).count());
+		behaviorInfo.setRank3((int) students.stream().filter(v -> v.getRank() != null && v.getRank() == 3).count());
+	}
+
+	private void fillViewFinishAnaly(StuBehaviorTransferInfo transferInfo) {
+		ViewFinishAnaly viewFinishAnaly = transferInfo.getViewFinishAnaly();
+		Long studentId = transferInfo.getStudentId();
+		List<Long> courseSingleIds = transferInfo.getCourseSingleIds();
+		// 查询完成情况
+		List<ResReviewState> preview1 = this.beikeResourceDao.findResReviewStateByStudentId(studentId, courseSingleIds,
+				BeikeConst.RES_TYPE_CW, BeikeConst.PHASE_PREVIEW);
+		List<ResReviewState> preview2 = this.beikeResourceDao.findResReviewStateByStudentId(studentId, courseSingleIds,
+				BeikeConst.RES_TYPE_MC, BeikeConst.PHASE_PREVIEW);
+		List<ResReviewState> preview3 = this.beikeResourceDao.findResReviewStateByStudentId(studentId, courseSingleIds,
+				BeikeConst.RES_TYPE_HW, BeikeConst.PHASE_PREVIEW);
+		List<ResReviewState> review1 = this.beikeResourceDao.findResReviewStateByStudentId(studentId, courseSingleIds,
+				BeikeConst.RES_TYPE_HW, BeikeConst.PHASE_REVIEW);
+		List<ResReviewState> review2 = homeworkDtlDao.findResBugFixStateByStudentId(studentId, courseSingleIds);
+		List<ResReviewState> review3 = noteBookDao.findResReviewStateByStudentId(studentId, courseSingleIds);
+		// 设置单个类型完成数量
+		viewFinishAnaly.setTotalNum(courseSingleIds.size());
+		// 预习完成情况
+		viewFinishAnaly.setPreviews1(Arrays.asList(preview1.size(), preview2.size(), preview3.size()));
+		viewFinishAnaly.setPreviews2(Arrays.asList((int) preview1.stream().filter(ResReviewState::getState).count(),
+				(int) preview2.stream().filter(ResReviewState::getState).count(),
+				(int) preview3.stream().filter(ResReviewState::getState).count()));
+		Set<Long> previewSet = new HashSet<>();
+		preview1.forEach(v -> previewSet.add(v.getCourseSingleId()));
+		preview2.forEach(v -> previewSet.add(v.getCourseSingleId()));
+		preview3.forEach(v -> previewSet.add(v.getCourseSingleId()));
+		viewFinishAnaly.setPreview1(previewSet.size());
+		preview1.stream().filter(v -> !v.getState()).forEach(v -> previewSet.remove(v.getCourseSingleId()));
+		preview2.stream().filter(v -> !v.getState()).forEach(v -> previewSet.remove(v.getCourseSingleId()));
+		preview3.stream().filter(v -> !v.getState()).forEach(v -> previewSet.remove(v.getCourseSingleId()));
+		viewFinishAnaly.setPreview2(previewSet.size());
+		// 复习完成情况
+		viewFinishAnaly.setReviews1(Arrays.asList(review1.size(), review2.size(), review3.size()));
+		viewFinishAnaly.setReviews2(Arrays.asList((int) review1.stream().filter(ResReviewState::getState).count(),
+				(int) review2.stream().filter(ResReviewState::getState).count(),
+				(int) review3.stream().filter(ResReviewState::getState).count()));
+		Set<Long> reviewSet = new HashSet<>();
+		review1.forEach(v -> reviewSet.add(v.getCourseSingleId()));
+		review2.forEach(v -> reviewSet.add(v.getCourseSingleId()));
+		review3.forEach(v -> reviewSet.add(v.getCourseSingleId()));
+		viewFinishAnaly.setReview1(reviewSet.size());
+		review1.stream().filter(v -> !v.getState()).forEach(v -> reviewSet.remove(v.getCourseSingleId()));
+		review2.stream().filter(v -> !v.getState()).forEach(v -> reviewSet.remove(v.getCourseSingleId()));
+		review3.stream().filter(v -> !v.getState()).forEach(v -> reviewSet.remove(v.getCourseSingleId()));
+		viewFinishAnaly.setReview2(reviewSet.size());
+		// 预复习完成比率
+		if (viewFinishAnaly.getPreview1() > 0) {
+			transferInfo.setPreviewRate(
+					ScoreUtils.toRate(viewFinishAnaly.getPreview2(), viewFinishAnaly.getPreview1(), 0).intValue());
+		}
+		if (viewFinishAnaly.getReview1() > 0) {
+			transferInfo.setReviewRate(
+					ScoreUtils.toRate(viewFinishAnaly.getReview2(), viewFinishAnaly.getReview1(), 0).intValue());
+		}
+	}
+
+	private AchieveInfo resolveAchieveInfo(StuBehaviorTransferInfo transferInfo) {
+		int type = transferInfo.getReportCycle().getType();
+		Date start = transferInfo.getReportCycle().getStart(), end = transferInfo.getReportCycle().getEnd();
+		int days = (int) (DateUtils.truncateDate(end).getTime() / (1000 * 3600 * 24)
+				- DateUtils.truncateDate(start).getTime() / (1000 * 3600 * 24) + 1);
+		AchieveInfo achieveInfo = new AchieveInfo();
+		achieveInfo.setTotalNum(transferInfo.getCourseSingleIds().size());
+		achieveInfo.setAttendRate(transferInfo.getAttendRate());
+		achieveInfo.setPreviewRate(transferInfo.getPreviewRate());
+		achieveInfo.setReviewRate(transferInfo.getReviewRate());
+		achieveInfo.setSubmitRate(transferInfo.getSubmitRate());
+		achieveInfo.setBugFixRate(transferInfo.getBugFixRate());
+		achieveInfo.setLekeNum(transferInfo.getLekeVal().values().stream().mapToInt(v -> v).sum());
+		achieveInfo.setIsAttend(transferInfo.getAttendRate() >= attendMins[type - 1]); // 全勤
+		achieveInfo.setIsActive(transferInfo.getRaiseRate() >= 70); // 活跃分子
+		achieveInfo.setIsReform(transferInfo.getBugFixRate() >= 80); // 及时改错
+		achieveInfo.setIsListen(transferInfo.getCalledRate() > 90); // 专心听讲
+		achieveInfo.setIsLoveAck(transferInfo.getDoubtNum() >= days); // 勤思好问
+		achieveInfo.setIsPreview(transferInfo.getPreviewRate() >= 90); // 提前预习
+		achieveInfo.setIsRefresh(transferInfo.getReviewRate() >= 90); // 温故知新
+		achieveInfo.setIsPractice(transferInfo.getPracticeNum() >= days * 10); // 练习达人
+		achieveInfo.setIsRanking(transferInfo.getTop3Num() >= rankingMins[type - 1]); // 榜上有名
+		achieveInfo.setIsDiligent(transferInfo.getNormalRate() >= diligentMins[type - 1]); // 不磨蹭
+		achieveInfo
+				.setIsFragrant(transferInfo.getFlowerNum() >= flowerMins[type - 1] && transferInfo.getEvalRate() >= 90); // 手有余香
+		List<Boolean> achieves = new ArrayList<>();
+		achieves.add(achieveInfo.getIsAttend());
+		achieves.add(achieveInfo.getIsActive());
+		achieves.add(achieveInfo.getIsReform());
+		achieves.add(achieveInfo.getIsListen());
+		achieves.add(achieveInfo.getIsLoveAck());
+		achieves.add(achieveInfo.getIsPreview());
+		achieves.add(achieveInfo.getIsRefresh());
+		achieves.add(achieveInfo.getIsPractice());
+		achieves.add(achieveInfo.getIsRanking());
+		achieves.add(achieveInfo.getIsDiligent());
+		achieves.add(achieveInfo.getIsFragrant());
+		achieveInfo.setAchieveNum((int) achieves.stream().filter(v -> v).count());
+		return achieveInfo;
+	}
+
+	private static final int[] attendMins = { 100, 98, 96, 94 };
+	private static final int[] rankingMins = { 1, 3, 10, 20 };
+	private static final int[] diligentMins = { 100, 95, 90, 90 };
+	private static final int[] flowerMins = { 2, 8, 32, 64 };
+
+	private List<Long> findReportCycleLessonIds(BehaviorRptQuery query, ReportCycle reportCycle) {
+		ScheduleQuery scheduleQuery = new ScheduleQuery();
+		scheduleQuery.setRoleId(RoleCst.STUDENT);
+		scheduleQuery.setStudentId(query.getStudentId());
+		scheduleQuery.setStartTime(reportCycle.getStart());
+		scheduleQuery.setEndTime(reportCycle.getEnd());
+		List<LessonVM> lessonList = this.lessonRemoteService.findScheduleByQuery(scheduleQuery);
+		return lessonList.stream().map(LessonVM::getCourseSingleId).collect(toList());
+	}
+}

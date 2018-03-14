@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.question.dao.mybatis.IOfficialTagDao">
+    
+    <insert id="saveOfficialTag" parameterType="cn.strong.leke.model.question.OfficialTag" useGeneratedKeys="true" keyProperty="id">
+		INSERT into que_official_tag(
+			officialTagName, description, isDeleted, createdBy, createdOn, modifiedBy, modifiedOn
+		) VALUES (
+			#{officialTagName},#{description},0,#{createdBy}, now(),#{modifiedBy}, now()
+		)
+	</insert>
+	
+	<update id="updateOfficialTag" parameterType="cn.strong.leke.model.question.OfficialTag">
+		UPDATE que_official_tag 
+		SET officialTagName = #{officialTagName}, description = #{description}, modifiedBy = #{modifiedBy}, modifiedOn =  now() 
+		WHERE officialTagId = #{officialTagId}
+	</update>
+	
+	<select id="checkOfficialTag" resultType="int" parameterType="cn.strong.leke.model.question.OfficialTag">
+		SELECT count(*) 
+		FROM que_official_tag 
+		WHERE officialTagName = #{officialTagName} and isDeleted=0
+		<if test="officialTagId != null and officialTagId > 0">
+			and officialTagId <![CDATA[<>]]> #{officialTagId}
+		</if>
+		 
+	</select>
+	
+	<update id="deleteOfficialTag" parameterType="long">
+		UPDATE que_official_tag 
+		SET isDeleted = 1 
+		WHERE officialTagId = #{officialTagId} AND isDeleted = 0
+	</update>
+	
+	<select id="queryOfficialTag" resultType="cn.strong.leke.model.question.OfficialTag" parameterType="long">
+		SELECT * 
+		FROM que_official_tag 
+		WHERE isDeleted = 0 AND officialTagId = #{officialTagId}
+	</select>
+	
+    <select id="queryOfficialTagList" resultType="cn.strong.leke.model.question.OfficialTag">
+		SELECT * 
+		FROM que_official_tag 
+		WHERE isDeleted = 0 
+	</select>
+</mapper>

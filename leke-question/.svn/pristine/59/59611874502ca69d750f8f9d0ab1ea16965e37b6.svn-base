@@ -1,0 +1,72 @@
+<form class="m-form c-form">
+<ul>
+	<li class="form-item">
+		<label class="title">
+			<span class="require">*</span>
+			<span data-bind="i18n: 'que.question.searchItem.schoolStage'">学段：</span>
+		</label>
+		<div class="con">
+			<select name="schoolStageId" class="u-select u-select-sm"
+				data-bind="options: schoolStages,
+						   optionsText: 'schoolStageName',
+						   optionsValue: 'schoolStageId',
+						   optionsCaption: '==请选择==',
+						   value: material.schoolStageId,
+						   valueAllowUnset: true,
+						   disable: material.materialId() != null"></select>
+		</div>
+	</li>
+	<li  class="form-item">
+		<label class="title">
+			<span class="require">*</span>
+			<span data-bind="i18n: 'que.question.searchItem.subject'">科目：</span>
+		</label>
+		<div class="con">
+			<select name="subjectId" class="u-select u-select-sm"
+				data-bind="options: subjects,
+						   optionsText: 'subjectName',
+						   optionsValue: 'subjectId',
+						   optionsCaption: '==请选择==',
+						   value: material.subjectId,
+						   valueAllowUnset: true,
+						   disable: material.materialId() != null"></select>
+		</div>
+	</li>
+	<li  class="form-item">
+		<label class="title">
+			<span class="require">*</span>
+			<span data-bind="i18n: 'que.question.searchItem.press'">出版社：</span>
+		</label>
+		<div class="con">
+			<select name="pressId" class="u-select u-select-sm"
+				data-bind="options: presses,
+						   optionsText: 'pressName',
+						   optionsValue: 'pressId',
+						   optionsCaption: '==请选择==',
+						   value: material.pressId,
+						   valueAllowUnset: true,
+						   disable: material.materialId() != null"></select>
+		</div>
+	</li>
+	<li  class="form-item">
+		<label class="title">
+			<span class="require">*</span>
+			<span data-bind="i18n: 'que.question.searchItem.material'">教材名称：</span>
+		</label>
+		<div class="con">
+			<input name="materialName" class="u-ipt u-ipt-lg" maxlength="30" 
+				data-bind="value: material.materialName"/>
+		</div>
+	</li>
+	<li  class="form-item">
+		<label class="title">
+			<span class="require">*</span>
+			<span data-bind="i18n: 'que.question.searchItem.ord'">序号：</span>
+		</label>
+		<div class="con">
+			<input name="ord" class="u-ipt u-ipt-lg" maxlength="2" 
+				data-bind="value: material.ord "/>
+		</div>
+	</li>
+</ul>
+</form>

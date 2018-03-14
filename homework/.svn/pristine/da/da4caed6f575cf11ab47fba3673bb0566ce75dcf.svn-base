@@ -1,0 +1,146 @@
+define(function(require, exports, module) {
+	var $ = require('jquery');
+	
+	var Page = require('page');
+	var Utils = require('utils');
+	var Handlebars = require("common/handlebars");
+	var _ = require('underscore');
+	var ko = require('knockout');
+	var date = require('common/base/date');
+	
+	
+	
+	var MyHomeworkList = {
+		iskoBind:false,
+		viewModel:{},
+		bindModel:function(d){
+			
+			var _this = this;
+			for(var pro in d){
+				if(this.viewModel[pro]==undefined){
+					this.viewModel[pro]=ko.observable(d[pro]);
+				}else{
+					this.viewModel[pro](d[pro]);
+				}
+			}
+			
+			if(!this.iskoBind){
+				ko.applyBindings(this.viewModel);
+				ko.computed(function() {
+					var curPage = _this.viewModel.curPage();
+				});
+				this.iskoBind = true;
+			}
+			
+		},
+		page : null,
+		init : function() {
+			this.loadMyHomeworkList();
+			this.binEvent();
+		},
+		users : new Array(),
+		loadMyHomeworkList : function() {
+			var contextID = "#myHomeworkList";
+			var isTecher = $("input[name='isTecher']").val();
+			var _this = this;
+			
+			this.page = Page.create({
+				id : 'page',
+				url : ctx + '/auth/common/holiday/ajax/loadListByClass.htm',
+				pageSize : 10,
+				formId : 'myHomeworkForm',
+				tipsId:'emptyTip',
+				callback : function(datas) {
+					var spmList = {
+							"100":'100014',
+							"102":'102021',
+							"101":'101003',
+							"103":'103022'
+					};
+					var ds = datas.page.dataList;
+					for(var index=0 ;index<ds.length ;index++){
+						d = ds[index];
+						
+						var isZY = d.type==1;
+						d.p = Math.round(d.finish/(d.total==0?1:d.total)*100)+"%";
+						
+						d.typeName = isZY? "作业": "微课";
+						d.firstTime = d.firstTime==null?"--": date.format(d.firstTime,'yyyy-MM-dd HH:mm:ss');
+						d.lastTime = d.lastTime==null?"--": date.format(d.lastTime,'yyyy-MM-dd HH:mm:ss');
+			
+						var roleName = isTecher=="true"? "teacher": "classTeacher";
+						var viewName = isZY? "vacationHomeworkDetail": "microHomeworkDetail";
+						var spm = '&spm='+ spmList[Leke.user.currentRoleId];
+						d.viewUrl = "/auth/"+roleName+"/homework/"+viewName+".htm?id="+d._id + spm;
+						
+						
+						
+//				        dic["zs"] = "张三";
+//				        dic["ls"] = "李四";
+//				        dic["ww"] = "王五";
+//				        dic["zl"] = "赵六";
+						
+					}
+					
+					_this.bindModel(datas.page);
+				}
+			});
+		},
+		binEvent : function() {
+			var _this = this;
+			var lis = $('ul.corr li');
+			$('ul.corr li').each(function(){
+				var li = $(this);
+				$(this).click(function(){
+					var subjectId = $(this).attr("data-subjectId");
+					lis.removeClass("active");
+					li.addClass("active");
+					
+					var clis = $('ul.corrs li');
+					clis.hide();
+					clis.removeClass("active");
+					var cmlis = $('li[data-subjectId="'+ subjectId +'"]',clis.parent());
+					cmlis.show();
+					var ocmlis = $('li[data-index="0"]',cmlis.parent());
+					ocmlis.addClass("active");
+					
+					var subjectName = $(this).attr("data-name")
+					var subjectId = $(this).attr("data-subjectId")
+					var className = ocmlis.attr("data-name");
+					var classId = ocmlis.attr("data-classId");
+					
+					
+					$("input[name='"+subjectName+"']").val(subjectId);
+					$("input[name='"+className+"']").val(classId);
+					
+					_this.reloadPage();
+				})
+			});
+			
+			var liss = $('ul.corrs li');
+			$('ul.corrs li').each(function(){
+				var li = $(this);
+				$(this).click(function(){
+					liss.removeClass("active");
+					li.addClass("active");
+					
+					var className = $(this).attr("data-name")
+					var classId = $(this).attr("data-classId")
+					
+					$("input[name='"+className+"']").val(classId);
+		
+					_this.reloadPage();
+				})
+			});
+			
+			
+			
+			
+		},
+		reloadPage : function() {
+			this.page.options.curPage = 1;
+			this.page.loadData();
+		}
+	};
+	MyHomeworkList.init();
+});

@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+		http://www.springframework.org/schema/beans/spring-beans.xsd">
+		
+	<bean id="dataSource-quartz" destroy-method="close" class="org.apache.commons.dbcp.BasicDataSource">
+		<property name="url">
+			<value><![CDATA[${ci.jdbc.url.quartz}]]></value>
+		</property>
+		<property name="driverClassName" value="${ci.jdbc.driverClassName}" />
+		<property name="username" value="${ci.jdbc.username.quartz}" />
+		<property name="password" value="${ci.jdbc.password.quartz}" />
+		<property name="initialSize" value="1" />
+		<property name="maxActive" value="800" />
+		<property name="maxIdle" value="30" />
+		<property name="minIdle" value="25" />
+		<property name="timeBetweenEvictionRunsMillis" value="20000" />
+		<property name="minEvictableIdleTimeMillis" value="28000" />
+		<property name="maxWait" value="10000" />
+		<property name="poolPreparedStatements" value="true" />
+		<property name="maxOpenPreparedStatements" value="10" />
+		<property name="removeAbandoned" value="true" />
+		<property name="removeAbandonedTimeout" value="180" />
+		<property name="logAbandoned" value="true" />
+		<property name="validationQuery" value="SELECT 1" />
+		<property name="testOnBorrow" value="true" />
+	</bean>	
+		
+	<bean id="onlineSnapshotJobDetail"
+		class="org.springframework.scheduling.quartz.JobDetailFactoryBean">
+		<property name="jobClass"
+			value="cn.strong.leke.monitor.schedule.job.OnlineSnapshotJob" />
+	</bean>
+
+	<bean id="onlineSnapshotTrigger"
+		class="org.springframework.scheduling.quartz.CronTriggerFactoryBean">
+		<property name="jobDetail" ref="onlineSnapshotJobDetail" />
+		<property name="cronExpression">
+			<value>${cron.monitor.online.snapshot}</value>
+		</property>
+	</bean>
+	
+	<bean id="onlineDailyJobDetail"
+		class="org.springframework.scheduling.quartz.JobDetailFactoryBean">
+		<property name="jobClass"
+			value="cn.strong.leke.monitor.schedule.job.OnlineDailyJob" />
+	</bean>
+
+	<bean id="onlineDailyTrigger"
+		class="org.springframework.scheduling.quartz.CronTriggerFactoryBean">
+		<property name="jobDetail" ref="onlineDailyJobDetail" />
+		<property name="cronExpression">
+			<value>${cron.monitor.online.daily}</value>
+		</property>
+	</bean>
+	
+	<bean id="coursePlatformDailyJobDetail"
+		class="org.springframework.scheduling.quartz.JobDetailFactoryBean">
+		<property name="jobClass"
+			value="cn.strong.leke.monitor.schedule.job.CoursePlatformDailyJob" />
+	</bean>
+
+	<bean id="coursePlatformDailyTrigger"
+		class="org.springframework.scheduling.quartz.CronTriggerFactoryBean">
+		<property name="jobDetail" ref="coursePlatformDailyJobDetail" />
+		<property name="cronExpression">
+			<value>${cron.monitor.course.platform.daily}</value>
+		</property>
+	</bean>
+	
+	<bean id="schoolStatDailyJobDetail"
+		class="org.springframework.scheduling.quartz.JobDetailFactoryBean">
+		<property name="jobClass"
+			value="cn.strong.leke.monitor.schedule.job.SchoolStatDailyJob" />
+	</bean>
+
+	<bean id="schoolStatDailyTrigger"
+		class="org.springframework.scheduling.quartz.CronTriggerFactoryBean">
+		<property name="jobDetail" ref="schoolStatDailyJobDetail" />
+		<property name="cronExpression">
+			<value>0 5 0 * * ?</value>
+		</property>
+	</bean>
+	
+	<bean id="schoolUserStatJobDetail"
+		class="org.springframework.scheduling.quartz.JobDetailFactoryBean">
+		<property name="jobClass"
+			value="cn.strong.leke.monitor.schedule.job.SchoolUserStatJob" />
+	</bean>
+
+	<bean id="schoolUserStatTrigger"
+		class="org.springframework.scheduling.quartz.CronTriggerFactoryBean">
+		<property name="jobDetail" ref="schoolUserStatJobDetail" />
+		<property name="cronExpression">
+			<value>0 0/10 * * * ?</value>
+		</property>
+	</bean>
+	
+	<bean id="schoolOnlineUserStatJobDetail"
+		class="org.springframework.scheduling.quartz.JobDetailFactoryBean">
+		<property name="jobClass"
+			value="cn.strong.leke.monitor.schedule.job.SchoolOnlineUserStatJob" />
+	</bean>
+
+	<bean id="schoolOnlineUserStatTrigger"
+		class="org.springframework.scheduling.quartz.CronTriggerFactoryBean">
+		<property name="jobDetail" ref="schoolOnlineUserStatJobDetail" />
+		<property name="cronExpression">
+			<value>${cron.monitor.onlineuser.school.stat}</value>
+		</property>
+	</bean>
+
+	<bean id="monitorScheduler" class="org.springframework.scheduling.quartz.SchedulerFactoryBean">
+		<property name="configLocation" value="classpath:conf/quartz.properties" />
+		<property name="dataSource" ref="dataSource-quartz" />
+		<property name="jobFactory">
+			<bean class="cn.strong.leke.core.quartz.AutowiringSpringBeanJobFactory" />
+		</property>
+		<property name="triggers">
+			<list>
+				<ref bean="onlineSnapshotTrigger" />
+				<ref bean="onlineDailyTrigger" />
+				<ref bean="coursePlatformDailyTrigger" />
+				<ref bean="schoolStatDailyTrigger" />
+				<ref bean="schoolUserStatTrigger" />
+				<ref bean="schoolOnlineUserStatTrigger" />
+			</list>
+		</property>
+	</bean>
+	
+	<bean id="jobExceptionHandler" class="cn.strong.leke.core.quartz.LekeJobExceptionHandler">
+		<property name="jobExSender" ref="jobExSender"/>
+	</bean>
+</beans>

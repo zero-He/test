@@ -1,0 +1,380 @@
+package cn.strong.leke.homework.model;
+
+import java.util.Date;
+import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+
+import cn.strong.leke.model.question.QuestionResult;
+
+public class ApiParamDTO {
+
+	// 教师标识
+	private Long teacherId;
+	// 学生标识
+	private Long studentId;
+	// 单课标识(这个字段的名称有误,将错就错吧)
+	private Long courseId;
+	// 课堂标识（单课ID）
+	private Long lessonId;
+	// 老师作业标识
+	private Long homeworkId;
+	// 学生作业标识
+	private Long homeworkDtlId;
+	// 备课唯一ID
+	private String beikeGuid;
+	// 语音批改信息文件路径
+	private String soundFile;
+	// 老师批改信息列表
+	private List<QuestionResult> questionResultList;
+	//月份yyyy-MM
+	private String month;
+	//天yyyy--MM-dd
+	private String day;
+	// 试卷ID
+	private Long paperId;
+	// 试卷ID列表
+	private List<Long> paperIds;
+	// 作业数据上传时的学生答题明细，JSON格式字符串
+	private String detailList;
+	// 版本号
+	private Long version;
+	// 提交类型，1：保存，2：提交
+	private Long submitType;
+	// 答案列表
+	private List<AnswerInfo> answerList;
+	// 试题ID列表
+	private List<Long> questionIds;
+	//题目id
+	private Long questionId;
+	//单课Id
+	private Long courseSingleId;
+	//是否学习完毕
+	private Boolean isFinishStudy;
+	//课件作业退出时停留的页数
+	private Integer lastPage;
+	//是否特殊处理数据
+	private Boolean isSpecial;
+	
+	
+	@JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+	private Date startTime;
+
+	@JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+	private Date endTime;
+	
+	private Integer homeworkType;
+	
+	private Long subjectId;
+	
+	private Integer start;
+	
+	private Integer limit;
+	
+	private String homeworkName;
+	
+	private int curPage = 1;
+	
+	private int pageSize = 10;
+	
+	// 作业用时
+	private Integer usedTime;
+	
+	public Long getTeacherId() {
+		return teacherId;
+	}
+
+	public void setTeacherId(Long teacherId) {
+		this.teacherId = teacherId;
+	}
+
+	public Long getStudentId() {
+		return studentId;
+	}
+
+	public void setStudentId(Long studentId) {
+		this.studentId = studentId;
+	}
+
+	public Long getCourseId() {
+		return courseId;
+	}
+
+	public void setCourseId(Long courseId) {
+		this.courseId = courseId;
+	}
+
+	public Long getLessonId() {
+		return lessonId;
+	}
+
+	public void setLessonId(Long lessonId) {
+		this.lessonId = lessonId;
+	}
+
+	public Long getHomeworkId() {
+		return homeworkId;
+	}
+
+	public void setHomeworkId(Long homeworkId) {
+		this.homeworkId = homeworkId;
+	}
+
+	public Long getHomeworkDtlId() {
+		return homeworkDtlId;
+	}
+
+	public void setHomeworkDtlId(Long homeworkDtlId) {
+		this.homeworkDtlId = homeworkDtlId;
+	}
+
+	public String getBeikeGuid() {
+		return beikeGuid;
+	}
+
+	public void setBeikeGuid(String beikeGuid) {
+		this.beikeGuid = beikeGuid;
+	}
+
+	public void setHomeworkName(String homeworkName) {
+		this.homeworkName = homeworkName;
+	}
+
+	public String getSoundFile() {
+		return soundFile;
+	}
+
+	public void setSoundFile(String soundFile) {
+		this.soundFile = soundFile;
+	}
+
+	public List<QuestionResult> getQuestionResultList() {
+		return questionResultList;
+	}
+
+	public void setQuestionResultList(List<QuestionResult> questionResultList) {
+		this.questionResultList = questionResultList;
+	}
+
+	/**
+	 * @return the month
+	 */
+	public String getMonth() {
+		return month;
+	}
+
+	/**
+	 * @param month the month to set
+	 */
+	public void setMonth(String month) {
+		this.month = month;
+	}
+
+	/**
+	 * @return the day
+	 */
+	public String getDay() {
+		return day;
+	}
+
+	/**
+	 * @param day the day to set
+	 */
+	public void setDay(String day) {
+		this.day = day;
+	}
+
+	public Long getPaperId() {
+		return paperId;
+	}
+
+	public void setPaperId(Long paperId) {
+		this.paperId = paperId;
+	}
+
+	public List<Long> getPaperIds() {
+		return paperIds;
+	}
+
+	public void setPaperIds(List<Long> paperIds) {
+		this.paperIds = paperIds;
+	}
+
+	public String getDetailList() {
+		return detailList;
+	}
+
+	public void setDetailList(String detailList) {
+		this.detailList = detailList;
+	}
+
+	public Long getVersion() {
+		return version;
+	}
+
+	public void setVersion(Long version) {
+		this.version = version;
+	}
+
+	public Long getSubmitType() {
+		return submitType;
+	}
+
+	public void setSubmitType(Long submitType) {
+		this.submitType = submitType;
+	}
+
+	public List<AnswerInfo> getAnswerList() {
+		return answerList;
+	}
+
+	public void setAnswerList(List<AnswerInfo> answerList) {
+		this.answerList = answerList;
+	}
+
+	public List<Long> getQuestionIds() {
+		return questionIds;
+	}
+
+	public void setQuestionIds(List<Long> questionIds) {
+		this.questionIds = questionIds;
+	}
+
+	public Date getStartTime() {
+		return startTime;
+	}
+
+	public void setStartTime(Date startTime) {
+		this.startTime = startTime;
+	}
+
+	public Date getEndTime() {
+		return endTime;
+	}
+
+	public void setEndTime(Date endTime) {
+		this.endTime = endTime;
+	}
+
+	public Integer getHomeworkType() {
+		return homeworkType;
+	}
+
+	public void setHomeworkType(Integer homeworkType) {
+		this.homeworkType = homeworkType;
+	}
+
+	public Long getSubjectId() {
+		return subjectId;
+	}
+
+	public void setSubjectId(Long subjectId) {
+		this.subjectId = subjectId;
+	}
+
+	public Integer getStart() {
+		return start;
+	}
+
+	public void setStart(Integer start) {
+		this.start = start;
+	}
+
+	public Integer getLimit() {
+		return limit;
+	}
+
+	public void setLimit(Integer limit) {
+		this.limit = limit;
+	}
+
+	public String getHomeworkName() {
+		return homeworkName;
+	}
+
+	public void setHomeorkName(String homeworkName) {
+		this.homeworkName = homeworkName;
+	}
+
+	public int getCurPage() {
+		return curPage;
+	}
+
+	public void setCurPage(int curPage) {
+		this.curPage = curPage;
+	}
+
+	public int getPageSize() {
+		return pageSize;
+	}
+
+	public void setPageSize(int pageSize) {
+		this.pageSize = pageSize;
+	}
+
+	/**
+	 * @return the usedTime
+	 */
+	public Integer getUsedTime() {
+		return usedTime;
+	}
+
+	/**
+	 * @param usedTime the usedTime to set
+	 */
+	public void setUsedTime(Integer usedTime) {
+		this.usedTime = usedTime;
+	}
+
+	public Long getCourseSingleId() {
+		return courseSingleId;
+	}
+
+	public void setCourseSingleId(Long courseSingleId) {
+		this.courseSingleId = courseSingleId;
+	}
+
+	public Boolean getIsFinishStudy() {
+		return isFinishStudy;
+	}
+
+	public void setIsFinishStudy(Boolean isFinishStudy) {
+		this.isFinishStudy = isFinishStudy;
+	}
+
+	public Integer getLastPage() {
+		return lastPage;
+	}
+
+	public void setLastPage(Integer lastPage) {
+		this.lastPage = lastPage;
+	}
+
+	/**
+	 * @return the isSpecial
+	 */
+	public Boolean getIsSpecial() {
+		return isSpecial;
+	}
+
+	/**
+	 * @param isSpecial the isSpecial to set
+	 */
+	public void setIsSpecial(Boolean isSpecial) {
+		this.isSpecial = isSpecial;
+	}
+
+	/**
+	 * @return the questionId
+	 */
+	public Long getQuestionId() {
+		return questionId;
+	}
+
+	/**
+	 * @param questionId the questionId to set
+	 */
+	public void setQuestionId(Long questionId) {
+		this.questionId = questionId;
+	}
+}

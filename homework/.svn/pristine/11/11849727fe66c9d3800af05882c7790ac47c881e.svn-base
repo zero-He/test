@@ -1,0 +1,163 @@
+
+# \u516c\u5171
+homework.common.pagenotfound=\u4f60\u8981\u8bbf\u95ee\u7684\u9875\u9762\u4e0d\u5b58\u5728\u3002
+homework.common.back=\u8fd4\u56de
+homework.common.select=\u8bf7\u9009\u62e9
+homework.common.search=\u67e5\u8be2
+homework.common.toview=\u67e5\u770b
+homework.common.statistical=\u7edf\u8ba1
+homework.common.analysis=\u5206\u6790
+homework.common.submit=\u63d0\u4ea4
+homework.common.confirm=\u786e\u8ba4
+homework.common.cancel=\u53d6\u6d88
+homework.common.preview=\u9884\u89c8
+homework.common.section=\u7ae0\u8282
+homework.common.studyskills =\u540c\u6b65\u7ec3\u4e60
+homework.common.knowledgepoint=\u77e5\u8bc6\u70b9
+homework.common.knowledtest =\u77e5\u8bc6\u70b9\u68c0\u6d4b
+homework.common.recorrect=\u91cd\u65b0\u6279\u6539
+
+
+
+# \u6211\u7684\u4f5c\u4e1a
+homework.homework.nochildren=\u60a8\u5df2\u7ecf\u5411\u5b50\u5973\u53d1\u51fa\u7ed1\u5b9a\u7533\u8bf7\uff0c\u5f85\u5b50\u5973\u786e\u8ba4\u3002
+homework.homework.incomplete=\u60a8\u7684\u7528\u6237\u4fe1\u606f\u4e0d\u5b8c\u6574\uff0c\u6ca1\u6709\u7ed1\u5b9a\u73ed\u7ea7\u3002
+homework.homework.classendtime=\u968f\u5802\u4f5c\u4e1a\u622a\u6b62\u65f6\u95f4\u672a\u5230\uff0c\u4e0d\u80fd\u7b54\u9898\u3002
+homework.homework.repartsave=\u4f60\u7684\u4f5c\u4e1a\u5df2\u7ecf\u63d0\u4ea4\uff0c\u8bf7\u4e0d\u8981\u518d\u4fdd\u5b58\u3002
+homework.homework.repartsubmit=\u4f60\u7684\u4f5c\u4e1a\u5df2\u7ecf\u63d0\u4ea4\uff0c\u8bf7\u4e0d\u8981\u518d\u63d0\u4ea4\u3002
+homework.exercise.repartsave=\u4f60\u7684\u7ec3\u4e60\u5df2\u7ecf\u63d0\u4ea4\uff0c\u8bf7\u4e0d\u8981\u518d\u4fdd\u5b58\u3002
+homework.exercise.repartsubmit=\u4f60\u7684\u7ec3\u4e60\u5df2\u7ecf\u63d0\u4ea4\uff0c\u8bf7\u4e0d\u8981\u518d\u63d0\u4ea4\u3002
+homework.homework.subjective=\u9898\u76ee({0})\u7684\u4e3b\u89c2\u6027\u6ca1\u6709\u8bbe\u7f6e
+homework.homework.homeworktitle=\u4f5c\u4e1a\u6807\u9898
+homework.homework.forclass=\u9488\u5bf9\u73ed\u7ea7
+homework.homework.completion=\u5b8c\u6210\u60c5\u51b5
+homework.homework.correcting=\u6279\u6539\u60c5\u51b5
+homework.homework.average=\u5e73\u5747\u5206
+homework.homework.operatingarea=\u64cd\u4f5c\u533a
+homework.homework.checkhomework=\u67e5\u770b\u4f5c\u4e1a
+homework.homework.checkpaper=\u67e5\u770b\u8bd5\u5377
+homework.homework.receivenum=\u6536\u5230\u4f5c\u4e1a\u91cf
+homework.homework.correctnum=\u6279\u6539\u4f5c\u4e1a\u91cf
+homework.homework.studentname=\u5b66\u751f\u59d3\u540d
+homework.homework.score=\u5f97\u5206
+homework.homework.homeworkcompletion=\u4f5c\u4e1a\u5b8c\u6210\u60c5\u51b5
+homework.homework.submittime=\u63d0\u4ea4\u65f6\u95f4
+homework.homework.closewindow=\u5173\u95ed\u7a97\u53e3
+homework.homework.last=\u4e0a\u4e00\u4e2a
+homework.homework.next=\u4e0b\u4e00\u4e2a
+homework.homework.correct.title=\u4f5c\u4e1a\u6279\u6539
+homework.homework.correct.submit=\u63d0\u4ea4\u6279\u6539
+homework.homework.correct.text=\u6279\u6539
+homework.homework.correct.modification=\u4fee\u6539
+homework.homework.correct.invalid=\u4f5c\u5e9f
+homework.homework.correct.already=\u5df2\u4f5c\u5e9f
+homework.homework.controller.stmessage = \u53d1\u5e03\u65f6\u95f4\u5df2\u8fc7\uff0c\u4e0d\u80fd\u4fee\u6539\uff01
+homework.homework.controller.modifysuc = \u4fee\u6539\u6210\u529f\uff01
+homework.homework.form.search.to = \u81f3
+homework.homework.title.name = \u5f00\u59cb\u7b54\u9898
+homework.homework.form.savejob = \u4fdd\u5b58\u4f5c\u4e1a
+homework.homework.form.submitjob = \u63d0\u4ea4\u4f5c\u4e1a
+homework.dowork.success.title = \u6211\u7684\u4f5c\u4e1a
+homework.dowork.suctext.subsuccess = \u4f60\u5df2\u6210\u529f\u63d0\u4ea4\uff01
+homework.dowork.suctext.divtext = \u5f53\u524d\u5f97\u5206\u4e3a
+homework.dowork.suctext.special = \u8be5\u4efd\u4f5c\u4e1a\u5305\u542b\u4e3b\u89c2\u9898\uff0c\u8bf7\u7b49\u5f85\u8001\u5e08\u6279\u6539\uff0c\u5956\u52b1\u5728\u6279\u6539\u5b8c\u540e\u83b7\u5f97\u3002
+homework.dowork.suctext.close = \u5173\u95ed
+homework.dowork.suctext.points = \u5206
+homework.stuhomework.form.all = \u5168\u90e8\u4f5c\u4e1a
+homework.stuhomework.form.todo = \u5f85\u5b8c\u6210
+homework.stuhomework.form.finished = \u5df2\u6279\u6539\u4f5c\u4e1a
+homework.stuhomework.form.tobe = \u5f85\u6279\u6539\u4f5c\u4e1a
+homework.stuhomework.form.deadline = \u4f5c\u4e1a\u622a\u6b62\u65f6\u95f4
+homework.stuhomework.form.name = \u4f5c\u4e1a\u540d\u79f0
+homework.stuhomework.form.teaname = \u5e03\u7f6e\u4f5c\u4e1a\u8001\u5e08
+homework.stuhomework.form.subtime = \u63d0\u4ea4\u4f5c\u4e1a\u65f6\u95f4
+homework.stuhomework.form.status = \u4f5c\u4e1a\u72b6\u6001
+
+#\u6211\u7684\u7ec3\u4e60
+homework.homework.form.search.testtime = \u6d4b\u8bd5\u65f6\u95f4
+homework.homework.form.search.starttest  = \u5f00\u59cb\u6d4b\u8bd5
+homework.homework.form.search.accuracy  = \u6b63\u786e\u7387
+homework.exercise.title.startpracticing  = \u5f00\u59cb\u7ec3\u4e60
+homework.exercise.show.topicquantity  = \u9898\u91cf
+homework.exercise.show.topic  = \u9898
+homework.exercise.show.submitpractice  = \u63d0\u4ea4\u7ec3\u4e60
+homework.exercise.show.correct  = \u6b63\u786e
+homework.exercise.show.practicetime  = \u7ec3\u4e60\u65f6\u95f4
+
+#\u6211\u7684\u63d0\u95ee
+homework.doubt.doubt.title = \u6211\u8981\u63d0\u95ee
+homework.doubt.detail.title = \u67e5\u770b\u63d0\u95ee 
+homework.doubt.list.title = \u6211\u7684\u63d0\u95ee
+homework.doubt.form.changtea = \u9009\u62e9\u8001\u5e08
+homework.doubt.form.title = \u6807\u9898
+homework.doubt.form.description = \u95ee\u9898\u63cf\u8ff0
+homework.doubt.form.spantext = \u8fd8\u53ef\u4ee5\u8f93\u5165500\u4e2a\u5b57.
+homework.doubt.form.examcontent = \u8bd5\u9898\u5185\u5bb9
+homework.doubt.form.questionscontent = \u63d0\u95ee\u5185\u5bb9
+homework.doubt.form.toask = \u6211\u8981\u8ffd\u95ee
+
+# \u9009\u62e9\u8bd5\u5377
+homework.homework.selectpapers=\u9009\u62e9\u8bd5\u5377
+homework.homework.addpaper=\u6dfb\u52a0\u8bd5\u5377
+homework.homework.sharedscope=\u5171\u4eab\u8303\u56f4
+homework.homework.subject=\u5b66\u79d1
+homework.homework.papertitle=\u8bd5\u5377\u6807\u9898
+homework.homework.materialnode=\u6559\u6750\u7ae0\u8282
+homework.homework.schoolstagesubject=\u5b66\u6bb5\u5b66\u79d1
+homework.homework.checkbox =\u9009\u62e9\u6846
+homework.homework.grouppeople=\u7ec4\u5377\u4eba
+homework.homework.paperstype=\u8bd5\u5377\u7c7b\u578b
+homework.homework.paperstype.help=\u8bd5\u5377\u7c7b\u578b\u4e2d\u666e\u901a\u8bd5\u5377\u6307\u901a\u8fc7\u77e5\u8bc6\u70b9\u9009\u9898\u3001\u6559\u6750\u7ae0\u8282\u9009\u9898\u548c\u667a\u80fd\u7ec4\u5377\u6dfb\u52a0\u7684\u8bd5\u5377\uff0c\u7b54\u9898\u5361\u8bd5\u5377\u5747\u4e3a\u901a\u8fc7\u751f\u6210\u7b54\u9898\u5361\u6dfb\u52a0\u7684\u8bd5\u5377\u3002
+homework.homework.subjective=\u4e3b\u89c2\u9898
+homework.homework.writetopic=\u624b\u5199\u9898
+homework.homework.quotenum=\u5f15\u7528\u6b21\u6570
+
+
+# \u5e03\u7f6e\u4f5c\u4e1a\u9875\u9762
+homework.homework.homeworktype=\u4f5c\u4e1a\u7c7b\u578b
+homework.homework.homeworktype.prepare=\u9884\u4e60\u4f5c\u4e1a
+homework.homework.homeworktype.class=\u968f\u5802\u4f5c\u4e1a
+homework.homework.homeworktype.home=\u8bfe\u540e\u4f5c\u4e1a
+homework.homework.homeworktype.phase=\u9636\u6bb5\u4f5c\u4e1a
+homework.homework.homeworktype.vod=\u70b9\u64ad\u4f5c\u4e1a
+homework.homework.homeworktype.auto=\u63a8\u9001\u4f5c\u4e1a
+homework.homework.paper=\u8bd5\u5377
+homework.homework.startTime=\u5f00\u59cb\u65f6\u95f4
+homework.homework.closeTime=\u622a\u6b62\u65f6\u95f4
+homework.homework.students=\u5b66\u751f\u540d\u5355
+homework.homework.distribute.submit=\u5e03\u7f6e
+homework.homework.subjective.have=\u6709\u4e3b\u89c2\u9898
+homework.homework.subjective.none=\u65e0\u4e3b\u89c2\u9898
+
+# \u81ea\u4e3b\u7ec3\u4e60
+homework.exercise.notfoundrule=\u60a8\u6240\u5728\u7684\u5b66\u6821\u6ca1\u6709\u8bbe\u7f6e\u81ea\u4e3b\u7ec3\u4e60\u9009\u9898\u89c4\u5219\u3002
+homework.exercise.nosuitable=\u5bf9\u4e0d\u8d77\uff0c\u6ca1\u6709\u9002\u5408\u7684\u9898\u76ee\u53ef\u4f9b\u7ec3\u4e60\u3002
+
+#\u7591\u7b54 \u67e5\u770b\u95ee\u9898
+homework.doubt.viewQuestion=\u67e5\u770b\u95ee\u9898
+homework.doubt.ask=\u63d0\u95ee
+homework.doubt.askTime=\u63d0\u95ee\u65f6\u95f4
+homework.doubt.asker=\u63d0\u95ee\u8005
+homework.doubt.describe=\u63cf\u8ff0
+homework.doubt.record=\u5f55\u97f3
+homework.doubt.content=\u9898\u6587
+homework.doubt.answer=\u56de\u7b54
+homework.doubt.askForExplanation=\u8ffd\u95ee
+homework.doubt.answerContent=\u56de\u7b54\u5185\u5bb9
+homework.doubt.recordContent=\u5f55\u97f3\u5185\u5bb9
+homework.doubt.answerDescribe=\u89e3\u7b54\u63cf\u8ff0
+#\u7b54\u7591 \u8bd5\u9898\u7b54\u7591
+homework.doubt.questionAnswer=\u8bd5\u9898\u7b54\u7591
+homework.doubt.keyWord=\u5173\u952e\u8bcd
+homework.doubt.unAnswer=\u672a\u89e3\u7b54
+homework.doubt.doAnswer=\u5df2\u89e3\u7b54
+homework.doubt.noAsk=\u6ca1\u6709\u627e\u5230\u63d0\u95ee\u54e6
+homework.doubt.time=\u65f6\u95f4
+homework.doubt.ze=\u8005
+#\u9884\u4e60\u4f5c\u4e1a
+homework.preview.preview=\u9884\u4e60\u4f5c\u4e1a
+homework.preview.title=\u4f5c\u4e1a\u6807\u9898
+# API\u63a5\u53e3
+homework.api.homeworkid=\u4f5c\u4e1a\u6807\u8bc6\u4e0d\u80fd\u4e3a\u7a7a
+homework.api.version=\u4f5c\u4e1a\u7248\u672c\u4e0d\u80fd\u4e3a\u7a7a
+homework.api.answerdetail=\u5b66\u751f\u7b54\u9898\u660e\u7ec6\u4e0d\u80fd\u4e3a\u7a7a

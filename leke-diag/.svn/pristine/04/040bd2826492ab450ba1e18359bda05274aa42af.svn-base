@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.diag.dao.studentMonitor.ReadyAnalyseDao">
+
+	<!--根据schoolId、gradeId、classId、subjectId等查所有预习作业-->
+	<select id="queryAllReadyHomework" resultType="cn.strong.leke.diag.model.studentMonitor.ReadyHomeworkBean">
+		SELECT
+		hd.homeworkDtlId,
+		hd.studentId,
+		hd.studentName,
+		h.teacherId,
+		h.teacherName,
+		h.subjectId,
+		h.classId,
+		h.courseSingleId,
+		h.resType,
+		hd.submitStatus,
+		hd.submitTime,
+		hd.correctTime,
+		h.startTime,
+		h.closeTime
+		FROM
+		homework.HW_HOMEWORK_DTL hd,
+		homework.HW_HOMEWORK h,
+		lesson.ls_klass_student ks,
+		lesson.ls_klass k
+		WHERE h.homeworkId = hd.homeworkId
+		AND ks.classId = k.classId
+		AND ks.userId = hd.studentId
+		AND k.schoolId = h.schoolId
+		AND hd.isDeleted = 0
+		AND h.isDeleted = 0
+		AND h.status = 1
+		AND h.homeworkType != 7
+		AND h.homeworkType != 4
+		AND h.usePhase = 1
+		AND h.schoolId = #{schoolId}
+		AND k.isDeleted = 0
+		AND k.isExpired = 0
+		AND k.type = 1
+		AND ks.isDeleted = 0
+		AND ks.unSubTime IS NULL
+		<![CDATA[
+			AND h.closeTime >= DATE(#{startDate})
+			AND h.closeTime < DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+		]]>
+		<if test="gradeId != null">
+			AND k.gradeId = #{gradeId}
+		</if>
+		<if test="classId != null">
+			AND ks.classId = #{classId}
+		</if>
+		<if test="subjectId != null">
+			AND h.subjectId = #{subjectId}
+		</if>
+	</select>
+
+	<!--根据schoolId、gradeId、classId、subjectId等查所有SingleIds-->
+	<select id="querySingleIds" resultType="java.lang.Long">
+		SELECT
+		h.courseSingleId AS SingId
+		FROM
+		homework.HW_HOMEWORK_DTL hd,
+		homework.HW_HOMEWORK h,
+		lesson.ls_klass_student ks,
+		lesson.ls_klass k
+		WHERE h.homeworkId = hd.homeworkId
+		AND ks.classId = k.classId
+		AND ks.userId = hd.studentId
+		AND k.schoolId = h.schoolId
+		AND hd.isDeleted = 0
+		AND h.isDeleted = 0
+		AND h.status = 1
+		AND h.homeworkType != 7
+		AND h.homeworkType != 4
+		AND h.usePhase = 1
+		AND h.schoolId = #{schoolId}
+		AND k.isDeleted = 0
+		AND k.isExpired = 0
+		AND k.type = 1
+		AND ks.isDeleted = 0
+		AND ks.unSubTime IS NULL
+		<![CDATA[
+			AND h.closeTime >= DATE(#{startDate})
+			AND h.closeTime < DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+		]]>
+		<if test="gradeId != null">
+			AND k.gradeId = #{gradeId}
+		</if>
+		<if test="classId != null">
+			AND ks.classId = #{classId}
+		</if>
+		<if test="subjectId != null">
+			AND h.subjectId = #{subjectId}
+		</if>
+		GROUP BY h.courseSingleId
+	</select>
+
+	<!--根据studentId查该生有预习的课堂-->
+	<select id="querySingleIdByStudentId" resultType="java.lang.Long">
+		SELECT
+		h.courseSingleId AS courseSingleId
+		FROM
+		homework.HW_HOMEWORK_DTL hd,
+		homework.HW_HOMEWORK h
+		WHERE
+		h.homeworkId = hd.homeworkId
+		AND hd.isDeleted = 0
+		AND h.isDeleted = 0
+		AND h.status = 1
+		AND h.homeworkType != 7
+		AND h.homeworkType != 4
+		AND h.usePhase = 1
+		AND h.schoolId = #{schoolId}
+		<![CDATA[
+			AND h.closeTime >= DATE(#{startDate})
+			AND h.closeTime < DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+		]]>
+		<if test="subjectId != null">
+			AND h.subjectId = #{subjectId}
+		</if>
+		AND hd.studentId = #{studentId}
+		AND h.courseSingleId IS NOT NULL
+		GROUP BY h.courseSingleId
+	</select>
+
+	<!--查该生该课堂有哪些预习作业-->
+	<select id="queryReadyHomeworkBySingleId" resultType="cn.strong.leke.diag.model.studentMonitor.ReadyHomeworkBean">
+		SELECT
+		hd.homeworkDtlId,
+		hd.studentId,
+		hd.studentName,
+		h.teacherId,
+		h.teacherName,
+		h.subjectId,
+		h.classId,
+		h.courseSingleId,
+		h.resType,
+		hd.submitStatus,
+		hd.submitTime,
+		hd.correctTime,
+		h.startTime,
+		h.closeTime
+		FROM
+		homework.HW_HOMEWORK_DTL hd,
+		homework.HW_HOMEWORK h
+		WHERE
+		h.homeworkId = hd.homeworkId
+		AND hd.isDeleted = 0
+		AND h.isDeleted = 0
+		AND h.status = 1
+		AND h.homeworkType != 7
+		AND h.homeworkType != 4
+		AND h.usePhase = 1
+		AND h.schoolId = #{schoolId}
+		<![CDATA[
+			AND h.closeTime >= DATE(#{startDate})
+			AND h.closeTime < DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+		]]>
+		<if test="subjectId != null">
+			AND h.subjectId = #{subjectId}
+		</if>
+		AND hd.studentId = #{studentId}
+		AND h.courseSingleId = #{singleId}
+	</select>
+
+
+
+</mapper>

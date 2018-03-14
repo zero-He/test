@@ -1,0 +1,28 @@
+package cn.strong.leke.dwh.storage;
+
+import java.io.Serializable;
+import java.util.List;
+
+import org.apache.poi.ss.formula.functions.T;
+
+/**
+ * Spark查询条件和结果入库管理。
+ */
+public interface SparkRepoStorage {
+
+	/**
+	 * 查询条件入库
+	 * @param query
+	 * @return
+	 */
+	public String storageQuery(Serializable query);
+
+	/**
+	 * 查询Spark结果对象
+	 * @param id
+	 * @param resultClass
+	 * @return
+	 */
+	public <T extends Serializable> T getResult(String id, Class<T> resultClass);
+
+}

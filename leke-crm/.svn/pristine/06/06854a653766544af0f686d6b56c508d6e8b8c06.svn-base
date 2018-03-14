@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="UTF-8" ?>   
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.scs.dao.slave.CustomerDao">
+
+	<select id="getCustomerByCustomerId" parameterType="long" resultType="cn.strong.leke.scs.model.Customer">
+	<![CDATA[
+		SELECT customerId,
+			   customerName,
+			   customerType,
+			   lekeId,
+			   lekeLoginName,
+			   phone,
+			   sellerId,
+			   sellerName,
+			   status,
+			   bindTime,
+			   consumeTime,
+			   remark,
+			   isDeleted,
+			   createdBy,
+			   createdOn,
+			   modifiedBy,
+			   modifiedOn
+		  FROM crm.scs_customer
+		 WHERE customerId = #{customerId}
+		   AND isDeleted = 0
+	]]>
+	</select>
+
+	<select id="getCustomerByLekeIdAndCustomerType" parameterType="map" resultType="cn.strong.leke.scs.model.Customer">
+
+		SELECT customerId,
+			   customerName,
+			   customerType,
+			   lekeId,
+			   lekeLoginName,
+			   phone,
+			   sellerId,
+			   sellerName,
+			   status,
+			   consumeTime,
+			   remark,
+			   isDeleted,
+			   createdBy,
+			   createdOn,
+			   modifiedBy,
+			   modifiedOn
+		  FROM crm.scs_customer
+		 WHERE lekeId = #{lekeId}
+		 	<if test="customerType != null and customerType != ''">
+				 AND customerType = #{customerType}
+			</if>
+		   AND status = 1
+		   AND isDeleted = 0
+
+	</select>
+	<select id="getCustomerByLekeIdAndCustomerTypeAll" parameterType="map" resultType="cn.strong.leke.scs.model.Customer">
+
+		SELECT customerId,
+			   customerName,
+			   customerType,
+			   lekeId,
+			   lekeLoginName,
+			   phone,
+			   sellerId,
+			   sellerName,
+			   status,
+			   consumeTime,
+			   remark,
+			   isDeleted,
+			   createdBy,
+			   createdOn,
+			   modifiedBy,
+			   modifiedOn
+		  FROM crm.scs_customer
+		 WHERE lekeId = #{lekeId}
+		 	<if test="customerType != null and customerType != ''">
+				 AND customerType = #{customerType}
+			</if>
+		   AND isDeleted = 0
+		  ORDER BY customerId DESC LIMIT 1
+	</select>
+	<select id="findCustomerByQuery" parameterType="cn.strong.leke.scs.model.query.CustomerQuery"
+		resultType="cn.strong.leke.scs.model.CustomerVO">
+	<![CDATA[
+		SELECT a.customerId,
+			   a.customerName,
+			   a.customerType,
+			   a.lekeId,
+			   a.lekeLoginName,
+			   a.phone,
+			   a.sellerId,
+			   a.sellerName,
+			   a.status,
+			   a.bindTime,
+			   a.consumeTime,
+			   remark,
+			   c.balance,
+			   c.total,
+			   a1.origin
+		  FROM crm.scs_customer a INNER JOIN etl_tutor_user a1 ON a.lekeId = a1.userId
+		  LEFT JOIN pay.pay_account b
+		    ON a.lekeId = b.ownerId
+		   AND a.customerType = b.ownerType
+		   AND b.isDeleted = 0
+		  LEFT JOIN pay.pay_point_book c
+		    ON b.accountId = c.accountId
+		   AND c.isDeleted = 0
+		 WHERE a.isDeleted = 0 AND a.status=1
+	]]>
+		<if test="sellerId != null">
+			AND a.sellerId = #{sellerId}
+		</if>
+		<if test="status != null">
+			AND a.status = #{status}
+		</if>
+		<if test="customerType != null">
+			AND a.customerType = #{customerType}
+		</if>
+		<if test="sellerName != null and sellerName != ''">
+			AND a.sellerName LIKE CONCAT('%', #{sellerName}, '%')
+		</if>
+		<if test="customerName != null and customerName != ''">
+			AND a.customerName LIKE CONCAT('%', #{customerName}, '%')
+		</if>
+		<if test="loginName != null and loginName != ''">
+			AND a.lekeLoginName LIKE CONCAT('%', #{loginName}, '%')
+		</if>
+		<if test="phone != null and phone != ''">
+			AND a.phone LIKE CONCAT('%', #{phone}, '%')
+		</if>
+		<if test="origin != null">
+			<if test="origin == 1">
+				AND a1.origin in (0,2)
+			</if>
+			<if test="origin == 2">
+				AND a1.origin=1
+			</if>
+		</if>
+		<if test="startTime != null">
+			<![CDATA[
+			AND a.bindTime >= #{startTime}
+			]]>
+		</if>
+		<if test="endTime != null">
+			<![CDATA[
+			AND a.bindTime < DATE_ADD(#{endTime}, INTERVAL 1 DAY)
+			]]>
+		</if>
+		<if test="order != null and order != ''">
+			ORDER BY c.${order} ${sort}
+		</if>
+	</select>
+
+<select id="findCustomerListByQuery" parameterType="cn.strong.leke.scs.model.query.CustomerQuery"
+		resultType="cn.strong.leke.scs.model.CustomerVO">
+	
+		SELECT customerId,
+			   customerName,
+			   customerType,
+			   lekeId,
+			   lekeLoginName,
+			   phone,
+			   sellerId,
+			   sellerName,
+			   status,
+			   bindTime,
+			   consumeTime,
+			   remark
+		  FROM 
+		  	  scs_customer 
+		  WHERE 
+		  	isDeleted = 0  AND status = 1
+	
+		<if test="sellerId != null">
+			AND sellerId = #{sellerId}
+		</if>
+		<if test="customerType != null">
+			AND customerType = #{customerType}
+		</if>
+		<if test="sellerName != null and sellerName != ''">
+			AND sellerName LIKE CONCAT('%', #{sellerName}, '%')
+		</if>
+		<if test="customerName != null and customerName != ''">
+			AND customerName LIKE CONCAT('%', #{customerName}, '%')
+		</if>
+		<!-- 学校用户学校编码，暂存 字段 lekeLoginName -->
+		<if test="code != null and code != ''">
+			AND lekeLoginName = ${code}
+		</if>
+		<if test="order != null and order != ''">
+			ORDER BY ${order} ${sort}
+		</if>
+	</select>
+	
+	<select id="getSellerByLekeIdCustomerType" parameterType="map" 
+	resultType="long">
+	<![CDATA[
+		 SELECT 
+			   sellerId
+	     FROM crm.scs_customer
+		 WHERE lekeId = #{lekeId}
+		   AND customerType = #{customerType}
+		   AND status = 1
+		   AND isDeleted = 0
+	]]>
+	</select>
+	<select id="selectApproveList" parameterType="map" 
+	resultType="cn.strong.leke.scs.model.CustomerDTO">
+	<![CDATA[
+		 SELECT 
+			   customerId,
+			   customerName,
+			   customerType,
+			   lekeId,
+			   lekeLoginName,
+			   phone,
+			   sellerId,
+			   sellerName,
+			   status,
+			   bindTime,
+			   consumeTime,
+			   remark,
+			   createdOn
+	     FROM crm.scs_customer
+		 WHERE sellerId = #{lekeId}
+		   AND customerType = #{customerType}
+		   AND status = #{status}
+		   AND isDeleted = 0
+	]]>
+	</select>
+</mapper>   

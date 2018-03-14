@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.1//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.question.dao.mybatis.QuestionOfficialTagDao">
+
+	<insert id="insertQuestionOfficialTag" useGeneratedKeys="true" keyProperty="quesOfficialTagId"
+		parameterType="cn.strong.leke.model.question.QuestionOfficialTag">
+		INSERT INTO que_question_official_tag(
+			questionId, officialTagId,
+			isDeleted, createdBy, createdOn, modifiedBy, modifiedOn
+		) VALUES (
+			#{questionId}, #{officialTagId},
+			0, #{createdBy}, now(), #{modifiedBy}, now()
+		)
+	</insert>
+	
+	<update id="deleteQuestionOfficialTag" 
+		parameterType="cn.strong.leke.model.question.QuestionOfficialTag">
+		UPDATE que_question_official_tag
+		<set>
+			isDeleted = 1,
+			<if test="modifiedBy != null">modifiedBy = #{modifiedBy},</if>
+			modifiedOn = now()
+		</set>
+		<where>
+			quesOfficialTagId = #{quesOfficialTagId}
+			AND isDeleted = 0
+		</where>
+	</update>
+	
+	<update id="deleteQuestionOfficialTagByQuestionId" parameterType="long">
+		UPDATE que_question_official_tag
+		<set>
+			isDeleted = 1
+		</set>
+		<where>
+			questionId= #{questionId}
+			AND isDeleted = 0
+		</where>
+	</update>
+	
+	<select id="findQuestionOfficialTagByQuestionId" parameterType="long"
+		resultType="cn.strong.leke.model.question.QuestionOfficialTag">
+		SELECT 
+			a.quesOfficialTagId, a.questionId, a.officialTagId, b.officialTagName,
+			a.isDeleted, a.createdBy, a.createdOn, a.modifiedBy, a.modifiedOn
+		FROM que_question_official_tag a, que_official_tag b
+		<where>
+			a.questionId = #{questionId}
+			AND a.officialTagId = b.officialTagId
+			AND a.isDeleted = 0
+		</where>
+	</select>
+	
+	<select id="getQuestionOfficialTag" parameterType="long"
+		resultType="cn.strong.leke.model.question.QuestionOfficialTag">
+		SELECT a.*, b.officialTagName
+		FROM que_question_official_tag a, que_official_tag b
+		WHERE a.quesOfficialTagId = #{quesOfficialTagId}
+		AND a.officialTagId = b.officialTagId
+	</select>
+</mapper>

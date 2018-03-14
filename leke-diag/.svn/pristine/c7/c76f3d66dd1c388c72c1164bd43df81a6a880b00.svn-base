@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="UTF-8" ?>   
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.diag.dao.beike.mybatis.BeikeResourceDao">
+
+	<select id="findResourceInfoByCourseSingleId" parameterType="long"
+		resultType="cn.strong.leke.diag.dao.beike.model.ResourceInfo">
+		<![CDATA[
+		SELECT beikePhase,
+		       resourceType,
+		       resourceId
+		  FROM bk_beike_resource
+		 WHERE isDeleted = 0
+		   AND resourceType <= 3
+		   AND courseSingleId = #{courseSingleId}
+		]]>
+		<if test="resourceType != null">
+			AND resourceType = #{resourceType}
+		</if>
+		<if test="beikePhase != null">
+			AND beikePhase = #{beikePhase}
+		</if>
+	</select>
+
+	<select id="findCoursewareReviewStuIdByResourceId" parameterType="map" resultType="long">
+	<![CDATA[
+		SELECT studentId
+		  FROM bk_beike_courseware
+		 WHERE createdOn <= IFNULL(#{closeTime}, now())
+		   AND resourceId IN
+	]]>
+		<foreach collection="resourceIds" item="resourceId" open="(" close=")" separator=",">
+			#{resourceId}
+		</foreach>
+		GROUP BY studentId
+		HAVING count(*) >= #{resourceNum}
+	</select>
+
+	<select id="findMicrocourseReviewStuIdByResourceId" parameterType="map" resultType="long">
+	<![CDATA[
+		SELECT studentId
+		  FROM bk_beike_microcourse
+		 WHERE createdOn <= IFNULL(#{closeTime}, now())
+		   AND resourceId IN
+	]]>
+		<foreach collection="resourceIds" item="resourceId" open="(" close=")" separator=",">
+			#{resourceId}
+		</foreach>
+		GROUP BY studentId
+		HAVING count(*) >= #{resourceNum}
+	</select>
+
+	<select id="findHomeworkReviewStuIdByResourceId" parameterType="map" resultType="long">
+	<![CDATA[
+		SELECT studentId
+		  FROM bk_beike_homework
+		 WHERE createdOn <= IFNULL(#{closeTime}, now())
+		   AND resourceId IN
+	]]>
+		<foreach collection="resourceIds" item="resourceId" open="(" close=")" separator=",">
+			#{resourceId}
+		</foreach>
+		GROUP BY studentId
+		HAVING count(*) >= #{resourceNum}
+	</select>
+
+	<sql id="sql_join_resource_dtl_table">
+		<if test="resourceType == 1">
+			LEFT JOIN bk_beike_courseware b
+		</if>
+		<if test="resourceType == 2">
+			LEFT JOIN bk_beike_microcourse b
+		</if>
+		<if test="resourceType == 3">
+			LEFT JOIN bk_beike_homework b
+		</if>
+	</sql>
+
+	<select id="findResReviewStateByStudentId" parameterType="map"
+		resultType="cn.strong.leke.diag.model.report.ResReviewState">
+		<![CDATA[
+		SELECT a.courseSingleId, count(*) = count(b.studentId) state
+		  FROM bk_beike_resource a
+		]]>
+		<include refid="sql_join_resource_dtl_table" />
+		<![CDATA[
+		    ON a.resourceId = b.resourceId
+		   AND b.studentId = #{studentId}
+		 WHERE a.isDeleted = 0
+		   AND a.resourceType = #{resourceType}
+		   AND a.beikePhase = #{beikePhase}
+		   AND a.courseSingleId IN
+		]]>
+		<foreach collection="courseSingleIds" item="courseSingleId" separator="," open="(" close=")">
+			#{courseSingleId}
+		</foreach>
+		<![CDATA[
+		 GROUP BY a.courseSingleId
+		]]>
+	</select>
+
+	<select id="getBeikeNumByCourseSingleIds" parameterType="map" resultType="int">
+		<![CDATA[
+		SELECT COUNT(DISTINCT courseSingleId) lessonNum
+		  FROM bk_beike_resource
+		 WHERE isDeleted = 0
+		   AND resourceType <= 3
+		   AND courseSingleId IN
+		]]>
+		<foreach collection="courseSingleIds" item="courseSingleId" separator="," open="(" close=")">
+			#{courseSingleId}
+		</foreach>
+	</select>
+
+	<select id="findBeikeTypeStatByCourseSingleIds" parameterType="map"
+		resultType="cn.strong.leke.diag.dao.beike.model.BeikeTypeStat">
+		<![CDATA[
+		SELECT beikePhase,
+			   resourceType,
+			   COUNT(DISTINCT courseSingleId) lessonNum
+		  FROM bk_beike_resource
+		 WHERE isDeleted = 0
+		   AND resourceType <= 3
+		   AND courseSingleId IN
+		]]>
+		<foreach collection="courseSingleIds" item="courseSingleId" separator="," open="(" close=")">
+			#{courseSingleId}
+		</foreach>
+		<![CDATA[
+		 GROUP BY resourceType
+		]]>
+	</select>
+	
+	<sql id="sql_findReviewCountByCourseSingleId">
+		AND a.courseSingleId IN
+		<foreach collection="courseSingleIds" item="courseSingleId" separator="," open="(" close=")">
+			#{courseSingleId}
+		</foreach>
+		<if test="phase != null and phase == 1">
+		<![CDATA[
+		   AND a.beikePhase = 1
+		   AND a.resourceType <= 3
+		]]>
+		</if>
+		<if test="phase != null and phase == 3">
+		<![CDATA[
+		   AND a.beikePhase = 3
+		   AND a.resourceType = 3
+		]]>
+		</if>
+	</sql>
+
+	<select id="findTeacherReviewCountByCourseSingleId" parameterType="map"
+		resultType="cn.strong.leke.diag.model.ReviewCount">
+	<![CDATA[
+		SELECT a.courseSingleId lessonId,
+			   count(*) num
+		  FROM bk_beike_resource a
+		 WHERE a.isDeleted = 0
+	]]>
+		<include refid="sql_findReviewCountByCourseSingleId" />
+		GROUP BY a.courseSingleId
+	</select>
+
+	<select id="findStudentReviewCountByCourseSingleId" parameterType="map"
+		resultType="cn.strong.leke.diag.model.ReviewCount">
+		<if test="resType == 1">
+		<![CDATA[
+		SELECT a.courseSingleId lessonId,
+			   b.studentId userId,
+			   count(*) num
+		  FROM bk_beike_resource a
+		  JOIN bk_beike_courseware b
+		    ON a.resourceId = b.resourceId
+		   AND b.isDeleted = 0
+		   AND b.readStatus > 0
+		 WHERE a.isDeleted = 0
+		]]>
+		</if>
+		<if test="resType == 2">
+		<![CDATA[
+		SELECT a.courseSingleId lessonId,
+			   b.studentId userId,
+			   count(*) num
+		  FROM bk_beike_resource a
+		  JOIN bk_beike_microcourse b
+		    ON a.resourceId = b.resourceId
+		   AND b.isDeleted = 0
+		   AND b.readStatus > 0
+		 WHERE a.isDeleted = 0
+		]]>
+		</if>
+		<if test="resType == 3">
+		<![CDATA[
+		SELECT a.courseSingleId lessonId,
+			   b.studentId userId,
+			   count(*) num
+		  FROM bk_beike_resource a
+		  JOIN bk_beike_homework b
+		    ON a.resourceId = b.resourceId
+		   AND b.isDeleted = 0
+		   AND b.submitStatus > 0
+		 WHERE a.isDeleted = 0
+		]]>
+		</if>
+		<include refid="sql_findReviewCountByCourseSingleId" />
+		GROUP BY a.courseSingleId, b.studentId
+	</select>
+
+</mapper>   

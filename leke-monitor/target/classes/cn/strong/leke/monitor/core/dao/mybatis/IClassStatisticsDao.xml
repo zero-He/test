@@ -1,0 +1,591 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.monitor.core.dao.mybatis.IClassStatisticsDao">
+	<!-- 学校统计 -->
+	<select id="querySellerSchool" parameterType="cn.strong.leke.monitor.core.model.ClassStatistics" resultType="cn.strong.leke.monitor.core.model.ClassStatistics">
+		SELECT
+		cc.sellerId,cc.sellerName,u.loginName,tss.schoolId,tss.schoolName,tss.schoolStageId,tss.schoolStageName,m.marketId,m.marketName
+		FROM crm.scs_customer cc
+		LEFT OUTER JOIN
+		tutor.tutor_user_role_school tus ON cc.sellerId=tus.userId AND tus.isDeleted=0
+		LEFT OUTER JOIN tutor.tutor_user u ON cc.sellerId=u.userId AND u.isDeleted=0
+		LEFT OUTER JOIN tutor.tutor_school_stage tss
+		ON cc.lekeId=tss.schoolId AND tss.isDeleted=0
+		LEFT OUTER JOIN tutor.tutor_school s ON tss.schoolId=s.schoolId
+		LEFT OUTER JOIN tutor.um_market_manager mm ON cc.sellerId = mm.userId AND mm.roleId = 112 AND mm.isDeleted = 0
+		LEFT OUTER JOIN tutor.um_market m ON mm.secondDptIds = m.marketId
+		WHERE cc.isDeleted=0 AND s.isDeleted=0
+		AND cc.customerType=2 AND tus.isDeleted=0 AND
+		tus.roleId=112 AND cc.status = 1 AND tss.isDeleted=0
+		<if test="sellerName != null and sellerName != ''">
+			AND cc.sellerName LIKE CONCAT(CONCAT('%',
+			#{sellerName}),'%')
+		</if>
+		<if test="sellerId != null and sellerId != ''">
+			AND cc.sellerId =#{sellerId}
+		</if>
+		<if test="listSeller != null and listSeller.size() > 0">
+			AND
+			cc.sellerId IN (
+			<foreach collection="listSeller" item="item" separator=",">#{item}
+			</foreach>
+			)
+		</if>
+		<if test="listMarketId != null and listMarketId.size() > 0">
+			AND
+			m.marketId IN (
+			<foreach collection="listMarketId" item="item" separator=",">#{item}
+			</foreach>
+			)
+		</if>
+		<if test="schoolId != null and schoolId != ''">
+			AND tss.schoolId =#{schoolId}
+		</if>
+		<if test="schoolStageId != null and schoolStageId != ''">
+			AND tss.schoolStageId = #{schoolStageId}
+		</if>
+		<if test="loginName != null and loginName != ''">
+			AND u.loginName =#{loginName}
+		</if>
+		<if test="marketId != null and marketId != ''">
+			AND m.marketId =#{marketId}
+		</if>
+		ORDER BY cc.sellerId,tss.schoolId,tss.schoolStageId
+	</select>
+
+	<select id="getEndClassNum" parameterType="Map" resultType="java.util.HashMap">
+		SELECT lk.schoolId,lk.schoolStageId,COUNT(1) AS num FROM
+		lesson.ls_lesson ll
+		LEFT OUTER JOIN lesson.ls_klass lk ON ll.classId=lk.classId
+		WHERE ll.isDeleted=0 AND ll.isEnd=1 AND lk.isDeleted=0
+		AND
+		lk.schoolId
+		IN (
+		<foreach collection="schoolId" item="schoolId" separator=",">#{schoolId}
+		</foreach>
+		) AND
+		lk.schoolStageId IN (
+		<foreach collection="schoolStageId" item="schoolStageId" separator=",">#{schoolStageId}
+		</foreach>
+		)
+		<if test="statisticsTimeStart != null and statisticsTimeStart != ''">
+		<![CDATA[
+			AND ll.startTime >= DATE_FORMAT(#{statisticsTimeStart},'%Y-%m-%d') 
+		]]>
+		</if>
+		<if test="statisticsTimeEnd != null and statisticsTimeEnd != ''">
+		<![CDATA[
+			AND ll.startTime < DATE_ADD(#{statisticsTimeEnd},INTERVAL 1 DAY)   
+		]]>
+		</if>
+		GROUP BY lk.schoolId,lk.schoolStageId
+	</select>
+
+	<select id="getBeikeClassNum" parameterType="Map" resultType="java.util.HashMap">
+		SELECT lk.schoolId,lk.schoolStageId,COUNT(1) AS num FROM
+		lesson.ls_lesson ll
+		LEFT OUTER JOIN lesson.ls_klass lk ON ll.classId=lk.classId
+		WHERE ll.isDeleted=0 AND ll.isEnd=1 AND lk.isDeleted=0
+		AND
+		lk.schoolId
+		IN (
+		<foreach collection="schoolId" item="schoolId" separator=",">#{schoolId}
+		</foreach>
+		) AND
+		lk.schoolStageId IN (
+		<foreach collection="schoolStageId" item="schoolStageId" separator=",">#{schoolStageId}
+		</foreach>
+		)
+		<if test="statisticsTimeStart != null and statisticsTimeStart != ''">
+		<![CDATA[
+			AND ll.startTime >= DATE_FORMAT(#{statisticsTimeStart},'%Y-%m-%d') 
+		]]>
+		</if>
+		<if test="statisticsTimeEnd != null and statisticsTimeEnd != ''">
+		<![CDATA[
+			AND ll.startTime < DATE_ADD(#{statisticsTimeEnd},INTERVAL 1 DAY)   
+		]]>
+		</if>
+		AND ll.isPrepared = 1
+		GROUP BY lk.schoolId,lk.schoolStageId
+	</select>
+
+	<select id="getClassNum" parameterType="Map" resultType="java.util.HashMap">
+		SELECT lk.schoolId,lk.schoolStageId,COUNT(1) AS num FROM
+		lesson.ls_attendance_lesson al
+		LEFT OUTER JOIN lesson.ls_lesson ll ON al.scId=ll.courseSingleId
+		LEFT OUTER JOIN lesson.ls_klass lk ON
+		ll.classId=lk.classId
+		WHERE al.isDeleted=0 AND ll.isDeleted=0 AND lk.isDeleted=0 AND ll.isEnd=1
+		AND lk.schoolId IN
+		(
+		<foreach collection="schoolId" item="schoolId" separator=",">#{schoolId}
+		</foreach>
+		) AND
+		lk.schoolStageId IN (
+		<foreach collection="schoolStageId" item="schoolStageId" separator=",">#{schoolStageId}
+		</foreach>
+		)
+		<if test="statisticsTimeStart != null and statisticsTimeStart != ''">
+		<![CDATA[
+			AND ll.startTime >= DATE_FORMAT(#{statisticsTimeStart},'%Y-%m-%d') 
+		]]>
+		</if>
+		<if test="statisticsTimeEnd != null and statisticsTimeEnd != ''">
+		<![CDATA[
+			AND ll.startTime < DATE_ADD(#{statisticsTimeEnd},INTERVAL 1 DAY)   
+		]]>
+		</if>
+		GROUP BY lk.schoolId,lk.schoolStageId
+	</select>
+
+	<select id="getWorkAndCoursewareNum" parameterType="Map" resultType="cn.strong.leke.monitor.core.model.ClassStatistics">
+		SELECT t.schoolId,t.schoolStageId,SUM(CASE WHEN t.beikePhase=1 AND t.resourceType=3 THEN t.TotalNum ELSE 0 END) AS previewWorkNum,
+		SUM(CASE WHEN t.beikePhase=2 AND t.resourceType=3 THEN t.TotalNum
+		ELSE 0 END) AS classWorkNum,
+		SUM(CASE WHEN t.beikePhase=2 AND t.resourceType=1 THEN t.TotalNum ELSE 0 END) AS coursewareNum,
+		SUM(CASE WHEN t.beikePhase=3 AND t.resourceType=3 THEN t.TotalNum ELSE 0
+		END) AS afterClassWorkNum,
+		SUM(CASE WHEN t.beikePhase=1 AND t.resourceType=3 THEN t.CourseNum ELSE 0 END) AS beiPreviewWorkNum,
+		SUM(CASE WHEN t.beikePhase=2 AND t.resourceType=3 THEN t.CourseNum ELSE
+		0 END) AS beiClassWorkNum,
+		SUM(CASE WHEN t.beikePhase=2 AND t.resourceType=1 THEN t.CourseNum ELSE 0 END) AS beiCoursewareNum
+		FROM
+		(SELECT
+		lk.schoolId,lk.schoolStageId,br.beikePhase,br.resourceType,COUNT(1) AS TotalNum,
+		COUNT(DISTINCT(br.courseSingleId)) AS CourseNum
+		FROM
+		beike.bk_beike_resource br
+		LEFT OUTER JOIN lesson.ls_lesson ll ON
+		br.courseSingleId=ll.courseSingleId
+		LEFT OUTER JOIN lesson.ls_klass lk ON ll.classId=lk.classId
+		WHERE br.isDeleted=0 AND ll.isDeleted=0 AND lk.isDeleted=0 AND
+		(br.resourceType = 1 OR br.resourceType =
+		3) AND ll.isEnd=1 AND
+		lk.schoolId IN (
+		<foreach collection="schoolId" item="schoolId" separator=",">#{schoolId}
+		</foreach>
+		)
+		AND lk.schoolStageId IN (
+		<foreach collection="schoolStageId" item="schoolStageId" separator=",">#{schoolStageId}
+		</foreach>
+		)
+		<if test="statisticsTimeStart != null and statisticsTimeStart != ''">
+		<![CDATA[
+			AND ll.startTime >= DATE_FORMAT(#{statisticsTimeStart},'%Y-%m-%d') 
+		]]>
+		</if>
+		<if test="statisticsTimeEnd != null and statisticsTimeEnd != ''">
+		<![CDATA[
+			AND ll.startTime < DATE_ADD(#{statisticsTimeEnd},INTERVAL 1 DAY)   
+		]]>
+		</if>
+		GROUP BY lk.schoolId,lk.schoolStageId,br.beikePhase,br.resourceType) t
+		GROUP BY t.schoolId,t.schoolStageId
+	</select>
+
+	<select id="getClassTestAndAskNum" parameterType="Map" resultType="cn.strong.leke.monitor.core.model.ClassStatistics">
+		SELECT t.schoolId,t.schoolStageId,
+		SUM(IFNULL(t.classTestNum, 0)) AS classTestNum,
+		SUM(IFNULL(t.questionsAnswersNum, 0)) AS questionsAnswersNum,
+		SUM(CASE WHEN t.testCount>0 THEN 1 ELSE 0 END) AS
+		testAttenNum,
+		SUM(CASE WHEN t.askCount>0 THEN 1 ELSE 0 END) AS askAttenNum
+		FROM
+		(
+		SELECT lk.schoolId,lk.schoolStageId,
+		SUM(IFNULL(ab.testCount, 0)) AS classTestNum,
+		SUM(IFNULL(ab.askCount, 0)) AS
+		questionsAnswersNum,
+		SUM(CASE WHEN ab.testCount > 0 THEN 1 ELSE 0 END ) AS testCount,
+		SUM(CASE WHEN ab.askCount > 0 THEN 1 ELSE 0 END ) AS askCount
+		FROM
+		lesson.ls_attendance_behavior ab
+		LEFT OUTER JOIN
+		lesson.ls_lesson ll ON ab.courseSingleId=ll.courseSingleId
+		LEFT OUTER JOIN lesson.ls_klass lk ON ll.classId=lk.classId
+		WHERE ab.isDeleted = 0 AND ll.isDeleted=0 AND lk.isDeleted=0 AND ll.isEnd=1
+		AND
+		lk.schoolId IN
+		(
+		<foreach collection="schoolId" item="schoolId" separator=",">#{schoolId}
+		</foreach>
+		) AND
+		lk.schoolStageId IN (
+		<foreach collection="schoolStageId" item="schoolStageId" separator=",">#{schoolStageId}
+		</foreach>
+		)
+		<if test="statisticsTimeStart != null and statisticsTimeStart != ''">
+		<![CDATA[
+			AND ll.startTime >= DATE_FORMAT(#{statisticsTimeStart},'%Y-%m-%d') 
+		]]>
+		</if>
+		<if test="statisticsTimeEnd != null and statisticsTimeEnd != ''">
+		<![CDATA[
+			AND ll.startTime < DATE_ADD(#{statisticsTimeEnd},INTERVAL 1 DAY)   
+		]]>
+		</if>
+		GROUP BY lk.schoolId,lk.schoolStageId,ab.courseSingleId) t
+		GROUP BY t.schoolId,t.schoolStageId
+	</select>
+
+	<select id="getEndClassData" parameterType="Map" resultType="cn.strong.leke.monitor.core.model.ClassStatistics">
+		SELECT t.schoolId,t.schoolStageId,SUM(IFNULL(totalNum,0)) AS classWorkTotalNum,
+		SUM(IFNULL(finishNum,0)) AS workFinishNum,
+		SUM(IFNULL(correctNum,0)) AS workcorrectNum
+		FROM
+		(
+		SELECT
+		lk.schoolId,lk.schoolStageId,br.relationId FROM beike.bk_beike_resource br
+		LEFT OUTER JOIN lesson.ls_lesson ll ON br.courseSingleId=ll.courseSingleId
+		LEFT OUTER JOIN lesson.ls_klass lk ON
+		ll.classId=lk.classId
+		WHERE ll.isDeleted=0 AND lk.isDeleted=0 AND ll.isEnd=1 AND br.resourceType= 3 AND br.beikePhase =3 AND br.isDeleted = 0 AND
+		lk.schoolId
+		IN (
+		<foreach collection="schoolId" item="schoolId" separator=",">#{schoolId}
+		</foreach>
+		)
+		AND lk.schoolStageId IN (
+		<foreach collection="schoolStageId" item="schoolStageId" separator=",">#{schoolStageId}
+		</foreach>
+		)
+		<if test="statisticsTimeStart != null and statisticsTimeStart != ''">
+		<![CDATA[
+			AND ll.startTime >= DATE_FORMAT(#{statisticsTimeStart},'%Y-%m-%d') 
+		]]>
+		</if>
+		<if test="statisticsTimeEnd != null and statisticsTimeEnd != ''">
+		<![CDATA[
+			AND ll.startTime < DATE_ADD(#{statisticsTimeEnd},INTERVAL 1 DAY)   
+		]]>
+		</if>
+		GROUP BY lk.schoolId,lk.schoolStageId,br.relationId) t
+		LEFT OUTER JOIN homework.HW_HOMEWORK hw ON t.relationId=hw.homeworkId
+		WHERE hw.status=1 AND hw.isDeleted = 0
+		GROUP BY t.schoolId,t.schoolStageId
+	</select>
+
+	<!-- 学校统计 -->
+
+	<!-- 老师统计 -->
+	<select id="getGrade" parameterType="Map" resultType="java.util.HashMap">
+		SELECT tg.gradeName,tg.gradeId FROM tutor.tutor_school_stage ts
+		LEFT OUTER JOIN tutor.tutor_schoolStage_grade sg ON ts.schoolStageId=sg.schoolStageId
+		LEFT OUTER JOIN tutor.tutor_grade tg ON
+		sg.gradeId=tg.gradeId
+		WHERE tg.gradeId IS NOT NULL AND tg.gradeName IS NOT NULL AND sg.isDeleted=0 AND ts.isDeleted=0 AND tg.isDeleted=0
+		AND ts.schoolId =#{schoolId}
+		<if test="schoolStageId != null and schoolStageId != ''">
+			AND ts.schoolStageId= #{schoolStageId }
+		</if>
+		GROUP BY tg.gradeName,tg.gradeId
+		ORDER BY tg.gradeId
+	</select>
+
+	<select id="getSubject" parameterType="Map" resultType="java.util.HashMap">
+		SELECT tb.subjectId,tb.subjectName FROM tutor.tutor_school_stage ts
+		LEFT OUTER JOIN tutor.tutor_schoolStage_subject ss ON ts.schoolStageId=ss.schoolStageId
+		LEFT OUTER JOIN tutor.tutor_subject tb ON
+		ss.subjectId=tb.subjectId
+		WHERE tb.subjectId IS NOT NULL AND tb.subjectName IS NOT NULL AND ts.isDeleted=0 AND ss.isDeleted=0 AND tb.isDeleted=0
+		AND ts.schoolId =#{schoolId}
+		<if test="schoolStageId != null and schoolStageId != ''">
+			AND ts.schoolStageId= #{schoolStageId }
+		</if>
+		GROUP BY tb.subjectId,tb.subjectName
+		ORDER BY tb.subjectId
+	</select>
+
+	<select id="queryTeacherSchool" parameterType="cn.strong.leke.monitor.core.model.ClassStatistics" resultType="cn.strong.leke.monitor.core.model.ClassStatistics">
+		SELECT ls.subjectId,ts.subjectName,lk.gradeId,lk.gradeName,ll.teacherId,tr.userName AS teacherName
+		FROM lesson.ls_lesson ll
+		LEFT OUTER JOIN lesson.ls_klass lk ON ll.classId=lk.classId
+		LEFT OUTER JOIN
+		lesson.ls_klass_subject ls ON ll.classSubjId=ls.classSubjId
+		LEFT OUTER JOIN crm.scs_customer cc ON cc.lekeId= ll.schoolId
+		LEFT OUTER JOIN tutor.tutor_subject ts ON ls.subjectId=ts.subjectId
+		LEFT OUTER
+		JOIN tutor.tutor_user tr ON ll.teacherId = tr.userId
+		WHERE ll.isDeleted=0 AND lk.isDeleted=0 AND ls.isDeleted=0 AND lk.gradeId IS NOT NULL AND ll.teacherId IS NOT NULL
+		AND lk.schoolId = #{schoolId}
+		AND cc.sellerId = #{sellerId } AND lk.schoolStageId = #{schoolStageId }
+		AND cc.customerType=2 AND cc.isDeleted=0 AND cc.status = 1 AND ll.isEnd=1
+		<if test="teacherName != null and teacherName != ''">
+			AND ll.teacherName LIKE CONCAT(CONCAT('%',
+			#{teacherName}),'%')
+		</if>
+		<if test="gradeId != null and gradeId != ''">
+			AND lk.gradeId = #{gradeId}
+		</if>
+		<if test="subjectId != null and subjectId != ''">
+			AND ls.subjectId = #{subjectId}
+		</if>
+		GROUP BY ls.subjectId,ts.subjectName,lk.gradeId,lk.gradeName,ll.teacherId,tr.userName
+		ORDER BY ls.subjectId,lk.gradeId,ll.teacherId
+	</select>
+
+	<select id="getTeacherEndClassNum" parameterType="Map" resultType="java.util.HashMap">
+		SELECT ls.subjectId,lk.gradeId,ll.teacherId,COUNT(1) AS num
+		FROM lesson.ls_lesson ll
+		LEFT OUTER JOIN lesson.ls_klass lk ON ll.classId=lk.classId
+		LEFT OUTER JOIN lesson.ls_klass_subject ls ON
+		ll.classSubjId=ls.classSubjId
+		WHERE ll.isDeleted=0 AND ll.isEnd=1 AND lk.isDeleted=0 AND ls.isDeleted=0 AND lk.schoolId = #{schoolId} AND lk.schoolStageId = #{schoolStageId }
+		AND ll.isEnd=1 AND
+		ls.subjectId IN (
+		<foreach collection="subjectId" item="subjectId" separator=",">#{subjectId}
+		</foreach>
+		)
+		AND lk.gradeId IN (
+		<foreach collection="gradeId" item="gradeId" separator=",">#{gradeId}
+		</foreach>
+		)
+		AND ll.teacherId IN (
+		<foreach collection="teacherId" item="teacherId" separator=",">#{teacherId}
+		</foreach>
+		)
+		<if test="statisticsTimeStart != null and statisticsTimeStart != ''">
+		<![CDATA[
+			AND ll.startTime >= DATE_FORMAT(#{statisticsTimeStart},'%Y-%m-%d') 
+		]]>
+		</if>
+		<if test="statisticsTimeEnd != null and statisticsTimeEnd != ''">
+		<![CDATA[
+			AND ll.startTime < DATE_ADD(#{statisticsTimeEnd},INTERVAL 1 DAY)   
+		]]>
+		</if>
+		GROUP BY ls.subjectId,lk.gradeId,ll.teacherId
+	</select>
+
+	<select id="getTeacherBeikeClassNum" parameterType="Map" resultType="java.util.HashMap">
+		SELECT ls.subjectId,lk.gradeId,ll.teacherId,COUNT(1) AS num
+		FROM lesson.ls_lesson ll
+		LEFT OUTER JOIN lesson.ls_klass lk ON ll.classId=lk.classId
+		LEFT OUTER JOIN lesson.ls_klass_subject ls ON
+		ll.classSubjId=ls.classSubjId
+		WHERE ll.isPrepared = 1 AND ll.isDeleted=0 AND ll.isEnd=1 AND lk.isDeleted=0 AND ls.isDeleted=0 AND lk.schoolId = #{schoolId}
+		AND lk.schoolStageId = #{schoolStageId } AND
+		ll.isEnd=1
+		AND ls.subjectId IN (
+		<foreach collection="subjectId" item="subjectId" separator=",">#{subjectId}
+		</foreach>
+		)
+		AND lk.gradeId IN (
+		<foreach collection="gradeId" item="gradeId" separator=",">#{gradeId}
+		</foreach>
+		)
+		AND ll.teacherId IN (
+		<foreach collection="teacherId" item="teacherId" separator=",">#{teacherId}
+		</foreach>
+		)
+		<if test="statisticsTimeStart != null and statisticsTimeStart != ''">
+		<![CDATA[
+			AND ll.startTime >= DATE_FORMAT(#{statisticsTimeStart},'%Y-%m-%d') 
+		]]>
+		</if>
+		<if test="statisticsTimeEnd != null and statisticsTimeEnd != ''">
+		<![CDATA[
+			AND ll.startTime < DATE_ADD(#{statisticsTimeEnd},INTERVAL 1 DAY)   
+		]]>
+		</if>
+		GROUP BY ls.subjectId,lk.gradeId,ll.teacherId
+	</select>
+
+	<select id="getTeacherClassNum" parameterType="Map" resultType="java.util.HashMap">
+		SELECT ls.subjectId,lk.gradeId,ll.teacherId,COUNT(1) AS num
+		FROM lesson.ls_attendance_lesson al
+		LEFT OUTER JOIN lesson.ls_lesson ll ON al.scId=ll.courseSingleId
+		LEFT OUTER JOIN lesson.ls_klass lk ON
+		ll.classId=lk.classId
+		LEFT OUTER JOIN lesson.ls_klass_subject ls ON ll.classSubjId=ls.classSubjId
+		WHERE al.isDeleted=0 AND ll.isDeleted=0 AND lk.isDeleted=0 AND ls.isDeleted=0 AND
+		lk.schoolId=#{schoolId}
+		AND lk.schoolStageId = #{schoolStageId } AND ll.isEnd=1
+		AND ls.subjectId IN (
+		<foreach collection="subjectId" item="subjectId" separator=",">#{subjectId}
+		</foreach>
+		)
+		AND lk.gradeId IN (
+		<foreach collection="gradeId" item="gradeId" separator=",">#{gradeId}
+		</foreach>
+		)
+		AND ll.teacherId IN (
+		<foreach collection="teacherId" item="teacherId" separator=",">#{teacherId}
+		</foreach>
+		)
+		<if test="statisticsTimeStart != null and statisticsTimeStart != ''">
+		<![CDATA[
+			AND ll.startTime >= DATE_FORMAT(#{statisticsTimeStart},'%Y-%m-%d') 
+		]]>
+		</if>
+		<if test="statisticsTimeEnd != null and statisticsTimeEnd != ''">
+		<![CDATA[
+			AND ll.startTime < DATE_ADD(#{statisticsTimeEnd},INTERVAL 1 DAY)   
+		]]>
+		</if>
+		GROUP BY ls.subjectId,lk.gradeId,ll.teacherId
+	</select>
+
+	<select id="getTeacherWorkAndCoursewareNum" parameterType="Map" resultType="cn.strong.leke.monitor.core.model.ClassStatistics">
+		SELECT t.subjectId,t.gradeId,t.teacherId,SUM(CASE WHEN t.beikePhase=1 AND t.resourceType=3 THEN t.TotalNum ELSE 0 END) AS previewWorkNum,
+		SUM(CASE WHEN t.beikePhase=2 AND t.resourceType=3 THEN
+		t.TotalNum ELSE 0 END) AS classWorkNum,
+		SUM(CASE WHEN t.beikePhase=2 AND t.resourceType=1 THEN t.TotalNum ELSE 0 END) AS coursewareNum,
+		SUM(CASE WHEN t.beikePhase=3 AND t.resourceType=3 THEN
+		t.TotalNum ELSE 0 END) AS afterClassWorkNum,
+		SUM(CASE WHEN t.beikePhase=1 AND t.resourceType=3 THEN t.CourseNum ELSE 0 END) AS beiPreviewWorkNum,
+		SUM(CASE WHEN t.beikePhase=2 AND t.resourceType=3 THEN
+		t.CourseNum ELSE 0 END) AS beiClassWorkNum,
+		SUM(CASE WHEN t.beikePhase=2 AND t.resourceType=1 THEN t.CourseNum ELSE 0 END) AS beiCoursewareNum
+		FROM
+		(
+		SELECT
+		ls.subjectId,lk.gradeId,ll.teacherId,br.beikePhase,br.resourceType,COUNT(1) AS TotalNum,
+		COUNT(DISTINCT(br.courseSingleId)) AS CourseNum
+		FROM beike.bk_beike_resource br
+		LEFT OUTER JOIN lesson.ls_lesson
+		ll ON br.courseSingleId=ll.courseSingleId
+		LEFT OUTER JOIN lesson.ls_klass lk ON ll.classId=lk.classId
+		LEFT OUTER JOIN lesson.ls_klass_subject ls ON ll.classSubjId=ls.classSubjId
+		WHERE br.isDeleted=0
+		AND ll.isDeleted=0 AND lk.isDeleted=0 AND ls.isDeleted=0 AND (br.resourceType = 1 OR br.resourceType = 3) AND
+		lk.schoolId = #{schoolId}
+		AND lk.schoolStageId = #{schoolStageId } AND ll.isEnd=1
+		AND
+		ls.subjectId IN (
+		<foreach collection="subjectId" item="subjectId" separator=",">#{subjectId}
+		</foreach>
+		)
+		AND lk.gradeId IN (
+		<foreach collection="gradeId" item="gradeId" separator=",">#{gradeId}
+		</foreach>
+		)
+		AND ll.teacherId IN (
+		<foreach collection="teacherId" item="teacherId" separator=",">#{teacherId}
+		</foreach>
+		)
+		<if test="statisticsTimeStart != null and statisticsTimeStart != ''">
+		<![CDATA[
+			AND ll.startTime >= DATE_FORMAT(#{statisticsTimeStart},'%Y-%m-%d') 
+		]]>
+		</if>
+		<if test="statisticsTimeEnd != null and statisticsTimeEnd != ''">
+		<![CDATA[
+			AND ll.startTime < DATE_ADD(#{statisticsTimeEnd},INTERVAL 1 DAY)   
+		]]>
+		</if>
+		GROUP BY ls.subjectId,lk.gradeId,ll.teacherId,br.beikePhase,br.resourceType) t
+		GROUP BY t.subjectId,t.gradeId,t.teacherId
+	</select>
+
+	<select id="getTeacherClassTestAndAskNum" parameterType="Map" resultType="cn.strong.leke.monitor.core.model.ClassStatistics">
+		SELECT t.subjectId,t.gradeId,t.teacherId,
+		SUM(IFNULL(t.classTestNum, 0)) AS classTestNum,
+		SUM(IFNULL(t.questionsAnswersNum, 0)) AS questionsAnswersNum,
+		SUM(CASE WHEN t.testCount > 0 THEN 1 ELSE 0 END )
+		AS testAttenNum,
+		SUM(CASE WHEN t.askCount > 0 THEN 1 ELSE 0 END ) AS askAttenNum
+		FROM
+		(
+		SELECT ls.subjectId,lk.gradeId,ll.teacherId,
+		SUM(IFNULL(ab.testCount, 0)) AS classTestNum,
+		SUM(IFNULL(ab.askCount,
+		0)) AS questionsAnswersNum,
+		SUM(CASE WHEN ab.testCount > 0 THEN 1 ELSE 0 END ) AS testCount,
+		SUM(CASE WHEN ab.askCount > 0 THEN 1 ELSE 0 END ) AS askCount
+		FROM lesson.ls_attendance_behavior ab
+		LEFT
+		OUTER JOIN lesson.ls_lesson ll ON ab.courseSingleId=ll.courseSingleId
+		LEFT OUTER JOIN lesson.ls_klass lk ON ll.classId=lk.classId
+		LEFT OUTER JOIN lesson.ls_klass_subject ls ON
+		ll.classSubjId=ls.classSubjId
+		WHERE ab.isDeleted = 0 AND ll.isDeleted=0 AND lk.isDeleted=0 AND ls.isDeleted=0 AND
+		lk.schoolId=#{schoolId}
+		AND lk.schoolStageId = #{schoolStageId } AND ll.isEnd=1
+		AND
+		ls.subjectId IN (
+		<foreach collection="subjectId" item="subjectId" separator=",">#{subjectId}
+		</foreach>
+		)
+		AND lk.gradeId IN (
+		<foreach collection="gradeId" item="gradeId" separator=",">#{gradeId}
+		</foreach>
+		)
+		AND ll.teacherId IN (
+		<foreach collection="teacherId" item="teacherId" separator=",">#{teacherId}
+		</foreach>
+		)
+		<if test="statisticsTimeStart != null and statisticsTimeStart != ''">
+		<![CDATA[
+			AND ll.startTime >= DATE_FORMAT(#{statisticsTimeStart},'%Y-%m-%d') 
+		]]>
+		</if>
+		<if test="statisticsTimeEnd != null and statisticsTimeEnd != ''">
+		<![CDATA[
+			AND ll.startTime < DATE_ADD(#{statisticsTimeEnd},INTERVAL 1 DAY)   
+		]]>
+		</if>
+		GROUP BY ls.subjectId,lk.gradeId,ll.teacherId,ab.courseSingleId) t
+		GROUP BY t.subjectId,t.gradeId,t.teacherId
+	</select>
+
+	<select id="getTeacherEndClassData" parameterType="Map" resultType="cn.strong.leke.monitor.core.model.ClassStatistics">
+		SELECT t.subjectId,t.gradeId,t.teacherId,
+		SUM(IFNULL(totalNum,0)) AS classWorkTotalNum,
+		SUM(IFNULL(finishNum,0)) AS workFinishNum,
+		SUM(IFNULL(correctNum,0)) AS workcorrectNum
+		FROM
+		(
+		SELECT
+		ls.subjectId,lk.gradeId,ll.teacherId,br.relationId FROM beike.bk_beike_resource br
+		LEFT OUTER JOIN lesson.ls_lesson ll ON br.courseSingleId=ll.courseSingleId
+		LEFT OUTER JOIN lesson.ls_klass lk ON
+		ll.classId=lk.classId
+		LEFT OUTER JOIN lesson.ls_klass_subject ls ON ll.classSubjId=ls.classSubjId
+		WHERE lk.isDeleted=0 AND ll.isDeleted=0 AND ls.isDeleted=0 AND
+		lk.schoolId = #{schoolId} AND
+		lk.schoolStageId = #{schoolStageId} AND ll.isEnd=1
+		AND br.resourceType= 3 AND br.beikePhase =3 AND br.isDeleted = 0
+		AND ls.subjectId IN (
+		<foreach collection="subjectId" item="subjectId" separator=",">#{subjectId}
+		</foreach>
+		)
+		AND lk.gradeId IN (
+		<foreach collection="gradeId" item="gradeId" separator=",">#{gradeId}
+		</foreach>
+		)
+		AND ll.teacherId IN (
+		<foreach collection="teacherId" item="teacherId" separator=",">#{teacherId}
+		</foreach>
+		)
+		<if test="statisticsTimeStart != null and statisticsTimeStart != ''">
+		<![CDATA[
+			AND ll.startTime >= DATE_FORMAT(#{statisticsTimeStart},'%Y-%m-%d') 
+		]]>
+		</if>
+		<if test="statisticsTimeEnd != null and statisticsTimeEnd != ''">
+		<![CDATA[
+			AND ll.startTime < DATE_ADD(#{statisticsTimeEnd},INTERVAL 1 DAY)   
+		]]>
+		</if>
+		GROUP BY ls.subjectId,lk.gradeId,ll.teacherId,br.relationId) t
+		LEFT OUTER JOIN homework.HW_HOMEWORK hw ON t.relationId=hw.homeworkId
+		WHERE hw.status=1 AND hw.isDeleted = 0
+		GROUP BY
+		t.subjectId,t.gradeId,t.teacherId
+	</select>
+
+	<!-- 老师统计 -->
+
+	<!-- crm1.1 获取上级管辖的下级人员 -->
+	<select id="getSeller" parameterType="Long" resultType="Long">
+		SELECT m.userId FROM tutor.um_market_manager m
+		WHERE m.roleId=112 AND
+		m.secondDptIds IN (
+		<foreach collection="secondDptIds" item="item" separator=",">#{item}
+		</foreach>
+		)
+	</select>
+</mapper>

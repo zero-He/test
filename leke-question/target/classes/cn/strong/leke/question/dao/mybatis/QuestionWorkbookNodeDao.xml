@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.1//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.question.dao.mybatis.QuestionWorkbookNodeDao">
+
+	<insert id="insertQuestionWorkbookNode" useGeneratedKeys="true" keyProperty="queWorkbookNodeId"
+		parameterType="cn.strong.leke.model.question.QuestionWorkbookNode">
+		INSERT INTO que_question_wb_node(
+			questionId, workbookNodeId, workbookId, path, 
+			isDeleted, createdBy, createdOn, modifiedBy, modifiedOn
+		) VALUES (
+			#{questionId}, #{workbookNodeId}, #{workbookId}, #{path},
+			0, #{createdBy}, now(), #{modifiedBy}, now()
+		)
+	</insert>
+	
+	<insert id="insertQuestionWorkbookNodes" parameterType="cn.strong.leke.model.question.QuestionWorkbookNode">
+		INSERT INTO que_question_wb_node(
+			questionId, workbookNodeId, workbookId, path, 
+			isDeleted, createdBy, createdOn, modifiedBy, modifiedOn
+		) VALUES
+		<foreach collection="questionWbNodes" item="node" separator=",">
+			(#{node.questionId}, #{node.workbookNodeId}, #{node.workbookId}, #{node.path},
+			0, #{node.createdBy}, now(), #{node.modifiedBy}, now())
+		</foreach>
+	</insert>
+	
+	<update id="deleteQuestionWorkbookNodeByQuestionId" parameterType="long">
+		UPDATE que_question_wb_node
+		<set>
+			isDeleted = 1
+		</set>
+		<where>
+			questionId= #{questionId}
+			AND isDeleted = 0
+		</where>
+	</update>
+	
+	<update id="deleteBatchQuestionWbNode">
+		UPDATE que_question_wb_node
+		<set>
+			isDeleted = 1
+		</set>
+		<where>
+		 	isDeleted = 0 AND
+			workbookNodeId= #{workbookNodeId}
+			AND questionId IN
+			<foreach collection="questionIds" item="questionId" open="(" separator="," close=")">
+			 questionId
+			</foreach>
+		</where>
+	</update>
+	
+	<select id="findQuestionWorkbookNodesByQuestionId" parameterType="long"
+		resultType="cn.strong.leke.model.question.QuestionWorkbookNode">
+		SELECT *
+		FROM que_question_wb_node
+		<where>
+			questionId = #{questionId}
+			AND isDeleted = 0
+		</where>
+	</select>
+	
+	<update id="deleteQuestionWorkbookNode" parameterType="map">
+		UPDATE que_question_wb_node
+		<set>
+			isDeleted = 1,
+			<if test="modifiedBy != null">
+			modifiedBy = #{modifiedBy},
+			</if>
+			modifiedOn = now()
+		</set>
+		<where>
+			questionId = #{questionId}
+			AND workbookNodeId = #{workbookNodeId}
+			AND isDeleted = 0
+		</where>
+	</update>
+</mapper>

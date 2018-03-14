@@ -1,0 +1,40 @@
+<div class="previewoperation">
+	<div data-bind="visible: !fold()">
+		<ul>
+			<li  data-bind="click: doSetPrime,visible: level() == 2 && Leke.user.currentRoleId == 402 && data.schoolId == 0"><i class="general"></i>标记精品</li>
+			<li  data-bind="click: doSetGeneral,visible: level() == 1 && Leke.user.currentRoleId == 402 && data.schoolId == 0"><i class="boutique"></i>标记普通</li>
+		<!-- ko if: qs.curScope && Leke.user.currentRoleId != 104 && Leke.user.currentRoleId != 105 -->
+			<li data-bind="click: openEditDialog">
+				<i class="edit"></i> 编辑
+			</li>
+			<li data-bind="click: openCopyAdd,visible: qs.curScope == '1'">
+				<i class="edit"></i> 复制添加
+			</li>
+			<!-- ko if: qs.curScope != '1' && qs.curScope != '4' -->
+			<li data-bind="click: doFavorite"><i class="collection"></i> 收藏</li>
+			<!-- /ko -->
+			<li data-bind="click: doAddQueCart">
+				<i class="shoppingcart"></i>加入习题篮
+			</li>
+		<!-- /ko -->
+		<!-- ko if: Leke.user.currentRoleId == 101 -->
+			<li data-bind="click: doFeedback">
+				<i class="errorcorrection"></i> 纠错
+			</li>
+		<!-- /ko -->
+			<li data-bind="click: function() {
+				window.close();
+			}">
+				<i class="closingwin"></i> 关闭
+			</li>
+		</ul>
+		<i class="close" data-bind="click: function() {
+			fold(true);
+		}">收起</i>
+	</div>
+	<i class="open" data-bind="style: {
+		display: fold() ? 'block' : 'none'
+	}, click: function() {
+		fold(false);
+	}">展开</i>
+</div>

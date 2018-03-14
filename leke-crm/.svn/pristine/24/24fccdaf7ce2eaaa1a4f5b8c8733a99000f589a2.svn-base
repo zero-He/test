@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8" ?>   
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.scs.dao.slave.AttendanceDao">
+
+	<select id="getTeachAttendByAttendId" parameterType="long" resultType="cn.strong.leke.scs.model.view.TeachAttend">
+	<![CDATA[
+		SELECT a.csAttenId  csAttendId,
+			   a.courseName courseName,
+			   b.csetName   courseSetName,
+			   b.oStartTime planStartTime,
+			   b.oEndTime   planEndTime,
+			   c.count      count,
+			   a.totalCount totalCount,
+			   a.realCount  realCount
+		  FROM lesson.ls_attendance_lesson a
+		  JOIN lesson.ls_attendance_teacher b
+		    ON a.csAttenId = b.csAttendId
+		  JOIN lesson.ls_lesson c
+		    ON c.courseSingleId = a.scId
+		 WHERE a.isDeleted = 0
+		   AND b.isDeleted = 0
+		   AND c.isDeleted = 0
+		   AND a.csAttenId = #{csAttendId}
+	]]>
+	</select>
+
+	<select id="findTeachAttendListByQuery" parameterType="cn.strong.leke.scs.model.query.TeachAttendQuery"
+		resultType="cn.strong.leke.scs.model.view.TeachAttend">
+	<![CDATA[
+		SELECT a.csAttenId  csAttendId,
+			   a.courseName courseName,
+			   b.csetName   courseSetName,
+			   b.oStartTime planStartTime,
+			   b.oEndTime   planEndTime,
+			   c.count      count,
+			   a.totalCount totalCount,
+			   a.realCount  realCount
+		  FROM lesson.ls_attendance_lesson a
+		  JOIN lesson.ls_attendance_teacher b
+		    ON a.csAttenId = b.csAttendId
+		  JOIN lesson.ls_lesson c
+		    ON c.courseSingleId = a.scId
+		 WHERE a.isDeleted = 0
+		   AND b.isDeleted = 0
+		   AND c.isDeleted = 0
+		   AND b.tchId = #{teacherId}
+	]]>
+		<if test="startTime != null">
+		<![CDATA[
+		   AND a.startTime >= #{startTime}
+		]]>
+		</if>
+		<if test="endTime != null">
+		<![CDATA[
+		   AND a.startTime < DATE_ADD(#{endTime}, INTERVAL 1 DAY)
+		]]>
+		</if>
+		ORDER BY b.oStartTime Desc
+	</select>
+
+	<select id="findStuAttendListByQuery" parameterType="cn.strong.leke.scs.model.query.StuAttendQuery"
+		resultType="cn.strong.leke.scs.model.view.StudentAttend">
+	<![CDATA[
+		SELECT a.loginName,
+			   a.userName AS nick,
+			   a.attendTime,
+			   a.exitTime,
+			   a.count,
+			   a.duration,
+			   a.online,
+			   a.status
+		  FROM lesson.ls_attendance_student a
+		 WHERE a.isDeleted = 0
+		   AND a.csAttenId = #{csAttendId}
+	]]>
+		<if test="status != null">
+			AND a.status = #{status}
+		</if>
+		<if test="studentName != null and studentName != ''">
+			AND a.userName LIKE CONCAT('%', #{studentName}, '%')
+		</if>
+	</select>
+
+</mapper>   

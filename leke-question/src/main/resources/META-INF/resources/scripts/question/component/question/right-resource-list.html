@@ -1,0 +1,43 @@
+<div class="selecttype">
+	<div class="search">
+		<a target="_blank" class="c-btn-addresource"
+			data-bind="attr: {
+				href: urlAdd
+			}"><i></i>添加习题</a>
+	</div></div>
+
+<div class="selecttype">
+	<div class="search">
+		<label for="subject" class="title">学科：</label>
+		<select name="subject" id="subject" class="u-select u-select-mini"></select>
+		<label for="questionType" class="title">类型：</label>
+		<select name="questionType" id="questionType" class="u-select u-select-mini"
+			data-bind="options: types,
+					   optionsText: 'questionTypeName',
+					   optionsValue: 'questionTypeId',
+					   optionsCaption: '==请选择==',
+					   value: query.questionTypeId"></select>
+        <label class="f-ml5 f-mr5">教材版本:</label>
+        <div class="con">
+			<input type="text" class="u-ipt u-ipt-nm" name="section"  data-bind="value: sectionPath, click: openSectionSelect,attr: {title: sectionPath}" readonly="readonly">
+			<a class="s-c-r f-csp" data-bind="click: delSection"> X </a>
+		</div>
+		<div class="selecttext">
+			<input type="text" name="content" placeholder="请输入习题关键词" data-bind="value: query.content" >
+			<a href="#" class="selectbut" data-bind="click: doSearch"></a>
+		</div>
+		<div class="c-multiple-select" data-bind="click: openKnowledgeSelect,visible: query.shareScope() == 1 && Leke.user.currentRoleId == 402">
+			知识点
+			<div class="selectcon">
+			<!-- ko foreach: query.knowledges -->
+			<span class="selected">
+	            <b data-bind="text: path, attr:{title: path}">雨巷雨巷</b>
+	            <i class="del" data-bind="click: function(data){ $parent.query.knowledges.remove(data);}, clickBubble: false"></i>
+        	</span>
+			<!-- /ko -->
+			</div>
+		</div>
+		
+	</div>
+</div>
+<div id="j-questions"></div>

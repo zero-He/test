@@ -1,0 +1,94 @@
+####jdbc####
+jdbc.driverClassName=${ci.jdbc.driverClassName}
+jdbc.dialectClass=${ci.jdbc.dialectClass}
+jdbc.url=${ci.jdbc.url.homework}
+jdbc.username=${ci.jdbc.username.homework}
+jdbc.password=${ci.jdbc.password.homework}
+
+####cache####
+redis.host1=${ci.redis.host1}
+redis.port1=${ci.redis.port1}
+redis.pool.maxActive=${ci.redis.pool.maxActive}
+redis.pool.maxIdle=${ci.redis.pool.maxIdle}
+redis.pool.maxWait=${ci.redis.pool.maxWait}
+
+####mongodb####
+mongodb.credentials=${ci.mongo.credentials}
+mongodb.replicaset=${ci.mongo.homework.replicaset}
+mongodb.db=${ci.mongo.homework.db}
+
+####webservice####
+domain.cas=${ci.domain.cas}
+domain.user=${ci.domain.user}
+domain.tutor=${ci.domain.tutor}
+domain.question=${ci.domain.question}
+domain.paper=${ci.domain.paper}
+domain.beike=${ci.domain.beike}
+domain.incentive=${ci.domain.incentive}
+domain.learn=${ci.domain.learn}
+
+# Samba\u6839\u76ee\u5f55\u914d\u7f6e
+samba.storage.root=${ci.samba.storage.root}
+samba.trans.remoteUrl=${ci.samba.trans.remoteUrl}
+samba.trans.endUrl=${ci.samba.trans.beike.endUrl}
+
+####mq####
+mq.host=${ci.mq.host}
+mq.port=${ci.mq.port}
+mq.username=${ci.mq.username}
+mq.password=${ci.mq.password}
+
+mq.e.homework.submit=e.homework.submit
+mq.q.homework.submit=q.homework.submit
+
+mq.e.homework.week=e.homework.week
+mq.q.homework.week=q.homework.week
+
+mq.e.homework.holidayhw=e.homework.holidayhw
+mq.q.homework.holidayhw=q.homework.holidayhw
+
+
+mq.e.homework.sheet.write=e.homework.sheet.write
+mq.q.homework.sheet.write=q.homework.sheet.write
+mq.e.homework.sheettask.parse=${ci.mq.e.homework.sheettask.parse}
+mq.q.homework.sheettask.parse=${ci.mq.q.homework.sheettask.parse}
+
+mq.e.homework.correct=e.homework.correct
+mq.q.homework.correct=q.homework.correct
+
+mq.e.homework.progress=e.homework.progress
+mq.q.homework.progress=q.homework.progress
+
+mq.e.wrongtopic=${ci.mq.e.wrongtopic}
+mq.q.wrongtopic=${ci.mq.q.wrongtopic}
+
+mq.e.onlinetest=${ci.mq.e.onlinetest}
+mq.q.onlinetest=${ci.mq.q.onlinetest}
+
+mq.e.paper.usercount=${ci.mq.e.paper.usercount}
+mq.q.paper.usercount=${ci.mq.q.paper.usercount}
+mq.e.beike.courseware.usedcount=${ci.mq.e.beike.courseware.usedcount}
+mq.q.beike.courseware.usedcount=${ci.mq.q.beike.courseware.usedcount}
+mq.e.beike.microcourse.usedcount=${ci.mq.e.beike.microcourse.usedcount}
+mq.q.beike.microcourse.usedcount=${ci.mq.q.beike.microcourse.usedcount}
+
+mq.e.resource.homeworkdtl=e.resource.homeworkdtl
+mq.q.resource.homeworkdtl=q.resource.homeworkdtl
+
+mq.e.homework.mutual.correct=e.homework.mutual.correct
+mq.q.homework.mutual.correct=q.homework.mutual.correct
+
+mq.e.question.wrongquestion=${ci.mq.e.question.wrongquestion}
+mq.q.question.wrongquestion=${ci.mq.q.question.wrongquestion}
+
+mq.e.homework.lesson.beike = ${ci.mq.e.homework.lesson.beike}
+mq.q.homework.lesson.beike = ${ci.mq.q.homework.lesson.beike}
+mq.e.homework.lesson.end = ${ci.mq.e.homework.lesson.end}
+mq.q.homework.lesson.end = ${ci.mq.q.homework.lesson.end}
+mq.e.homework.preview.complete = ${ci.mq.e.homework.preview.complete}
+mq.q.homework.preview.complete = ${ci.mq.q.homework.preview.complete}
+
+mq.e.class.coursesingle.beike=${ci.mq.e.class.coursesingle.beike}
+mq.q.class.coursesingle.beike=${ci.mq.q.class.coursesingle.beike}
+mq.e.homework.lesson.del = ${ci.mq.e.homework.lesson.del}
+mq.q.homework.lesson.del = ${ci.mq.q.homework.lesson.del}

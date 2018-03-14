@@ -1,0 +1,51 @@
+<%@ page pageEncoding="UTF-8"%>
+<%@ include file="/pages/common/tags.jsp"%>
+<%@ taglib prefix="leke" uri="http://www.leke.cn/plugins"%>
+<!DOCTYPE html>
+<html>
+<head>
+<title>查看练习 - <locale:message code="common.page.header.leke" /></title>
+<%@ include file="/pages/common/meta.jsp"%>
+<link rel="stylesheet" type="text/css" href="${assets}/styles/question/question-paper.css?t=${_t}">
+<link rel="stylesheet" type="text/css" href="${assets}/styles/question/question-sheet.css?t=${_t}">
+<link rel="stylesheet" type="text/css" href="${assets}/styles/question/question-show.css?t=${_t}">
+</head>
+<body>
+	<%@ include file="/pages/header/header.jsp"%>
+	<div class="g-bd">
+		<div class="g-mn p-exam">
+			<div class="p-exam-head">
+				<h1>【${exercise.subjectName}】${exerciseTitle }</h1>
+				<div class="p-props">
+					<label><locale:message code="homework.exercise.show.topicquantity" />：</label>
+					<span>${exercise.totalNum}<locale:message code="homework.exercise.show.topic" /></span>
+					<label><locale:message code="homework.exercise.show.correct" />：</label>
+					<span>${exercise.rightNum}<locale:message code="homework.exercise.show.topic" /></span>
+					<label><locale:message code="homework.exercise.show.practicetime" />：</label>
+					<span>
+						${submitDate}
+					</span>
+				</div>
+				<hr>
+				<c:set var="score">
+					<fmt:formatNumber value="${exercise.accuracy * 100 }" pattern="#.#" />
+				</c:set>
+				<input type="hidden" id="score" value="${score }">
+			</div>
+			<div class="p-exam-body">
+				<c:forEach var="question" items="${questionList }" varStatus="status">
+					<leke:questionResult questionId="${question.questionId}" sequence="${status.count}" showSequence="true"
+						questionResult="${question.questionResult }" showExplain="true" showRightAnswer="true" showOperate="true"
+						showResult="true" />
+				</c:forEach>
+			</div>
+			<div class="p-exam-foot">
+				<a class="u-btn u-btn-lg u-btn-bg-gray" href="javascript:window.close();"><locale:message code="homework.homework.closewindow" /></a>
+			</div>
+		</div>
+	</div>
+	<script>
+		seajs.use('homework/exercise/viewWork');
+	</script>
+</body>
+</html>

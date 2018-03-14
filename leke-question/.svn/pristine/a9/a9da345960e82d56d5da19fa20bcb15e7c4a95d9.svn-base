@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8" ?>   
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.question.dao.mybatis.workbook.ITeacherWorkbookDao">
+
+	<insert id="addFavorite" parameterType="map">
+		INSERT INTO que_teacher_workbook (
+			workbookId, teacherId,
+			isDeleted, createdBy, createdOn, modifiedBy, modifiedOn
+		) VALUES (
+			#{workbookId}, #{userId},
+			0, #{userId}, now(), #{userId}, now()
+		)
+	</insert>
+	
+	<update id="deleteFavorites" parameterType="map">
+		UPDATE que_teacher_workbook
+		<set>
+			isDeleted = 1,
+			modifiedBy = #{userId},
+			modifiedOn = now()
+		</set>
+		<where>
+			teacherId = #{userId}
+			AND isDeleted = 0
+			AND workbookId IN
+			<foreach collection="workbookIds" item="item" open="(" close=")" separator=",">
+				#{item}
+			</foreach>
+		</where>
+	</update>
+	
+	<select id="countFavorite" resultType="_int" parameterType="map">
+		SELECT count(*)
+		FROM que_teacher_workbook
+		<where>
+			workbookId = #{workbookId}
+			AND teacherId = #{userId}
+			AND isDeleted = 0
+		</where>
+	</select>
+	
+	<select id="filterFavoriteWorkbooks" resultType="_long">
+		SELECT workbookId
+		FROM que_teacher_workbook
+		<where>
+			teacherId = #{userId}
+			AND isDeleted = 0
+			AND workbookId 
+			IN <foreach collection="workbookIds" item="workbookId" separator="," open="(" close=")">
+				#{workbookId}
+			</foreach>
+		</where>
+	</select>
+</mapper>

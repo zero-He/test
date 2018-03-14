@@ -1,0 +1,159 @@
+package cn.strong.leke.homework.controller;
+
+import static java.util.stream.Collectors.toList;
+
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.annotation.Resource;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
+
+import cn.strong.leke.common.serialize.support.json.JsonUtils;
+import cn.strong.leke.common.utils.CollectionUtils;
+import cn.strong.leke.context.base.UserBaseContext;
+import cn.strong.leke.context.paper.PaperContext;
+import cn.strong.leke.context.user.UserContext;
+import cn.strong.leke.core.pinyin.Pinyin;
+import cn.strong.leke.framework.web.JsonResult;
+import cn.strong.leke.homework.model.Homework;
+import cn.strong.leke.homework.model.LayerAssign;
+import cn.strong.leke.homework.model.LayerClazz;
+import cn.strong.leke.homework.service.HomeworkAssignService;
+import cn.strong.leke.homework.service.HomeworkService;
+import cn.strong.leke.lesson.model.GroupStu;
+import cn.strong.leke.model.user.User;
+import cn.strong.leke.remote.model.user.ClazzGroupRemote;
+import cn.strong.leke.remote.service.lesson.IStudentGroupRemoteService;
+
+@Controller
+@RequestMapping("/auth/teacher/assign/*")
+public class HomeworkAssignController {
+
+	@Resource
+	private HomeworkService homeworkService;
+	@Resource
+	private HomeworkAssignService homeworkAssignService;
+	@Resource
+	private IStudentGroupRemoteService studentGroupRemoteService;
+
+	/**
+	 * @param paperIds
+	 * @param model
+	 */
+	@RequestMapping("index")
+	public void index(@RequestParam(value = "paperIds", required = false) List<Long> paperIds, Model model) {
+		List<Map<String, Object>> papers = Collections.emptyList();
+		if (CollectionUtils.isNotEmpty(paperIds)) {
+			papers = paperIds.stream().map(PaperContext::getPaperDTO).map(paper -> {
+				Map<String, Object> item = new HashMap<>();
+				item.put("paperId", paper.getPaperId());
+				item.put("paperName", paper.getTitle());
+				item.put("subjective", paper.getSubjective());
+				return item;
+			}).collect(toList());
+		}
+		model.addAttribute("papers", JsonUtils.toJSON(papers));
+
+		User user = UserContext.user.get();
+		List<ClazzGroupRemote> clazzList = studentGroupRemoteService.findClazzGroupByTeacherId(user.getId());
+		List<LayerClazz> classes = clazzList.stream().map(v -> {
+			LayerClazz clazz = new LayerClazz();
+			clazz.setClassId(v.getClassId());
+			clazz.setClassName(v.getClassName());
+			clazz.setClassType(v.getType());
+			if (CollectionUtils.isNotEmpty(v.getStudentGroupList())) {
+				clazz.setGroups(v.getStudentGroupList().stream().map(g -> {
+					LayerClazz.Group group = new LayerClazz.Group();
+					group.setGroupId(g.getGroupId());
+					group.setGroupName(g.getGroupName());
+					return group;
+				}).collect(toList()));
+			}
+			return clazz;
+		}).sorted((a, b) -> {
+			int result = Integer.compare(a.getClassType(), b.getClassType());
+			if (result == 0) {
+				result = Long.compare(b.getClassId(), a.getClassId());
+			}
+			return result;
+		}).collect(toList());
+		model.addAttribute("classes", JsonUtils.toJSON(classes));
+	}
+
+	@ResponseBody
+	@RequestMapping("saveAssign")
+	public JsonResult saveAssign(String dataJson) {
+		User user = UserContext.user.get();
+		LayerAssign assign = JsonUtils.fromJSON(dataJson, LayerAssign.class);
+		Long homeworkId = this.homeworkAssignService.saveAssign(assign, user);
+		return new JsonResult().addDatas("homeworkId", homeworkId);
+	}
+
+	@RequestMapping("success")
+	public void success(Long homeworkId, Model model) {
+		if (homeworkId != null) {
+			Homework homework = this.homeworkService.getHomeworkById(homeworkId);
+			model.addAttribute("homeworkId", homeworkId);
+			model.addAttribute("paperId", homework.getPaperId());
+		}
+	}
+
+	@ResponseBody
+	@RequestMapping("classes")
+	public JsonResult classes() {
+		User user = UserContext.user.get();
+		List<ClazzGroupRemote> clazzList = studentGroupRemoteService.findClazzGroupByTeacherId(user.getId());
+		List<LayerClazz> list = clazzList.stream().map(v -> {
+			LayerClazz clazz = new LayerClazz();
+			clazz.setClassId(v.getClassId());
+			clazz.setClassName(v.getClassName());
+			clazz.setClassType(v.getType());
+			return clazz;
+		}).sorted((a, b) -> Integer.compare(a.getClassType(), a.getClassType())).collect(toList());
+		return new JsonResult().addDatas("list", list);
+	}
+
+	@ResponseBody
+	@RequestMapping("users")
+	public JsonResult users(Long classId) {
+		JsonResult json = new JsonResult();
+		List<Long> userIds = studentGroupRemoteService.findStudentByClassId(classId);
+		List<GroupStu> groups = studentGroupRemoteService.findGroupStuByClassId(classId);
+		json.addDatas("users", this.transformToUserInfo(userIds));
+		json.addDatas("groups", groups);
+		return json;
+	}
+
+	@ResponseBody
+	@RequestMapping("classUsers")
+	public JsonResult classUsers(Long classId) {
+		List<Long> userIds = studentGroupRemoteService.findStudentByClassId(classId);
+		List<Map<String, Object>> list = this.transformToUserInfo(userIds);
+		return new JsonResult().addDatas("list", list);
+	}
+
+	@ResponseBody
+	@RequestMapping("groupUsers")
+	public JsonResult groupUsers(Long groupId) {
+		List<Long> userIds = studentGroupRemoteService.findStudentByGroupList(new Long[] { groupId });
+		List<Map<String, Object>> list = this.transformToUserInfo(userIds);
+		return new JsonResult().addDatas("list", list);
+	}
+
+	private List<Map<String, Object>> transformToUserInfo(List<Long> userIds) {
+		return UserBaseContext.findUserBaseByUserId(userIds.toArray(new Long[0])).stream().map(user -> {
+			Map<String, Object> item = new HashMap<>();
+			item.put("userId", user.getUserId());
+			item.put("userName", user.getUserName());
+			item.put("pinyin", Pinyin.toPinyinAbbr(user.getUserName()));
+			return item;
+		}).collect(toList());
+	}
+}

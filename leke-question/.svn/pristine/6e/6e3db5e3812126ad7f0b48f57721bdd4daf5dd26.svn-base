@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.2.xsd">
+
+	<bean id="wordImgConverter" class="cn.strong.leke.question.word.doc.LekeWordImgConverter"></bean>
+	
+	<bean id="word2DocConverter" class="cn.strong.leke.question.word.doc.DocParser">
+		<property name="wordImgConverter" ref="wordImgConverter"></property>
+	</bean>
+	
+	<bean id="docCommandParser" class="cn.strong.leke.question.word.command.CommandParser"></bean>
+	
+	<bean id="questionPartParser" class="cn.strong.leke.question.word.que.LekeQuestionPartParser"></bean>
+
+</beans>

@@ -1,0 +1,77 @@
+/**
+ * 
+ */
+package cn.strong.leke.monitor.core.service.appcenter.impl;
+
+import java.util.Date;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+
+import javax.annotation.Resource;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+
+import cn.strong.leke.common.utils.Booleans;
+import cn.strong.leke.common.utils.ListUtils;
+import cn.strong.leke.framework.exceptions.Validation;
+import cn.strong.leke.monitor.core.model.appcenter.PadSystemReport;
+import cn.strong.leke.monitor.core.service.appcenter.IAppCenterService;
+import cn.strong.leke.monitor.mongo.appcenter.dao.IPadSystemDao;
+import cn.strong.leke.monitor.mongo.appcenter.dao.IUserImeiDao;
+import cn.strong.leke.monitor.mongo.appcenter.model.PadSystem;
+import cn.strong.leke.monitor.mongo.appcenter.model.PadSystem.App;
+
+/**
+ * @author liulongbiao
+ *
+ */
+@Service
+public class AppCenterService implements IAppCenterService {
+	private static final Logger LOG = LoggerFactory.getLogger(AppCenterService.class);
+
+	@Resource(name = "monitorExecutor")
+	private ExecutorService monitorExecutor;
+	@Resource
+	private IPadSystemDao padSystemDao;
+	@Resource
+	private IUserImeiDao userImeiDao;
+
+	@Override
+	public void savePadSystemReport(PadSystemReport report) {
+		Validation.notNull(report, "PadSystemReport is null");
+		Validation.hasText(report.getImei(), "imei is required");
+
+		CompletableFuture.runAsync(() -> {
+			PadSystem sys = toPadSystem(report);
+			padSystemDao.save(sys);
+
+			String userId = report.getUserId();
+			if (StringUtils.hasText(userId)) {
+				userImeiDao.save(userId, report.getImei());
+			}
+		}, monitorExecutor).whenComplete((t, ex) -> {
+			if (ex != null) {
+				LOG.error("保存PAD系统应用报告失败", ex);
+			}
+		});
+	}
+
+	private PadSystem toPadSystem(PadSystemReport report) {
+		PadSystem sys = new PadSystem();
+		sys.setImei(report.getImei());
+		sys.setVersion(report.getVersion());
+		sys.setRooted(Booleans.isTrue(report.getRooted()));
+		sys.setApps(ListUtils.map(report.getApps(), inf -> {
+			App app = new App();
+			app.setPkgName(inf.getPkgName());
+			app.setAppName(inf.getAppName());
+			return app;
+		}));
+		sys.setTs(new Date());
+		return sys;
+	}
+
+}

@@ -1,0 +1,249 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.homework.dao.mybatis.ExamDao">
+
+	<!--查询老师在线考试列表数据-->
+	<select id="selectTeacherExamList" parameterType="cn.strong.leke.homework.model.query.ExamTeaQuery" resultType="cn.strong.leke.homework.model.HomeworkDTO">
+		SELECT
+		h.homeworkId,
+		h.homeworkName,
+		h.resType,
+		h.homeworkType,
+		h.status,
+		h.startTime,
+		h.closeTime,
+		h.teacherId,
+		h.teacherName,
+		h.classId,
+		h.className,
+		h.paperId,
+		h.paperType,
+		h.subjective,
+		h.questionNum,
+		h.finishNum,
+		h.delayNum,
+		h.correctNum,
+		h.totalNum,
+		h.bugFixNum,
+		h.totalFixNum,
+		h.reviewNum,
+		h.maxScore,
+		h.maxScoreRate,
+		h.minScore,
+		h.minScoreRate,
+		h.avgScore,
+		h.avgScoreRate,
+		h.statsStatus,
+		h.isOpenAnswer,
+		h.openAnswerTime,
+		h.isSelfCheck,
+		h.studentGroupsJson,
+		h.schoolId,
+		h.isDeleted,
+		h.createdBy,
+		h.createdOn,
+		h.modifiedBy,
+		h.modifiedOn,
+		h.isVisible,
+		h.isExam
+		FROM HW_HOMEWORK h
+		WHERE h.teacherId = #{teacherId} AND h.schoolId = #{schoolId}
+		AND h.isDeleted = 0
+		AND h.status != 2
+		AND h.resType = 3
+		AND h.isExam = 1
+		AND h.homeworkType = 4
+		<if test="className != null and className != ''">
+			AND h.className LIKE CONCAT('%',#{className},'%')
+		</if>
+		<if test="homeworkName != null and homeworkName != ''">
+			AND h.homeworkName like concat('%',#{homeworkName},'%')
+		</if>
+		order by h.startTime DESC
+	</select>
+
+	<!--查询学生在线考试列表数据-->
+	<select id="selectStuOnlineExamListData" resultType="cn.strong.leke.homework.model.MyHomeworkDTO" parameterType="cn.strong.leke.homework.model.query.ExamStuQuery">
+		SELECT h.homeworkId,
+		h.homeworkName,
+		h.subjectName,
+		h.homeworkType,
+		h.resType,
+		h.teacherName,
+		h.startTime,
+		h.closeTime,
+		h.status,
+		h.isOpenAnswer,
+		h.isSelfCheck,
+		h.maxScore,
+		h.minScore,
+		h.avgScore,
+		h.finishNum,
+		h.totalNum,
+		hd.homeworkDtlId,
+		hd.studentId,
+		hd.submitTime,
+		hd.submitStatus,
+		hd.correctTime,
+		hd.score,
+		hd.scoreRate,
+		hd.bugFixStage,
+		h.paperId
+		FROM HW_HOMEWORK as h
+		JOIN HW_HOMEWORK_DTL as hd ON h.homeworkId = hd.homeworkId
+		WHERE hd.studentId = #{studentId}
+		AND h.status != 2
+		AND h.isDeleted = 0
+		AND hd.isDeleted = 0
+		AND h.isVisible = 1
+		AND h.isExam = 1
+		AND h.resType = 3
+		AND h.homeworkType = 4
+		order by h.startTime DESC
+	</select>
+
+	<!--老师根据homeworkId修改考试开始和截止时间-->
+	<update id="updateTeacherExamDate" parameterType="java.util.Map">
+		UPDATE HW_HOMEWORK
+		<set>
+			<if test="startTime != null">
+				startTime = #{startTime},
+			</if>
+			<if test="closeTime != null">
+				closeTime = #{closeTime}
+			</if>
+		</set>
+		WHERE homeworkId = #{homeworkId}
+	</update>
+
+	<!--扫描出所有用于在线考试的试卷-->
+	<select id="selectTeaExamPaperList" resultType="cn.strong.leke.homework.model.ExamDTO">
+		SELECT
+		h.homeworkId,
+		h.teacherId,
+		h.teacherName,
+		h.startTime,
+		h.isExam
+		FROM
+		HW_HOMEWORK h
+		WHERE
+		h.status != 2
+		AND h.isDeleted = 0
+		AND h.isVisible = 1
+		AND h.isExam = 1
+		AND h.resType = 3
+		AND h.homeworkType = 4
+		<![CDATA[
+			AND h.startTime >= DATE_ADD(DATE_FORMAT(NOW(), '%y-%m-%d %H:%i'), INTERVAL -6 MINUTE)
+			AND h.startTime < DATE_ADD(DATE_FORMAT(NOW(), '%y-%m-%d %H:%i'), INTERVAL -5 MINUTE);
+		]]>
+	</select>
+
+	<!--根据homeworkId查所有考试的学生-->
+	<select id="selectStuExamPaperList" parameterType="java.util.Map" resultType="java.lang.String">
+		SELECT
+		hd.studentId
+		FROM
+		HW_HOMEWORK_DTL hd
+		WHERE
+		hd.homeworkId = #{homeworkId}
+		AND hd.isDeleted = 0
+	</select>
+
+	<!--老师在线考试列表（API）-->
+	<select id="selectTeaOnlineExamList" parameterType="cn.strong.leke.homework.model.query.ApiTeaExamQuery" resultType="cn.strong.leke.homework.model.Homework">
+		SELECT
+		homeworkId,
+		homeworkName,
+		resType,
+		rawType,
+		usePhase,
+		homeworkType,
+		status,
+		paperId,
+		paperType,
+		subjective,
+		className,
+		startTime,
+		closeTime,
+		totalNum,
+		finishNum,
+		correctNum,
+		bugFixNum,
+		totalFixNum,
+		reviewNum,
+		isOpenAnswer,
+		openAnswerTime,
+		isSelfCheck,
+		avgScore,
+		avgScoreRate,
+		CASE WHEN ( bugFixNum - reviewNum) > 0 THEN 1 ELSE -1 END orderNum
+		FROM HW_HOMEWORK
+		WHERE isDeleted = 0 AND isExam = 1 AND homeworkType = 4 AND resType = 3 AND status = 1 AND teacherId = #{teacherId}
+		ORDER BY startTime DESC
+		limit #{start},#{limit}
+	</select>
+
+	<!--老师在线考试列表总数（API）-->
+	<select id="selectTeaOnlineExamTotal" resultType="java.util.Map">
+		SELECT COUNT(1) AS total FROM HW_HOMEWORK WHERE isDeleted = 0 AND isExam = 1 AND homeworkType = 4 AND resType = 3 AND status = 1 AND teacherId = #{teacherId}
+	</select>
+
+	<!--学生在线考试列表（API）-->
+	<select id="selectStuOnlineExamList" parameterType="cn.strong.leke.homework.model.query.ApiStuExamQuery" resultType="cn.strong.leke.homework.model.ApiStudentHomeworkListDTO">
+		SELECT
+		hd.homeworkDtlId,
+		h.homeworkId,
+		h.homeworkName,
+		h.resType,
+		h.rawType,
+		h.usePhase,
+		h.homeworkType,
+		h.status,
+		h.paperId,
+		h.paperType,
+		h.subjectId,
+		h.subjectName,
+		h.subjective,
+		h.teacherId,
+		h.teacherName,
+		h.startTime,
+		h.closeTime,
+		hd.submitStatus,
+		hd.submitTime,
+		h.className,
+		hd.correctTime,
+		hd.score,
+		hd.scoreRate,
+		hd.bugFixStage,
+		h.isOpenAnswer,
+		h.openAnswerTime,
+		h.isSelfCheck
+		FROM HW_HOMEWORK h
+		JOIN HW_HOMEWORK_DTL hd ON h.homeworkId = hd.homeworkId
+		WHERE hd.studentId = #{studentId}
+		AND h.resType = 3
+		AND h.isVisible = 1
+		AND h.isExam = 1
+		AND h.homeworkType = 4
+		AND h.isDeleted = 0
+		AND h.status = 1
+		AND hd.isDeleted = 0
+		ORDER BY h.startTime DESC
+		LIMIT #{start}, #{limit}
+	</select>
+
+	<!--学生在线考试列表总数（API）-->
+	<select id="selectStuOnlineExamTotal" resultType="java.util.Map">
+		SELECT COUNT(1) AS total FROM HW_HOMEWORK h
+		JOIN HW_HOMEWORK_DTL hd ON h.homeworkId = hd.homeworkId
+		WHERE hd.studentId = #{studentId}
+		AND h.resType = 3
+		AND h.isVisible = 1
+		AND h.isExam = 1
+		AND h.homeworkType = 4
+		AND h.isDeleted = 0
+		AND h.status = 1
+		AND hd.isDeleted = 0
+	</select>
+</mapper>

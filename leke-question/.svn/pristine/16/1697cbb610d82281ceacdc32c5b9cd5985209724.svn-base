@@ -1,0 +1,118 @@
+/*
+ * Copyright (c) 2015 Strong Group - 版权所有
+ * 
+ * This software is the confidential and proprietary information of
+ * Strong Group. You shall not disclose such confidential information 
+ * and shall use it only in accordance with the terms of the license 
+ * agreement you entered into with www.cnstrong.cn.
+ */
+package cn.strong.leke.question.duplication.service.impl;
+
+
+import static cn.strong.leke.question.duplication.QueSimDocUtils.hasSimilarKeywords;
+import static cn.strong.leke.question.duplication.QueSimDocUtils.hasSimilarSimHash;
+import static com.mongodb.client.model.Filters.and;
+import static com.mongodb.client.model.Filters.eq;
+import static com.mongodb.client.model.Filters.in;
+import static com.mongodb.client.model.Projections.include;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.function.Consumer;
+
+import javax.annotation.PostConstruct;
+
+import org.bson.Document;
+import org.bson.conversions.Bson;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.util.Assert;
+
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.UpdateOptions;
+
+import cn.strong.leke.data.mongo.BsonUtils;
+import cn.strong.leke.framework.exceptions.Validation;
+import cn.strong.leke.question.duplication.QueDupCst;
+import cn.strong.leke.question.duplication.QueSimDoc;
+import cn.strong.leke.question.duplication.service.QueSimDocService;
+
+/**
+ * 
+ * 
+ * @author liulongbiao
+ */
+@Service
+public class QueSimDocServiceImpl implements QueSimDocService {
+
+	@Autowired
+	private MongoDatabase db;
+	private MongoCollection<QueSimDoc> coll;
+
+	@PostConstruct
+	public void afterPropertiesSet() {
+		Assert.notNull(db);
+		coll = db.getCollection(QueDupCst.COLL_QUE_SIM_DOCS, QueSimDoc.class);
+	}
+
+	@Override
+	public void saveQueSimDoc(QueSimDoc doc) {
+		Validation.isTrue(doc != null && doc.getQuestionId() != null, "doc info incomplete.");
+		Document bson = BsonUtils.toBSON(doc);
+		bson.remove("_id");
+		Document update = new Document("$set", bson);
+		coll.updateOne(eq("_id", doc.getQuestionId()), update,
+				new UpdateOptions().upsert(true));
+	}
+
+	@Override
+	public void deleteQueSimDoc(Long questionId) {
+		if (questionId == null) {
+			return;
+		}
+		coll.deleteOne(eq("_id", questionId));
+	}
+
+	@Override
+	public List<Long> findSimilarQuestionIds(QueSimDoc doc) {
+		if (doc == null || doc.getTermCount() < QueDupCst.MIN_DUP_TERM_COUNT) {
+			return Collections.emptyList();
+		}
+		boolean bySimHash = doc.getTermCount() >= QueDupCst.KEYWORD_SIZE;
+
+		Bson filter = getSameBucketsQuery(doc);
+		String compKey = bySimHash ? "simHash" : "keywords";
+		Long qid = doc.getQuestionId();
+		
+		List<Long> result = new ArrayList<>();
+		coll.find(filter).projection(include(compKey))
+			.forEach((Consumer<QueSimDoc>) ref -> {
+				if (qid.equals(ref.getQuestionId())) {
+					return;
+				}
+				boolean similar = bySimHash ? hasSimilarSimHash(doc, ref)
+						: hasSimilarKeywords(doc, ref);
+				if (similar) {
+					result.add(ref.getQuestionId());
+				}
+			});
+
+		return result;
+	}
+
+	private Bson getSameBucketsQuery(QueSimDoc doc) {
+		List<Bson> parts = new ArrayList<>();
+		parts.add(in("buckets", doc.getBuckets()));
+		Long schoolStageId = doc.getSchoolStageId();
+		if (schoolStageId != null) {
+			parts.add(eq("schoolStageId", schoolStageId));
+		}
+		Long subjectId = doc.getSubjectId();
+		if (subjectId != null) {
+			parts.add(eq("subjectId", subjectId));
+		}
+		return parts.size() == 1 ? parts.get(0) : and(parts);
+	}
+}

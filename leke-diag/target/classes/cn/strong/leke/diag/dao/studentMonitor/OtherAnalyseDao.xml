@@ -1,0 +1,317 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.diag.dao.studentMonitor.OtherAnalyseDao">
+
+	<!--查询有错题本的学生-->
+	<select id="selectOtherAnalysePageData" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo" resultType="cn.strong.leke.diag.model.studentMonitor.OtherBean">
+		SELECT
+		w.studentId,
+		SUM(w.isGrasp = 0) AS noGrasp,
+		SUM(w.isGrasp = 1) AS isGrasp
+		FROM
+		wrongtopic.WT_WRONG w
+		WHERE
+		w.isDeleted = 0
+		AND w.isError = 1
+		<![CDATA[
+			AND w.createdOn >= DATE(#{startDate})
+			AND w.createdOn < DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+		]]>
+		GROUP BY w.studentId
+	</select>
+
+	<!--统计错题本数据-->
+	<select id="selectWrongQuestionData" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo" resultType="cn.strong.leke.diag.model.studentMonitor.WrongQuestionByOtherBean">
+		SELECT
+		SUM(w.isGrasp = 0) AS noGrasp,
+		SUM(w.isGrasp = 1) AS isGrasp,
+		COUNT(w.wrongId)/#{studentTotalNum} AS avgAddWrongSum,
+		SUM(w.isGrasp = 1)/#{studentTotalNum} AS avgXmWrongSum,
+		(SUM(w.isGrasp = 1)/(SUM(w.isGrasp = 0)+SUM(w.isGrasp = 1)))*100 AS graspPro
+		FROM
+		wrongtopic.WT_WRONG w
+		WHERE
+		w.isDeleted = 0
+		AND w.isError = 1
+		<![CDATA[
+			AND w.createdOn >= DATE(#{startDate})
+			AND w.createdOn < DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+		]]>
+		<if test="studentIds.size>0">
+			AND w.studentId in
+			<foreach collection="studentIds" index="index" item="item" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+	</select>
+
+	<!--统计乐答数据-->
+	<select id="selectDoubtData" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo" resultType="cn.strong.leke.diag.model.studentMonitor.DoubtByOtherBean">
+		SELECT
+		COUNT(DISTINCT(d.createdBy)) AS askPeoNum,
+		COUNT(d.doubtId) AS askNum,
+		COUNT(doubtId)/#{studentTotalNum} AS avgAskNum,  -- 人均提问数(提问的多少就多少)
+		(SUM(d.resolved=1)/COUNT(d.doubtId))*100 AS askSolvePro
+		FROM
+		homework.HW_DOUBT d
+		WHERE
+		d.isDeleted = 0
+		AND d.doubtType = 1
+		AND d.studentIsDeleted = 0
+		<![CDATA[
+			AND d.createdOn >= DATE(#{startDate})
+			AND d.createdOn < DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+		]]>
+		<if test="studentIds.size>0">
+			AND d.createdBy in
+			<foreach collection="studentIds" index="index" item="item" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+		AND d.schoolId = #{schoolId}
+	</select>
+
+	<!--所有学生（按筛选条件查出的），有考勤有录像的课堂-->
+	<select id="selectRideoLesson" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo" resultType="cn.strong.leke.diag.model.studentMonitor.OtherLessonBean">
+		SELECT
+		s.userId,
+		l.courseSingleId
+		FROM
+		lesson.ls_attendance_student s,
+		lesson.ls_attendance_lesson al,
+		lesson.ls_lesson l
+		WHERE
+		al.csAttenId = s.csAttenId
+		AND l.courseSingleId = al.scId
+		AND l.isDeleted = 0
+		AND l.isRecord = 1
+		AND s.isDeleted = 0
+		AND l.schoolId = #{schoolId}
+		<![CDATA[
+			AND l.startTime >= DATE(#{startDate})
+			AND l.endTime < DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+		]]>
+		<if test="studentIds.size>0">
+			AND s.userId in
+			<foreach collection="studentIds" index="index" item="item" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+	</select>
+
+	<!--根据课堂IDS，查该课堂是否被该学生观看过-->
+	<select id="selectIsOrNoSeeBySinIds" parameterType="cn.strong.leke.diag.model.studentMonitor.OtherLessonBean" resultType="java.lang.Integer">
+		SELECT
+		COUNT(*)
+		FROM
+		lesson.ls_record_viewlog rv
+		WHERE
+		rv.isDeleted = 0
+		AND rv.userId = #{userId}
+		<if test="courseSingleIds.size>0">
+			AND rv.csId in
+			<foreach collection="courseSingleIds" index="index" item="item" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+	</select>
+
+	<!--查看总的有录像的课堂数-->
+	<select id="selectTotalSeeLessonNum" resultType="java.lang.Integer">
+		SELECT
+		COUNT(*)
+		FROM
+		lesson.ls_record_viewlog rv,
+		lesson.ls_lesson l
+		WHERE
+		rv.csId = l.courseSingleId
+		AND rv.isDeleted = 0
+		AND l.schoolId = #{schoolId}
+		<![CDATA[
+			AND rv.createdOn >= DATE(#{startDate})
+			AND rv.createdOn < DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+		]]>
+		<if test="studentIds.size>0">
+			AND rv.userId in
+			<foreach collection="studentIds" index="index" item="item" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+	</select>
+
+	<!--查询总创建份数-->
+	<select id="selectCreateNum" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo" resultType="java.lang.Integer">
+		SELECT
+		COUNT(ns.noteCsId) AS createNum
+		FROM
+		note.note_summary ns
+		WHERE
+		ns.isDeleted = 0
+		<![CDATA[
+			AND ns.createdOn >= DATE(#{startDate})
+			AND ns.createdOn < DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+		]]>
+		<if test="studentIds.size>0">
+			AND ns.createdBy in
+			<foreach collection="studentIds" index="index" item="item" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+	</select>
+
+	<!--查看总份数-->
+	<select id="selectSeeNum" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo" resultType="java.lang.Integer">
+		SELECT
+		COUNT(DISTINCT(rr.noteCsId)) AS readNum
+		FROM
+		note.note_read_record rr
+		WHERE
+		rr.isDeleted = 0
+		<![CDATA[
+			AND rr.createdOn >= DATE(#{startDate})
+			AND rr.createdOn < DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+		]]>
+		<if test="studentIds.size>0">
+			AND rr.createdBy in
+			<foreach collection="studentIds" index="index" item="item" open="(" separator="," close=")">
+				#{item}
+			</foreach>
+		</if>
+	</select>
+
+	<!--平均每份查看次数-->
+	<select id="selectAvgReadNum" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo" resultType="java.lang.String">
+		SELECT
+		COUNT(rr.readRecordId)/COUNT(DISTINCT(nn.noteCsId))  -- 平均每份查看次数
+		FROM
+		(
+			SELECT
+			ns.noteCsId
+			FROM
+			note.note_summary ns
+			WHERE
+			ns.isDeleted = 0
+			<![CDATA[
+				AND ns.createdOn >= DATE(#{startDate})
+				AND ns.createdOn < DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+			]]>
+			<if test="studentIds.size>0">
+				AND ns.createdBy in
+				<foreach collection="studentIds" index="index" item="item" open="(" separator="," close=")">
+					#{item}
+				</foreach>
+			</if>
+		) nn
+		LEFT JOIN note.note_read_record rr ON rr.noteCsId = nn.noteCsId
+	</select>
+
+	<!--查消灭/新增错题数，消灭错题率-->
+	<select id="selectIsOrNoGraspNum" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo" resultType="cn.strong.leke.diag.model.studentMonitor.IsOrNoGraspBean">
+		SELECT
+		CONCAT(SUM(w.isGrasp = 1),'/',COUNT(w.wrongId)) AS graspNum,
+		(SUM(w.isGrasp = 1)/(SUM(w.isGrasp = 0)+SUM(w.isGrasp = 1)))*100 AS graspPro	-- 消灭错题率
+		FROM
+		wrongtopic.WT_WRONG w
+		WHERE
+		w.isDeleted = 0
+		AND w.isError = 1
+		<![CDATA[
+			AND w.createdOn >= DATE(#{startDate})
+			AND w.createdOn < DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+		]]>
+		AND w.studentId = #{studentId}
+	</select>
+
+	<!--提问数/解答数，问题解答率-->
+	<select id="selectAskOrSolveDoubt" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo" resultType="cn.strong.leke.diag.model.studentMonitor.AskOrSolveDoubtBean">
+		SELECT
+		CONCAT(COUNT(d.doubtId),'/',SUM(d.resolved=1)) AS askSolveSum,
+		(SUM(d.resolved=1)/COUNT(d.doubtId))*100 AS askSolvePro  -- 问题解答率：
+		FROM
+		homework.HW_DOUBT d
+		WHERE
+		d.isDeleted = 0
+		AND d.doubtType = 1
+		AND d.studentIsDeleted = 0
+		<![CDATA[
+			AND d.createdOn >= DATE(#{startDate})
+			AND d.createdOn < DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+		]]>
+		AND d.createdBy =  #{studentId}
+		AND d.schoolId = #{schoolId}
+	</select>
+
+	<!--指定学生（按筛选条件查出的），有考勤有录像的课堂-->
+	<select id="selectRideoLessonByStuId" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo" resultType="cn.strong.leke.diag.model.studentMonitor.OtherLessonBean">
+		SELECT
+		s.userId,
+		l.courseSingleId
+		FROM
+		lesson.ls_attendance_student s,
+		lesson.ls_attendance_lesson al,
+		lesson.ls_lesson l
+		WHERE
+		al.csAttenId = s.csAttenId
+		AND l.courseSingleId = al.scId
+		AND l.isDeleted = 0
+		AND l.isRecord = 1
+		AND s.isDeleted = 0
+		AND l.schoolId = #{schoolId}
+		<![CDATA[
+			AND l.startTime >= DATE(#{startDate})
+			AND l.endTime < DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+		]]>
+		AND s.userId = #{studentId}
+	</select>
+
+	<!--根据userId查该生有录像的课堂数-->
+	<select id="selectTotalSeeLessonNumById" resultType="java.lang.Integer">
+		SELECT
+		COUNT(*)
+		FROM
+		lesson.ls_record_viewlog rv
+		WHERE
+		rv.isDeleted = 0
+		<![CDATA[
+			AND rv.createdOn >= DATE(#{startDate})
+			AND rv.createdOn < DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+		]]>
+		AND rv.userId = #{studentId}
+	</select>
+
+	<!--该生创建笔记数-->
+	<select id="selectCreateBookNum" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo" resultType="java.lang.Integer">
+		SELECT
+		COUNT(ns.noteCsId) 	-- 创建份数
+		FROM
+		note.note_summary ns
+		WHERE
+		ns.isDeleted = 0
+		<![CDATA[
+			AND ns.createdOn >= DATE(#{startDate})
+			AND ns.createdOn < DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+		]]>
+		AND ns.createdBy = #{studentId}
+	</select>
+
+	<!--平均每份查看次数-->
+	<select id="selectAvgReadNumByStudentId" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo" resultType="java.lang.String">
+		SELECT
+		COUNT(rr.readRecordId)/COUNT(DISTINCT(nn.noteCsId))  -- 平均每份查看次数
+		FROM
+		(
+			SELECT
+			ns.noteCsId
+			FROM
+			note.note_summary ns
+			WHERE
+			ns.isDeleted = 0
+			<![CDATA[
+				AND ns.createdOn >= DATE(#{startDate})
+				AND ns.createdOn < DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+			]]>
+			AND ns.createdBy = #{studentId}
+		) nn
+		LEFT JOIN note.note_read_record rr ON rr.noteCsId = nn.noteCsId
+	</select>
+</mapper>

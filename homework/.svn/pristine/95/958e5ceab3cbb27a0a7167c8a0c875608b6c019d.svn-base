@@ -1,0 +1,361 @@
+package cn.strong.leke.homework.controller;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.ModelMap;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.ResponseBody;
+
+import cn.strong.leke.common.serialize.support.json.JsonUtils;
+import cn.strong.leke.common.thread.ThreadLocalHolder;
+import cn.strong.leke.common.utils.CollectionUtils;
+import cn.strong.leke.context.base.UserBaseContext;
+import cn.strong.leke.context.user.StudentContext;
+import cn.strong.leke.context.user.UserContext;
+import cn.strong.leke.context.user.cst.RoleCst;
+import cn.strong.leke.core.business.incentive.DynamicHelper;
+import cn.strong.leke.core.cas.SessionCst;
+import cn.strong.leke.core.dfs.FileUtils;
+import cn.strong.leke.framework.page.jdbc.Page;
+import cn.strong.leke.framework.web.JsonResult;
+import cn.strong.leke.homework.manage.WorkDetailService;
+import cn.strong.leke.homework.model.Doubt;
+import cn.strong.leke.homework.model.DoubtDtl;
+import cn.strong.leke.homework.model.Explain;
+import cn.strong.leke.homework.model.SubjectQuery;
+import cn.strong.leke.homework.model.SubjectTeacherMap;
+import cn.strong.leke.homework.model.TeacherDto;
+import cn.strong.leke.homework.model.WorkDetail;
+import cn.strong.leke.homework.service.DoubtService;
+import cn.strong.leke.homework.service.ExplainService;
+import cn.strong.leke.homework.service.HomeworkDtlService;
+import cn.strong.leke.homework.util.PhotoUtils;
+import cn.strong.leke.model.base.Subject;
+import cn.strong.leke.model.incentive.DynamicInfo;
+import cn.strong.leke.model.incentive.DynamicTypes;
+import cn.strong.leke.model.incentive.IncentiveTypes;
+import cn.strong.leke.model.question.QuestionResult;
+import cn.strong.leke.model.user.User;
+import cn.strong.leke.model.user.UserBase;
+import cn.strong.leke.remote.service.lesson.IKlassRemoteService;
+import cn.strong.leke.remote.service.tutor.base.ISubjectRemoteService;
+
+@Controller
+@RequestMapping("/auth/hd/*")
+public class MPDoubtController {
+	
+	protected static final Logger logger = LoggerFactory.getLogger(MPDoubtController.class);
+
+	@Resource
+	private ISubjectRemoteService subjectRemoteService;
+	@Resource
+	private IKlassRemoteService klassRemoteService;
+
+	@Resource
+	private DoubtService doubtServie;
+	@Resource
+	private ExplainService explainService;
+	@Resource
+	private HomeworkDtlService homeworkDtlService;
+	@Resource
+	private WorkDetailService workDetailService;
+	
+	/**
+	 * 列表页
+	 * @param doubt
+	 * @param page
+	 * @param model
+	 * @return
+	 */
+	@RequestMapping(value = {"student/doubt/list","teacher/doubt/list"},method = RequestMethod.GET)
+	public String list(Integer resolved,ModelMap model) {
+		Long role = UserContext.user.getCurrentRoleId();
+		if(RoleCst.TEACHER.equals(role)){
+			resolved = resolved==null?0:resolved;
+			model.addAttribute("word", null);
+		}else{
+			resolved = resolved==null?1:resolved;
+			model.addAttribute("word", "提问");
+		}
+		model.addAttribute("resolved", resolved);
+		model.addAttribute("resolvedName", resolved==0?"未解答":"已解答");
+		model.addAttribute("currentRoleId", role);
+		return "/auth/hd/doubt/list";
+	}
+	
+	
+	/**
+	 * 跳转到追问或回答页
+	 */
+	@RequestMapping(value = { "teacher/doubt/explain", "student/doubt/explain" },method=RequestMethod.GET)
+	public String explain(Long doubtId,Integer resolved,ModelMap model) {
+		Long role = UserContext.user.getCurrentRoleId();
+		if(RoleCst.TEACHER.equals(role)){
+			model.addAttribute("word", "回答");
+		}else{
+			model.addAttribute("word", "追问");
+		}
+		model.addAttribute("doubtId", doubtId);
+		model.addAttribute("resolved", resolved);
+		model.addAttribute("currentRoleId", role);
+		return "/auth/hd/doubt/explain";
+	}
+	
+	/**
+	 * 提问页
+	 * @param model
+	 * @param teacherId
+	 * @return
+	 */
+	@RequestMapping("student/doubt/ask")
+	public String askDoubt(ModelMap model) {
+		Long role = UserContext.user.getCurrentRoleId();
+		model.addAttribute("currentRoleId", role);
+		return "/auth/hd/doubt/student/ask";
+	}
+	
+	/**
+	 * 学生详细页
+	 * @param model
+	 * @param doubt
+	 * @return
+	 */
+	@RequestMapping("student/doubt/detail")
+	public String getDoubtDetail(ModelMap model, DoubtDtl doubt,Integer resolved,HttpServletRequest request) {
+		String domainStr = FileUtils.getDomain();
+		DoubtDtl doubtDetail = doubtServie.getDetail(doubt);
+		if (doubtDetail.getDoubtAudio() != null && !"".equals(doubtDetail.getDoubtAudio())) {
+			doubtDetail.setDoubtAudio((domainStr + "/" + doubtDetail.getDoubtAudio()));
+		}
+		if (doubtDetail.getHomeworkDtlId() != null && doubtDetail.getDoubtType() != null
+				&& doubtDetail.getDoubtType() == 2) {
+			WorkDetail workDetail = this.workDetailService.getWorkDetailByHomeworkDtlId(doubtDetail.getHomeworkDtlId());
+			if (workDetail != null) { 
+				Optional<QuestionResult> optional = workDetail.getQuestions().stream()
+						.filter(v -> v.getQuestionId().equals(doubtDetail.getQuestionId())).findFirst();
+				optional.ifPresent(questionResult -> model.addAttribute("questionResult", questionResult));
+			}
+		}
+
+		Explain explain = new Explain();
+		explain.setDoubtId(doubtDetail.getDoubtId());
+		explain.setCreatedBy(doubtDetail.getCreatedBy());
+		List<Explain> explains = explainService.getExplainList(explain);
+		for (Explain e : explains) {
+			String expainAudio = e.getExpainAudio();
+			if (expainAudio != null && !"".equals(expainAudio)) {
+				e.setExpainAudio(domainStr + "/" + e.getExpainAudio());
+			}
+		}
+		model.addAttribute("doubt", doubtDetail);
+		model.addAttribute("explains", explains);
+		model.addAttribute("word", "追问");
+		model.addAttribute("resolved", resolved);
+		Long role = UserContext.user.getCurrentRoleId();
+		model.addAttribute("currentRoleId", role);
+		addPhoto(doubtDetail, model, request);
+		return "/auth/hd/doubt/doubtDetail";
+	}
+	
+	/**
+	 * 老师详情页
+	 */
+	@RequestMapping("teacher/doubt/detail")
+	public String getDoubtDetailForExplain(ModelMap model, DoubtDtl doubt,Integer resolved,HttpServletRequest request) {
+		DoubtDtl doubtDetail = doubtServie.getDetail(doubt);
+		String doubtAudio = doubtDetail.getDoubtAudio();
+		if (doubtAudio != null && !"".equals(doubtAudio)) {
+			doubtDetail.setDoubtAudio(FileUtils.getDomain() + "/" + doubtDetail.getDoubtAudio());//重置录音路径
+		}
+
+		if (doubtDetail.getHomeworkDtlId() != null && doubtDetail.getDoubtType() != null
+				&& doubtDetail.getDoubtType() == 2) {
+			model.addAttribute("homeworkDtlId", doubtDetail.getHomeworkDtlId());
+			WorkDetail workDetail = this.workDetailService.getWorkDetailByHomeworkDtlId(doubtDetail.getHomeworkDtlId());
+			if (workDetail != null) {
+				Optional<QuestionResult> optional = workDetail.getQuestions().stream()
+						.filter(v -> v.getQuestionId().equals(doubtDetail.getQuestionId())).findFirst();
+				optional.ifPresent(questionResult -> model.addAttribute("questionResult", questionResult));
+			}
+		}
+
+		Explain explain = new Explain();
+		explain.setDoubtId(doubtDetail.getDoubtId());
+		explain.setCreatedBy(doubtDetail.getCreatedBy());
+		List<Explain> explains = explainService.getExplainList(explain);
+		for (Explain e : explains) {
+			String expainAudio = e.getExpainAudio();
+			if (expainAudio != null && !"".equals(expainAudio)) {
+				e.setExpainAudio(FileUtils.getDomain() + "/" + e.getExpainAudio());
+			}
+		}
+		model.addAttribute("doubt", doubtDetail);
+		model.addAttribute("teacherName", UserContext.user.getUserName());
+		model.addAttribute(SessionCst.TICKET, ThreadLocalHolder.getResource(SessionCst.TICKET));
+		model.addAttribute("explains", explains);
+		model.addAttribute("word", "回答");
+		model.addAttribute("resolved", resolved);
+		addPhoto(doubtDetail, model, request);
+		return "/auth/hd/doubt/doubtDetail";
+	}
+
+	/**
+	 * 保存
+	 * @param doubt
+	 * @param needIncentive
+	 * @return
+	 */
+	@RequestMapping("student/doubt/save")
+	public String saveDoubt(Doubt doubt) {
+		User user = UserContext.user.get();
+		doubt.setCreatedBy(user.getId());
+		doubt.setSchoolId(user.getCurrentSchool().getId());
+		doubt.setSchoolName(user.getCurrentSchool().getName());
+		doubt.setUserName(user.getUserName());
+		try{
+			doubtServie.saveDoubt(doubt);
+			DynamicInfo dynamicInfo = new DynamicInfo();
+			dynamicInfo.setUserId(user.getId());
+			dynamicInfo.setUserName(user.getUserName());
+			dynamicInfo.setRoleId(RoleCst.STUDENT);
+			dynamicInfo.setSchoolId(user.getCurrentSchool().getId());
+			dynamicInfo.setDynamicType(DynamicTypes.HW_SPONSOR_DOUBT);
+			Map<String, Object> params = new HashMap<String, Object>();
+			params.put("doubtId", doubt.getDoubtId());
+			dynamicInfo.setParams(params);
+			dynamicInfo.setTitle(doubt.getDoubtTitle());
+			dynamicInfo.setTypeId(IncentiveTypes.STUDENT.HW_STUDENT_DOUBT);
+			DynamicHelper.publish(dynamicInfo);
+		}catch(Exception e){
+			logger.info("可能。。。特殊字符集插入报错，使得页面奔溃",e);
+			//可能。。。特殊字符集插入报错，使得页面奔溃
+			//不做任何处理
+		}
+		return "redirect:list.htm?resolved=0";
+	}
+
+	/**
+	 * 列表数据
+	 * @param doubt
+	 * @param page
+	 * @return
+	 */
+	@RequestMapping("student/doubt/getDoubtList")
+	@ResponseBody
+	public JsonResult getDoubtList(DoubtDtl doubt, Page page) {
+		JsonResult jsonresult = new JsonResult();
+		doubt.setCreatedBy(UserContext.user.getUserId());
+		List<DoubtDtl> list = doubtServie.doubtList(doubt, page);
+		page.setDataList(list);
+		jsonresult.addDatas("page", page);
+		return jsonresult;
+	}
+
+	/**
+	 * 列表数据
+	 * @param doubt
+	 * @param page
+	 * @return
+	 */
+	@RequestMapping("teacher/doubt/getDoubtList")
+	@ResponseBody
+	public JsonResult getTeacherDoubtList(DoubtDtl doubt, Page page) {
+		JsonResult json = new JsonResult();
+		List<DoubtDtl> doubts = doubtServie.getTeacherDoubtl(doubt, page);
+		page.setDataList(doubts);
+		json.addDatas("page", page);
+		return json;
+	}
+
+	@RequestMapping(value = { "teacher/doubt/explain", "student/doubt/explain" },method=RequestMethod.POST)
+	public String explainDoubt(Explain explain, DoubtDtl doubt,Integer resolved) {
+		doubt = doubtServie.getDetail(doubt);
+		boolean hasDone = explainService.firstTime(doubt.getDoubtId());
+		User user = UserContext.user.get();
+		if (RoleCst.STUDENT.equals(UserContext.user.getCurrentRoleId())) {
+			explainService.updateAgainDoubt(doubt.getDoubtId());
+		}
+		explain.setUserName(UserContext.user.getUserName());
+		explain.setSchoolId(UserContext.user.getCurrentSchoolId());
+		explain.setCreatedBy(UserContext.user.getUserId());
+		try{
+			explainService.saveExplain(explain);
+			//添加激励
+			if (hasDone && RoleCst.TEACHER.equals(UserContext.user.getCurrentRoleId())) {
+				DynamicInfo dynamicInfo = new DynamicInfo();
+				dynamicInfo.setUserId(user.getId());
+				dynamicInfo.setUserName(user.getUserName());
+				dynamicInfo.setRoleId(RoleCst.TEACHER);
+				dynamicInfo.setSchoolId(user.getCurrentSchool().getId());
+				dynamicInfo.setTitle(doubt.getDoubtTitle());
+				dynamicInfo.setDynamicType(DynamicTypes.HW_SLOVE_DOUBT);
+				dynamicInfo.setTypeId(IncentiveTypes.TEACHER.HW_STUDENT_DOUBT);
+				Map<String,Object> params = new HashMap<String, Object>();
+				params.put("doubtId", doubt.getDoubtId());
+				params.put("stuName", doubt.getUserName());
+				dynamicInfo.setParams(params);
+				DynamicHelper.publish(dynamicInfo);
+			}
+		}catch(Exception e){
+			logger.info("可能。。。特殊字符集插入报错，使得页面奔溃",e);
+			//可能。。。特殊字符集插入报错，使得页面奔溃
+			//不做任何处理
+		}
+		return "redirect:detail.htm?doubtId="+doubt.getDoubtId()+"&resolved="+resolved;
+	}
+
+	@RequestMapping("/student/doubt/getTeachers")
+	@ResponseBody
+	public JsonResult queryTeacherForDoubt(String data) {
+		SubjectQuery query = JsonUtils.fromJSON(data, SubjectQuery.class);
+		Long userId = StudentContext.student.getUserId();
+		List<SubjectTeacherMap> list = new ArrayList<>();
+		if(CollectionUtils.isNotEmpty(query.getSubjectList())){
+			for(Subject subject:query.getSubjectList()){
+				List<Long> teacherIds = this.klassRemoteService.findTeacherIdsByStudentId(userId,subject.getSubjectId());
+				List<UserBase> teacherList = UserBaseContext.findUserBaseByUserId(teacherIds.toArray(new Long[0]));
+				if(CollectionUtils.isNotEmpty(teacherList)){
+					SubjectTeacherMap subjectTeacherMap = new SubjectTeacherMap();
+					subjectTeacherMap.setSubjectId(subject.getSubjectId());
+					subjectTeacherMap.setSubjectName(subject.getSubjectName());
+					List<TeacherDto> teacherDtoList = new ArrayList<>();
+					for(UserBase v : teacherList){
+						if(v!=null){
+							TeacherDto teacher = new TeacherDto();
+							teacher.setTeacherId(v.getUserId());
+							teacher.setTeacherName(v.getUserName());
+							teacherDtoList.add(teacher);
+						}
+					}
+					subjectTeacherMap.setTeacherList(teacherDtoList);
+					list.add(subjectTeacherMap);
+				}
+			}
+		}
+		JsonResult jsonresult = new JsonResult();
+		jsonresult.addDatas("resultList", list);
+		return jsonresult;
+	}
+	
+	private void addPhoto(DoubtDtl doubt,ModelMap model,HttpServletRequest request){
+		UserBase student = UserBaseContext.getUserBaseByUserId(doubt.getCreatedBy());
+		UserBase teacher = UserBaseContext.getUserBaseByUserId(doubt.getTeacherId());
+		String studentPhoto = PhotoUtils.getAbsolutePhoto(student,request);
+		String teacherPhoto = PhotoUtils.getAbsolutePhoto(teacher,request);
+		model.addAttribute("studentPhoto", studentPhoto);
+		model.addAttribute("teacherPhoto", teacherPhoto);
+		model.addAttribute("teacherId", doubt.getTeacherId());
+	}
+	
+}

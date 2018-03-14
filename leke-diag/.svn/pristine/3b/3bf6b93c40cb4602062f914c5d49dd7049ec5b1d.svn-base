@@ -1,0 +1,170 @@
+package cn.strong.leke.diag.service;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+
+import javax.annotation.Resource;
+
+import org.springframework.stereotype.Repository;
+
+import cn.strong.leke.context.paper.PaperContext;
+import cn.strong.leke.diag.dao.homework.model.LessonExamAnaly;
+import cn.strong.leke.diag.dao.homework.mybatis.HomeworkDao;
+import cn.strong.leke.diag.dao.homework.mybatis.HomeworkDtlDao;
+import cn.strong.leke.diag.model.CorrectInfoDto;
+import cn.strong.leke.diag.model.CourseSubjectHomeworkDetailsDto;
+import cn.strong.leke.diag.model.CourseSubjectHomeworkDto;
+import cn.strong.leke.diag.model.CourseSubjectHomeworkStatisticsDto;
+import cn.strong.leke.diag.model.CourseSubjectHomeworkStatisticsQueryDto;
+import cn.strong.leke.diag.model.CourseSubjectHomeworkStatisticsStudentsDto;
+import cn.strong.leke.diag.model.CourseSubjectHomeworkStatisticsStudentsQueryDto;
+import cn.strong.leke.diag.model.Homework;
+import cn.strong.leke.framework.page.jdbc.Page;
+import cn.strong.leke.model.paper.PaperDTO;
+
+@Repository
+public class HomeworkService {
+
+	@Resource
+	private HomeworkDao homeworkDao;
+	@Resource
+	private HomeworkDtlDao homeworkDtlDao;
+
+	/**
+	 * 描述:根据教师作业id查询详情
+	 * @param homeworkId
+	 * @return
+	 */
+	public Homework getHomeworkByHomeworkId(Long homeworkId) {
+		return this.homeworkDao.getHomeworkByHomeworkId(homeworkId);
+	}
+
+	/**
+	 * 根据条件查询学生成绩统计
+	 * @param subjectId 学科ID
+	 * @param classType 班级类型
+	 * @param classId 班级ID
+	 * @param studentId 学生ID，可为空
+	 * @param startTime 开始时间
+	 * @param endTime 结束时间
+	 * @return
+	 */
+	public List<Map<String, Object>> findStudentScoreStat(Long subjectId, Long classType, Long classId, Long studentId,
+			Date startTime, Date endTime) {
+		return this.homeworkDao.findStudentScoreStat(subjectId, classType, classId, studentId, startTime, endTime);
+	}
+
+	/**
+	 * 根据学科和老师查询老师作业批改情况
+	 * @param subjectId 学科ID
+	 * @param teacherId 老师ID
+	 * @param startTime 开始时间
+	 * @param endTime 结束时间
+	 * @return
+	 */
+	public List<CorrectInfoDto> findCorrectInfoDtoList(Long subjectId, Long teacherId, Long schoolId, Date startTime,
+			Date endTime) {
+		return this.homeworkDao.findCorrectInfoDtoList(subjectId, teacherId, schoolId, startTime, endTime);
+	}
+
+	public List<Map<String, Object>> findStudentScoreSelf(Long studentId, Long subjectId, Date startTime,
+			Date endTime) {
+		return this.homeworkDao.findStudentScoreSelf(studentId, subjectId, startTime, endTime);
+	}
+
+	public List<Map<String, Object>> findStuSubjectScore(Long studentId) {
+		return this.homeworkDao.findStuSubjectScore(studentId);
+	}
+
+	/** 作业勤奋报告：获取 按课程、学科分组作业统计列表数据
+	 * @param queryDto
+	 * @param page
+	 * @return
+	 */
+	public List<CourseSubjectHomeworkStatisticsDto> findCourseSubjectInfo(
+			CourseSubjectHomeworkStatisticsQueryDto queryDto, Page page) {
+		return this.homeworkDao.findCourseSubjectInfo(queryDto, page);
+	}
+
+	/**作业勤奋报告：查看某一套课下学生作业列表数据
+	 * @param queryDto
+	 * @param page
+	 * @return
+	 */
+	public List<CourseSubjectHomeworkStatisticsStudentsDto> findCourseSubjectStudents(
+			CourseSubjectHomeworkStatisticsStudentsQueryDto queryDto, Page page) {
+		return this.homeworkDao.findCourseSubjectStudents(queryDto, page);
+	}
+
+	/** 
+	 * 老师：学生成绩分析
+	 * 按照课程和学科 查询作业数统计
+	 * @param queryDto
+	 * @param page
+	 * @return
+	 */
+	public List<CourseSubjectHomeworkDto> findCourseSubject(CourseSubjectHomeworkStatisticsStudentsQueryDto queryDto,
+			Page page) {
+		return this.homeworkDao.findCourseSubject(queryDto, page);
+	}
+
+	/**
+	 * 老师：学生成绩分析
+	 * 按照课程和学科 查询各单课的作业成绩统计
+	 * @param queryDto
+	 * @return
+	 */
+	public List<CourseSubjectHomeworkDetailsDto> findCourseSubjectDetails(
+			CourseSubjectHomeworkStatisticsStudentsQueryDto queryDto) {
+		return this.homeworkDao.findCourseSubjectDetails(queryDto);
+	}
+
+	/**
+	 * 获取某班某个学科的所有作业（仅限本学期的）
+	 * @param classId
+	 * @param subjectId
+	 * @param SemesterStarDate 学期的起始时间
+	 * @return
+	 */
+	public List<Homework> findHwByClassSubject(Long classId, Long subjectId, Date SemesterStarDate) {
+		return this.homeworkDao.findHwByClassSubject(classId, subjectId, SemesterStarDate);
+	}
+
+	/**
+	 * 获取老师在某班级布置的作业
+	 * @param classId
+	 * @param teacherId
+	 * @param SemesterStarDate
+	 * @return
+	 */
+	public List<Homework> findHwByTeacherClass(Long classId, Long teacherId, Date SemesterStarDate) {
+		return this.homeworkDao.findHwByTeacherClass(classId, teacherId, SemesterStarDate);
+	}
+
+	/**
+	 * 查询单课随堂作业分析情况
+	 * @param courseSingleId
+	 * @return
+	 */
+	public List<LessonExamAnaly> findLessonExamAnalyByCourseSingleId(Long courseSingleId, Integer homeworkType) {
+		List<LessonExamAnaly> exams = this.homeworkDao.findLessonExamScoreByCourseSingleId(courseSingleId,
+				homeworkType);
+		exams.forEach(v -> {
+			PaperDTO paperDTO = PaperContext.getPaperDTO(v.getPaperId());
+			BigDecimal totalScore = paperDTO.getDetail().getTotalScore();
+			v.setTotalScore(totalScore.setScale(1, RoundingMode.HALF_UP).doubleValue());
+		});
+		exams.stream().filter(v -> v.getFinishNum() > 0).forEach(v -> {
+			LessonExamAnaly levels = this.homeworkDtlDao.getScoreLevelsByHomeworkId(v.getHomeworkId());
+			v.setLevelA(levels.getLevelA());
+			v.setLevelB(levels.getLevelB());
+			v.setLevelC(levels.getLevelC());
+			v.setLevelD(levels.getLevelD());
+			v.setLevelE(levels.getLevelE());
+		});
+		return exams;
+	}
+}

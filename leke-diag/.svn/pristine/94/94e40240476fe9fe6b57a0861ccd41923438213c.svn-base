@@ -1,0 +1,525 @@
+<?xml version="1.0" encoding="UTF-8" ?>   
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.diag.dao.teachingMonitor.LessonAttendInfoDao">
+	
+	<sql id="teacherOfGradeSubject">
+	    <!-- 关联年级、学科下的老师 -->
+		AND EXISTS (
+					SELECT 1 FROM lesson.ls_klass f, lesson.ls_klass_teacher t 
+		            WHERE t.userId = a.teacherId 
+		            AND f.classId = t.classId
+		            AND f.isExpired = 0
+		            AND f.isDeleted = 0
+		            AND f.type = 1
+		            AND t.roleId = 101
+		            AND f.schoolId = #{schoolId}
+		            <if test="gradeId != null and gradeId != -1">
+		            AND f.gradeId = #{gradeId}
+					</if>
+					<if test="subjectId != null and subjectId != -1">
+					AND t.subjectId = #{subjectId}
+					</if>
+		            )
+	</sql>
+	
+	<select id="findAttendLessonStat" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.teachingMonitor.LessonAttendInfo">
+		SELECT
+		  p.totalLesson,
+		  p.notAttendLesson,
+		  CONVERT(IF(p.totalLesson = 0, 0, ROUND(p.notAttendLesson / p.totalLesson * 100, 1)), DECIMAL(4,1)) notAttendLessonRate,
+		  p.attendLesson,
+		  CONVERT(IF(p.totalLesson = 0, 0, ROUND(p.attendLesson / p.totalLesson * 100, 1)), DECIMAL(4,1)) attendLessonRate
+		FROM
+		(
+			SELECT
+				COUNT(1) totalLesson,
+				COUNT(IF(b.startTime IS NULL, 1, NULL)) notAttendLesson,
+			    COUNT(IF(b.startTime IS NULL, NULL, 1)) attendLesson
+			FROM
+				lesson.ls_lesson a
+			LEFT JOIN lesson.ls_attendance_lesson b ON a.courseSingleId = b.scId
+			WHERE a.startTime <![CDATA[>=]]> DATE(#{startDate})
+			AND a.endTime <![CDATA[<]]> DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+			AND a.schoolId = #{schoolId}
+		    AND a.isDeleted = 0
+		    <!-- 关联年级、学科下的课堂 -->
+			<if test="subjectId != null and subjectId != -1">
+			AND EXISTS (SELECT 1 FROM lesson.ls_klass_subject e WHERE e.classSubjId = a.classSubjId AND e.subjectId = #{subjectId})
+			</if>
+			AND EXISTS (
+						SELECT 1 FROM lesson.ls_klass f 
+			            WHERE f.classId = a.classId 
+			            AND f.isExpired = 0
+			            AND f.isDeleted = 0
+			            <if test="gradeId != null and gradeId != -1">
+			            AND f.gradeId = #{gradeId}
+						</if>
+			            ) 
+			<include refid="teacherOfGradeSubject"/>
+			) p
+	</select>
+	
+	<select id="findAttendLessonRateByDay" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.teachingMonitor.LessonAttendInfo">
+			
+			SELECT
+			  z.startDate,
+			  z.startDate endDate, 
+			  z.startDate dateStr,
+			  CONVERT(IF(b.totalLesson IS NULL, 0, ROUND(IFNULL(d.attendLesson, 0) / b.totalLesson * 100, 1)), DECIMAL(4,1)) attendLessonRate
+			FROM
+				(SELECT @d :=@d + 1 AS rn, DATE_ADD(#{startDate}, INTERVAL @d DAY) startDate FROM lesson.ls_dateAssistant,(SELECT @d :=- 1) b LIMIT #{limit}) z
+			LEFT JOIN
+			(
+				SELECT
+				 DATE_FORMAT(a.startTime, '%Y-%m-%d') startDate, COUNT(1) totalLesson
+				FROM lesson.ls_lesson a
+				WHERE a.schoolId = #{schoolId}
+				AND a.isDeleted = 0
+				AND a.startTime <![CDATA[>=]]> DATE(#{startDate})
+				AND a.endTime <![CDATA[<]]> DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+				
+				AND EXISTS (
+							SELECT 1 FROM lesson.ls_klass f 
+				            WHERE f.classId = a.classId 
+				            AND f.isExpired = 0
+				            AND f.isDeleted = 0
+				            <if test="gradeId != null and gradeId != -1">
+				            AND f.gradeId = #{gradeId}
+							</if>
+				            )
+				
+				<if test="subjectId != null and subjectId != -1">
+				AND EXISTS (SELECT 1 FROM lesson.ls_klass_subject e WHERE e.classSubjId = a.classSubjId AND e.subjectId = #{subjectId})
+				</if>
+				
+				<include refid="teacherOfGradeSubject"/> 
+				
+				GROUP BY DATE_FORMAT(a.startTime, '%Y-%m-%d')
+			) b
+			ON b.startDate = z.startDate
+			LEFT JOIN
+			(
+			  SELECT
+					DATE_FORMAT(c.startTime, '%Y-%m-%d') startDate, COUNT(1) attendLesson
+				FROM
+					lesson.ls_attendance_lesson c, lesson.ls_lesson a
+				WHERE c.scId = a.courseSingleId
+				AND a.isDeleted = 0
+				AND	c.schoolId = #{schoolId}
+				AND a.startTime <![CDATA[>=]]> DATE(#{startDate})
+				AND a.endTime <![CDATA[<]]> DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+				
+				AND EXISTS (
+							SELECT 1 FROM lesson.ls_klass f 
+				            WHERE f.classId = a.classId 
+				            AND f.isExpired = 0
+				            AND f.isDeleted = 0
+				            <if test="gradeId != null and gradeId != -1">
+				            AND f.gradeId = #{gradeId}
+							</if>
+				            )
+				
+				<if test="subjectId != null and subjectId != -1">
+				AND EXISTS (SELECT 1 FROM lesson.ls_klass_subject e
+				            WHERE e.classSubjId = a.classSubjId
+				            AND e.subjectId = #{subjectId})
+			    </if>
+			    
+			    <include refid="teacherOfGradeSubject"/> 
+			    
+			  GROUP BY DATE_FORMAT(c.startTime, '%Y-%m-%d')
+			) d
+			ON d.startDate = z.startDate order by z.startDate
+	</select>
+	
+	<select id="findAttendLessonRateByWeek" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.teachingMonitor.LessonAttendInfo">
+		SELECT
+		  m.startDate,
+		  m.endDate,
+		  m.dateStr,
+		  CONVERT(IF(m.totalLesson = 0, 0, ROUND(m.attendLesson / m.totalLesson * 100, 1)), DECIMAL(4,1)) attendLessonRate
+		FROM
+		(
+			SELECT
+		    	z.*,
+				CONCAT_WS('/',z.startDate,z.endDate) dateStr,
+				(
+					SELECT
+						count(1)
+					FROM
+						lesson.ls_attendance_lesson c, lesson.ls_lesson a
+					WHERE c.scId = a.courseSingleId
+					AND a.isDeleted = 0
+					AND	c.schoolId = #{schoolId}
+					AND a.startTime <![CDATA[>=]]> z.startDate
+					AND a.endTime <![CDATA[<]]> DATE_ADD(z.endDate, INTERVAL 1 DAY)
+					
+					AND EXISTS (
+								SELECT 1 FROM lesson.ls_klass f 
+					            WHERE f.classId = a.classId 
+					            AND f.isExpired = 0
+					            AND f.isDeleted = 0
+					            <if test="gradeId != null and gradeId != -1">
+					            AND f.gradeId = #{gradeId}
+								</if>
+					            )
+					
+					<if test="subjectId != null and subjectId != -1">
+					AND EXISTS (SELECT 1 FROM lesson.ls_klass_subject e
+					            WHERE e.classSubjId = a.classSubjId
+					            AND e.subjectId = #{subjectId})
+				    </if>
+				    
+				    <include refid="teacherOfGradeSubject"/> 
+				) attendLesson,
+				(
+					SELECT
+						count(1)
+					FROM
+						lesson.ls_lesson a
+					WHERE
+						a.schoolId = #{schoolId}
+					AND a.isDeleted = 0
+					AND a.startTime <![CDATA[>=]]> z.startDate
+					AND a.endTime <![CDATA[<]]> DATE_ADD(z.endDate, INTERVAL 1 DAY)
+					
+					AND EXISTS (
+								SELECT 1 FROM lesson.ls_klass f 
+					            WHERE f.classId = a.classId 
+					            AND f.isExpired = 0
+					            AND f.isDeleted = 0
+					            <if test="gradeId != null and gradeId != -1">
+					            AND f.gradeId = #{gradeId}
+								</if>
+					            )
+					
+					<if test="subjectId != null and subjectId != -1">
+					AND EXISTS (SELECT 1 FROM lesson.ls_klass_subject e 
+					            WHERE e.classSubjId = a.classSubjId 
+					            AND e.subjectId = #{subjectId})
+					</if>
+					
+					<include refid="teacherOfGradeSubject"/> 
+				) totalLesson
+			FROM
+				(
+					SELECT
+						p.startDate,
+						CASE
+							WHEN DATE(#{endDate}) BETWEEN p.startDate AND p.endDate THEN
+								DATE(#{endDate})
+							ELSE
+								p.endDate
+						END endDate
+					FROM
+						(SELECT t.startDate, 
+										SUBDATE(t.startDate,WEEKDAY(t.startDate)-6) endDate
+							 FROM (SELECT @d :=@d + 1 AS rn, DATE_ADD(#{startDate}, INTERVAL @d DAY) startDate FROM lesson.ls_dateAssistant,(SELECT @d :=- 1) b LIMIT #{limit}) t) p
+							WHERE DAYOFWEEK(p.startDate) = 2
+								 OR p.startDate = DATE(#{startDate})
+				) z) m
+	</select>
+	
+	<select id="findAttendLessonRateByMonth" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.teachingMonitor.LessonAttendInfo">
+		SELECT
+		  m.startDate,
+		  m.endDate,
+		  m.dateStr,
+		  CONVERT(IF(m.totalLesson = 0, 0, ROUND(m.attendLesson / m.totalLesson * 100, 1)), DECIMAL(4,1)) attendLessonRate
+		FROM
+		(
+			SELECT
+		        z.*,
+				CONCAT_WS('/',z.startDate,z.endDate) dateStr,
+				(
+					SELECT
+						count(1)
+					FROM
+						lesson.ls_attendance_lesson c, lesson.ls_lesson a
+					WHERE c.scId = a.courseSingleId
+					AND a.isDeleted = 0
+					AND	c.schoolId = #{schoolId}
+					AND a.startTime <![CDATA[>=]]> z.startDate
+					AND a.endTime <![CDATA[<]]> DATE_ADD(z.endDate, INTERVAL 1 DAY)
+					
+					AND EXISTS (
+							SELECT 1 FROM lesson.ls_klass f 
+				            WHERE f.classId = a.classId 
+				            AND f.isExpired = 0
+				            AND f.isDeleted = 0
+				            <if test="gradeId != null and gradeId != -1">
+				            AND f.gradeId = #{gradeId}
+							</if>
+				            )
+					
+					<if test="subjectId != null and subjectId != -1">
+					AND EXISTS (SELECT 1 FROM lesson.ls_klass_subject e
+					            WHERE e.classSubjId = a.classSubjId
+					            AND e.subjectId = #{subjectId})
+				    </if>
+				    
+				    <include refid="teacherOfGradeSubject"/> 
+				) attendLesson,
+				(
+					SELECT
+						count(1)
+					FROM
+						lesson.ls_lesson a
+					WHERE
+						a.schoolId = #{schoolId}
+					AND a.isDeleted = 0
+					AND a.startTime <![CDATA[>=]]> z.startDate
+					AND a.endTime <![CDATA[<]]> DATE_ADD(z.endDate, INTERVAL 1 DAY)
+					
+					AND EXISTS (
+								SELECT 1 FROM lesson.ls_klass f 
+					            WHERE f.classId = a.classId 
+					            AND f.isExpired = 0
+					            AND f.isDeleted = 0
+					            <if test="gradeId != null and gradeId != -1">
+					            AND f.gradeId = #{gradeId}
+								</if>
+					            )
+					
+					<if test="subjectId != null and subjectId != -1">
+					AND EXISTS (SELECT 1 FROM lesson.ls_klass_subject e 
+					            WHERE e.classSubjId = a.classSubjId 
+					            AND e.subjectId = #{subjectId})
+					</if>
+					
+					<include refid="teacherOfGradeSubject"/>
+				) totalLesson
+			FROM
+				(SELECT
+						p.startDate,
+						CASE
+							WHEN DATE(#{endDate}) BETWEEN p.startDate AND p.endDate THEN
+								DATE(#{endDate})
+							ELSE
+								p.endDate
+						END endDate
+					FROM
+						(SELECT t.*, 
+										LAST_DAY(t.startDate) endDate 
+							 FROM (SELECT @d :=@d + 1 AS rn, DATE_ADD(#{startDate}, INTERVAL @d DAY) startDate FROM lesson.ls_dateAssistant,(SELECT @d :=- 1) b LIMIT #{limit}) t) p
+							WHERE DATE_ADD(p.startDate,INTERVAL -DAY(p.startDate) + 1 DAY) = p.startDate
+								 OR p.startDate = DATE(#{startDate})) z)m
+	</select>
+	
+	<select id="findAttendLessonRateByGrade" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.teachingMonitor.LessonAttendInfo">
+		SELECT
+		  m.gradeId,
+		  m.gradeName,
+		  CONVERT(IF(m.totalLesson = 0, 0, ROUND(m.attendLesson / m.totalLesson * 100, 1)), DECIMAL(4,1)) attendLessonRate
+		FROM
+		(
+		SELECT
+		    k.gradeId,
+		    k.gradeName,
+			count(1) totalLesson,
+			sum(IF(b.startTime IS NULL, 1, 0)) notAttendLesson,
+			sum(IF(b.startTime IS NULL, 0, 1)) attendLesson
+		FROM
+			lesson.ls_lesson a
+		INNER JOIN lesson.ls_klass k
+		ON k.classId = a.classId
+		AND a.isDeleted = 0
+		AND k.isExpired = 0
+		AND k.isDeleted = 0
+		LEFT JOIN lesson.ls_attendance_lesson b ON a.courseSingleId = b.scId
+		WHERE a.startTime <![CDATA[>=]]> DATE(#{startDate})
+		AND a.endTime <![CDATA[<]]> DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+		AND a.schoolId = #{schoolId}
+		<if test="subjectId != null and subjectId != -1">
+		AND EXISTS (SELECT 1 FROM lesson.ls_klass_subject e WHERE e.classSubjId = a.classSubjId AND e.subjectId = #{subjectId})
+		</if>
+		<include refid="teacherOfGradeSubject"/>
+		GROUP BY k.gradeId)m
+	</select>
+	
+	<select id="findAttendLessonRateByAllSubject" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.teachingMonitor.LessonAttendInfo">
+		SELECT
+		  m.subjectId,
+		  m.subjectName,
+		  CONVERT(IF(m.totalLesson = 0, 0, ROUND(m.attendLesson / m.totalLesson * 100, 1)), DECIMAL(4,1)) attendLessonRate
+		FROM
+		(
+			SELECT
+				s.subjectId,
+				s.subjectName,
+				count(1) totalLesson,
+				sum(IF(b.startTime IS NULL, 1, 0)) notAttendLesson,
+				sum(IF(b.startTime IS NULL, 0, 1)) attendLesson
+			FROM
+				lesson.ls_lesson a
+			INNER JOIN lesson.ls_klass_subject s
+			ON s.classSubjId = a.classSubjId
+			AND a.isDeleted = 0
+			INNER JOIN lesson.ls_klass k
+			ON k.classId = a.classId
+			AND k.isExpired = 0
+			AND k.isDeleted = 0
+			LEFT JOIN lesson.ls_attendance_lesson b ON a.courseSingleId = b.scId
+			WHERE a.startTime <![CDATA[>=]]> DATE(#{startDate})
+			AND a.endTime <![CDATA[<]]> DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+			AND a.schoolId = #{schoolId}
+			<if test="subjectId != null and subjectId != -1">
+		    AND s.subjectId = #{subjectId}
+			</if>
+			<include refid="teacherOfGradeSubject"/>
+			GROUP BY s.subjectId)m
+	</select>
+	
+	<select id="findAttendLessonRateByClazz" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.teachingMonitor.LessonAttendInfo">
+		SELECT
+		  m.classId,
+		  m.className,
+		  CONVERT(IF(m.totalLesson = 0, 0, ROUND(m.attendLesson / m.totalLesson * 100, 1)), DECIMAL(4,1)) attendLessonRate
+		FROM
+		(
+			SELECT
+				k.classId,
+				k.className,
+				count(1) totalLesson,
+				sum(IF(b.startTime IS NULL, 1, 0)) notAttendLesson,
+				sum(IF(b.startTime IS NULL, 0, 1)) attendLesson
+			FROM
+				lesson.ls_lesson a
+			INNER JOIN lesson.ls_klass k
+			ON k.classId = a.classId
+		    AND k.isExpired = 0
+		    AND k.isDeleted = 0
+			AND k.gradeId = #{gradeId}
+			LEFT JOIN lesson.ls_attendance_lesson b ON a.courseSingleId = b.scId
+			WHERE a.startTime <![CDATA[>=]]> DATE(#{startDate})
+			AND a.endTime <![CDATA[<]]> DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+			AND a.schoolId = #{schoolId}
+			<if test="subjectId != null and subjectId != -1">
+			AND EXISTS (SELECT 1 FROM ls_klass_subject e WHERE e.classSubjId = a.classSubjId AND e.classId = k.classId AND e.subjectId = #{subjectId})
+			</if>
+			<include refid="teacherOfGradeSubject"/>
+			GROUP BY k.classId ORDER BY k.type, k.className)m
+	</select>
+	
+	<select id="findAttendLessonRateByGradeSubject" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.teachingMonitor.LessonAttendInfo">
+		SELECT
+		  m.subjectId,
+		  m.subjectName,
+		  CONVERT(IF(m.totalLesson = 0, 0, ROUND(m.attendLesson / m.totalLesson * 100, 1)), DECIMAL(4,1)) attendLessonRate
+		FROM
+		(
+			SELECT
+				s.subjectId,
+				s.subjectName,
+				count(1) totalLesson,
+				sum(IF(b.startTime IS NULL, 1, 0)) notAttendLesson,
+				sum(IF(b.startTime IS NULL, 0, 1)) attendLesson
+			FROM
+				lesson.ls_lesson a
+			INNER JOIN lesson.ls_klass_subject s
+			ON s.classSubjId = a.classSubjId
+			AND a.isDeleted = 0
+			<if test="subjectId != null and subjectId != -1">
+		    AND s.subjectId = #{subjectId}
+		    </if>
+			LEFT JOIN lesson.ls_attendance_lesson b ON a.courseSingleId = b.scId
+			WHERE a.startTime <![CDATA[>=]]> DATE(#{startDate})
+			AND a.endTime <![CDATA[<]]> DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+			AND a.schoolId = #{schoolId}
+			AND EXISTS (SELECT 1 FROM lesson.ls_klass f 
+			            WHERE f.classId = a.classId 
+			            AND f.gradeId = #{gradeId} 
+			            AND f.isExpired = 0
+			            AND f.isDeleted = 0
+			            )
+			<include refid="teacherOfGradeSubject"/>
+			GROUP BY s.subjectId)m
+	</select>
+	
+	<select id="findAttendLessonRateRank" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.teachingMonitor.LessonAttendInfo">
+		SELECT
+		    c.teacherId,
+			c.teacherName,
+			c.attendLessonRate
+		FROM
+			(
+			SELECT
+				a.teacherId,
+				a.teacherName,
+				IF(count(1) = 0, 0, ROUND(sum(IF(b.startTime IS NULL, 0, 1)) / count(1) * 100, 1)) attendLessonRate
+			FROM
+				lesson.ls_lesson a
+			LEFT JOIN lesson.ls_attendance_lesson b ON a.courseSingleId = b.scId
+			WHERE a.startTime <![CDATA[>=]]> DATE(#{startDate})
+		    AND a.endTime <![CDATA[<]]> DATE_ADD(#{endDate},INTERVAL 1 DAY)
+			AND a.schoolId = #{schoolId}
+		    AND a.isDeleted = 0
+		    AND EXISTS (SELECT 1 FROM lesson.ls_klass f 
+		                WHERE f.classId = a.classId 
+		                AND f.isExpired = 0
+		                AND f.isDeleted = 0
+		    			<if test="gradeId != null and gradeId != -1">
+		                AND f.gradeId = #{gradeId} 
+		    			</if>
+		                )
+		    
+		    <if test="subjectId != null and subjectId != -1">
+		    AND EXISTS (SELECT 1 FROM lesson.ls_klass_subject e WHERE e.classSubjId = a.classSubjId AND e.subjectId = #{subjectId})
+		    </if>
+		    <include refid="teacherOfGradeSubject"/>
+			GROUP BY a.teacherId
+			) c
+	</select>
+	
+	<select id="findAttendLessonRateDtl" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.teachingMonitor.LessonAttendInfo">
+		SELECT
+		  p.*
+		FROM
+		(
+			SELECT
+				a.teacherId,
+				a.teacherName,
+		        e.subjectId,
+				e.subjectName,
+				COUNT(1) totalLesson,
+				SUM(IF(b.startTime IS NULL, 0, 1)) attendLesson,
+				ROUND(sum(IF(b.startTime IS NULL, 0, 1)) / count(1) * 100, 1) attendLessonRate
+			FROM
+				lesson.ls_lesson a
+			INNER JOIN lesson.ls_klass_subject e ON e.classSubjId = a.classSubjId 
+			
+			<if test="subjectId != null and subjectId != -1">
+		    AND e.subjectId = #{subjectId}
+		    </if>
+			
+			LEFT JOIN lesson.ls_attendance_lesson b ON a.courseSingleId = b.scId
+			WHERE a.startTime <![CDATA[>=]]> DATE(#{startDate})
+			AND a.endTime <![CDATA[<]]> DATE_ADD(#{endDate},INTERVAL 1 DAY)
+			AND a.schoolId = #{schoolId}
+			AND a.isDeleted = 0
+		    AND EXISTS (SELECT 1 FROM lesson.ls_klass f 
+		                WHERE f.classId = a.classId 
+		                AND f.isExpired = 0
+		                AND f.isDeleted = 0
+						<if test="gradeId != null and gradeId != -1">
+		                AND f.gradeId = #{gradeId} 
+					    </if>
+		                )
+		    <include refid="teacherOfGradeSubject"/>
+			GROUP BY a.teacherId, e.subjectId
+		)p 
+		<if test="orderAttr != null and orderAttr != ''">
+		ORDER BY ${orderAttr} ${orderType}
+		</if>
+	</select>
+</mapper>   

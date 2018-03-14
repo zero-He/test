@@ -1,0 +1,35 @@
+<h3 style="font-weight: bold; padding: 0.5em;">
+	<span data-bind="text: record.subjectName">学科</span>
+	-
+	<span data-bind="text: record.fileName">文件名</span>
+</h3>
+<div class="f-bfc s-bg-gray f-ml20" style="display:inline-block; height: 2em; width: 200px;">
+	<div class="s-bg-turquoise" style="height: 100%;"
+		data-bind="style: {
+			width: record.progress
+		}">
+	</div>
+</div>
+
+<!-- ko if: record.status() == 0 -->
+<div style="margin: 0 auto;" class="loading"></div>
+<!-- /ko -->
+<div data-bind="foreach: record.errors" style="padding: 10px;">
+<div class="f-mt10">
+	<div>
+		<a class="s-c-r f-mr10 f-csp" title="删除错误消息"
+			data-bind="click: function(a, evt) {
+				$parent.delError($data, evt);
+			}">X</a>
+		第<span data-bind="text: ord">1</span>题
+		存在错误：<span data-bind="text: error" class="s-c-r">&nbsp;</span>
+	</div>
+	<div>
+		题文摘要：
+	</div>	
+	<div>
+		<span data-bind="text: summary">【题文】</span>
+	</div>
+</div>
+</div>
+<div class="f-hr"></div>

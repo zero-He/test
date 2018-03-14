@@ -1,0 +1,114 @@
+package cn.strong.leke.homework.model;
+
+import java.util.Date;
+import java.util.List;
+
+/**
+ * 批量布置作业DO对象
+ * @author Zhang Fujun
+ * @date 2016年5月19日
+ */
+public class AssignLogDTO {
+	
+	/**
+	 * 选择的布置作业的试卷Id
+	 */
+	private Long[] paperIds;
+
+	private List<AssignLogTeaHw> assignLogTeaHw;
+	
+	private Date startTime;
+	
+	private Date closeTime;
+	
+	private Long createdBy;
+	
+	private Long schoolId;
+	
+	
+	/**
+	 * @return the paperIds
+	 */
+	public Long[] getPaperIds() {
+		return paperIds;
+	}
+
+	/**
+	 * @param paperIds the paperIds to set
+	 */
+	public void setPaperIds(Long[] paperIds) {
+		this.paperIds = paperIds;
+	}
+
+	/**
+	 * @return the assignLogTeaHw
+	 */
+	public List<AssignLogTeaHw> getAssignLogTeaHw() {
+		return assignLogTeaHw;
+	}
+
+	/**
+	 * @param assignLogTeaHw the assignLogTeaHw to set
+	 */
+	public void setAssignLogTeaHw(List<AssignLogTeaHw> assignLogTeaHw) {
+		this.assignLogTeaHw = assignLogTeaHw;
+	}
+
+	/**
+	 * @return the startTime
+	 */
+	public Date getStartTime() {
+		return startTime;
+	}
+
+	/**
+	 * @param startTime the startTime to set
+	 */
+	public void setStartTime(Date startTime) {
+		this.startTime = startTime;
+	}
+
+	/**
+	 * @return the closeTime
+	 */
+	public Date getCloseTime() {
+		return closeTime;
+	}
+
+	/**
+	 * @param closeTime the closeTime to set
+	 */
+	public void setCloseTime(Date closeTime) {
+		this.closeTime = closeTime;
+	}
+
+	/**
+	 * @return the createdBy
+	 */
+	public Long getCreatedBy() {
+		return createdBy;
+	}
+
+	/**
+	 * @param createdBy the createdBy to set
+	 */
+	public void setCreatedBy(Long createdBy) {
+		this.createdBy = createdBy;
+	}
+
+	/**
+	 * @return the schoolId
+	 */
+	public Long getSchoolId() {
+		return schoolId;
+	}
+
+	/**
+	 * @param schoolId the schoolId to set
+	 */
+	public void setSchoolId(Long schoolId) {
+		this.schoolId = schoolId;
+	}
+
+
+}

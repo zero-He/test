@@ -1,0 +1,24 @@
+<%@ page pageEncoding="UTF-8"%>
+<%@ include file="/pages/common/tags.jsp"%>
+<!DOCTYPE html>
+<html>
+<head>
+<title>作业完成态度详情<c:if test="${device != 'hd'}"> - 乐课网</c:if></title>
+<meta name="viewport" content="width=1280">
+<%@ include file="/pages/common/meta.jsp"%>
+<link rel="stylesheet" href="${assets}/styles/diag/analyse-1.2.css">
+</head>
+<body>
+<%@ include file="/pages/header/header.jsp"%>
+<div class="g-bd">
+<div class="g-mn">
+<div class="m-teacherana">
+	<div class="title">${reportCycle.label} -- ${clazz.className} -- 作业完成态度详情</div>
+	<div class="m-table m-table-center" id="app"></div>
+</div>
+</div>
+</div>
+<script>var Csts = {datas: ${datas}};</script>
+<script>seajs.use('diag/report/tchanaly/klass-behavior-work');</script>
+</body>
+</html>

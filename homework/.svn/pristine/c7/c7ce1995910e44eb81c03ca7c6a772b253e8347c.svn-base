@@ -1,0 +1,87 @@
+package cn.strong.leke.homework.model;
+
+import java.io.Serializable;
+import java.util.List;
+
+import cn.strong.leke.lesson.model.StudentGroup;
+
+/**
+ *
+ * 描述:
+ *
+ * @author raolei
+ * @created 2016年3月9日 上午10:25:13
+ * @since v1.0.0
+ */
+public class HomeworkGroupJson implements Serializable {
+
+	/**
+	 * Description:
+	 */
+	private static final long serialVersionUID = 41720360202934177L;
+
+	/**
+	 * Description: 班级ID
+	 */
+	private Long classId;
+
+	/**
+	 * Description: 班级名称
+	 */
+	private String className;
+
+	/**
+	 * Description: 班级类型
+	 */
+	private Long classType;
+
+	/**
+	 * Description: 套课ID
+	 */
+	private Long courseSetId;
+
+	/**
+	 * Description: 分组集合
+	 */
+	private List<StudentGroup> groups;
+
+	public Long getClassId() {
+		return classId;
+	}
+
+	public void setClassId(Long classId) {
+		this.classId = classId;
+	}
+
+	public String getClassName() {
+		return className;
+	}
+
+	public void setClassName(String className) {
+		this.className = className;
+	}
+
+	public Long getClassType() {
+		return classType;
+	}
+
+	public void setClassType(Long classType) {
+		this.classType = classType;
+	}
+
+	public Long getCourseSetId() {
+		return courseSetId;
+	}
+
+	public void setCourseSetId(Long courseSetId) {
+		this.courseSetId = courseSetId;
+	}
+
+	public List<StudentGroup> getGroups() {
+		return groups;
+	}
+
+	public void setGroups(List<StudentGroup> groups) {
+		this.groups = groups;
+	}
+}

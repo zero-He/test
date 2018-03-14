@@ -1,0 +1,45 @@
+package cn.strong.leke.homework.model;
+
+import java.util.List;
+
+public class SheetResult implements java.io.Serializable {
+
+	private static final long serialVersionUID = -4349756318336438927L;
+	
+	private Long questionId;
+	private List<String> answers;
+	private Integer score;
+	private Integer errorNo;
+
+	public Long getQuestionId() {
+		return questionId;
+	}
+
+	public void setQuestionId(Long questionId) {
+		this.questionId = questionId;
+	}
+
+	public List<String> getAnswers() {
+		return answers;
+	}
+
+	public void setAnswers(List<String> answers) {
+		this.answers = answers;
+	}
+
+	public Integer getScore() {
+		return score;
+	}
+
+	public void setScore(Integer score) {
+		this.score = score;
+	}
+
+	public Integer getErrorNo() {
+		return errorNo;
+	}
+
+	public void setErrorNo(Integer errorNo) {
+		this.errorNo = errorNo;
+	}
+}

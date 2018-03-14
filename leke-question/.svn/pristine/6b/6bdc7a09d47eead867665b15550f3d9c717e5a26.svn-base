@@ -1,0 +1,35 @@
+<div class="examination">
+	<ul class="m-tab">
+		<li data-bind="css: {
+			'active': query.statusType() == 96
+		}, click: function() {
+			query.statusType(96);
+			doSearch();
+		}, text: '未审核'"></li>
+		<li data-bind="css: {
+			'active': query.statusType() == 97
+		}, click: function() {
+			query.statusType(97);
+			doSearch();
+		}, text: '已审核'"></li>
+	</ul>
+	<div class="m-search-box">
+		<div class="item">
+			<label class="title">学段学科：</label>
+			<select id="stageSubject" class="u-select u-select-nm"></select>
+			<button class="u-btn u-btn-nm u-btn-bg-turquoise"
+				data-bind="click: doSearch(),
+						text: '查询'"></button>
+		</div>
+	</div>
+	<div class="quesCutContent">
+	</div>
+	<div data-bind="if:selectAllVisiable() && query.statusType() == 96">
+		<label>
+			<input type="checkbox" class="jSelectAll">
+			<span data-bind="i18n: 'que.question.selectAll'">&nbsp;</span>
+		</label>
+		<a class="u-btn u-btn-nm u-btn-bg-turquoise"
+			data-bind="click: doChecked, text: '审核通过'"></a>
+	</div>
+</div>

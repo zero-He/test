@@ -1,0 +1,38 @@
+#### resources priviledge ####
+
+role.100 = /auth/student/**,/auth/common/**,/auth/schoolUsers/**
+role.101 = /auth/teacher/**,/auth/common/**,/auth/schoolUsers/**
+role.102 = /auth/parent/**,/auth/common/**,/auth/schoolUsers/**
+role.103 = /auth/teacherHeader/**,/auth/common/**,/auth/schoolUsers/**,/auth/teacher/**
+role.104 = /auth/provost/**,/auth/common/**,/auth/schoolUsers/**
+role.105 = /auth/president/**,/auth/common/**,/auth/schoolUsers/**
+role.106 = /auth/league/**,/auth/common/**
+role.107 = /auth/common/**
+role.108 = /auth/companyLeader/**,/auth/common/**,/auth/technicalSupport/**
+role.109 = /auth/educationDirector/**,/auth/common/**
+role.110 = /auth/technicalSupport/**,/auth/common/**,/auth/platformAdmin/school/**
+role.111 = /auth/devops/**,/auth/operationStaff/**,/auth/common/**,/auth/technicalSupport/**,/auth/platformAdmin/school/**
+role.112 = /auth/seller/**,/auth/common/**
+role.113 = /auth/assist/**,/auth/common/**
+role.114 = /auth/operation/**,/auth/common/**
+role.115 = /auth/educationDirector/**,/auth/common/**
+
+role.200 = /auth/platformAdmin/**,/auth/common/**,/auth/technicalSupport/**
+role.201 = /auth/schoolAdmin/**,/auth/common/**,/auth/schoolUsers/**
+
+role.300 = /auth/platformFinance/**,/auth/common/**
+role.301 = /auth/schoolFinance/**,/auth/common/**
+
+role.400 = /auth/inputer/**,/auth/common/**
+role.401 = /auth/checker/**,/auth/common/**
+role.402 = /auth/researcher/**,/auth/common/**
+role.403 = /auth/questionAdmin/**,/auth/common/**
+
+#crm
+role.600 = /auth/**,/auth/common/**
+role.601 = /auth/**,/auth/common/**
+role.602 = /auth/**,/auth/common/**
+role.603 = /auth/**,/auth/common/**
+role.604 = /auth/**,/auth/common/**
+
+

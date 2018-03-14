@@ -1,0 +1,185 @@
+<%@ page pageEncoding="UTF-8"%>
+<%@ include file="/pages/common/tags.jsp"%>
+
+<!DOCTYPE html>
+<html>
+<head>
+<%@ include file="/pages/common/meta.jsp"%>
+<title>布置作业</title>
+<meta id="homework-meta" charset="UTF-8" content="width=1920px, initial-scale=0.5, maximum-scale=0.5, user-scalable=0.5" name="viewport">
+<link rel="stylesheet"
+	href="${assets }/styles/mobile/global.css" />
+<link rel="stylesheet"
+	href="${assets }/styles/mobile/homework/homeworkpad.css" />
+<style>
+.j-content-paper:{
+position:static !important;}
+</style>
+</head>
+<body>
+	<div class="assign-flow">
+		<div class="assign-hd">
+			<ul>
+				<li class="assign-hd-item assign-hd-item-on test-paper">选择试卷</li>
+				<li class="assign-hd-item-line"></li>
+				<li class="assign-hd-item test-student">选择学生</li>
+				<li class="assign-hd-item-line"></li>
+				<li class="assign-hd-item test-time">选择时间</li>
+			</ul>
+		</div>
+		<div class="assign-bd ">
+			<!--选择试卷-->
+			<div class="assign-bd-testpaper assign-bd-li">
+				<div class="assign-bd-item-hd task-li">
+					<div class="assign-bd-nav">
+						<i class="assign-bd-nav-text">我的试卷库</i><i
+							class="assign-bd-nav-pull"></i>
+						<ul class="assign-testpaper-bank j-ul-scope" data-type="scope">
+							<li class="assign-testpaper-bank-li" data-v="1" >我的试卷库</li>
+							<li class="assign-testpaper-bank-li" data-v="4" >我的收藏库</li>
+						</ul>
+					</div>
+					<div class="assign-bd-nav-line"></div>
+					<div class="assign-bd-nav assign-bd-nav-group">
+						<i class="assign-bd-nav-text">分组</i><i class="assign-bd-nav-pull"></i>
+						<ul class="assign-testpaper-bank j-ul-group" data-type="group">
+						
+						</ul>
+					</div>
+					<div class="assign-bd-nav-line"></div>
+					<div class="assign-bd-nav">
+						<i class="assign-bd-nav-text">学段学科</i><i
+							class="assign-bd-nav-pull"></i>
+						<ul class="assign-testpaper-bank assign-testpaper-bank-period j-ul-stage-subject" data-type="subject">
+						
+						</ul>
+					</div>
+				</div>
+				<div class="assign-bd-testpaper-content j-content-paper">
+					<ul class="assign-bd-testpaper-content-ul" id="j-body-paper" >
+						<li class="assign-bd-item">
+						</li>
+					</ul>
+				</div>
+			</div>
+			<!--选择学生-->
+			<div class="assign-bd-student assign-bd-li">
+				<div class="assign-bd-student-left">
+					<ul class="assign-bd-student-classe j-ul-clazz">
+						<c:forEach items="${classes }" var="item">
+							<li class="assign-bd-student-classe-li checkall j-chk-clazz" data-classid="${item.classId }" data-classname="${item.className }" data-classtype="${item.classType }">
+								<label class="assign-bd-item-checkbox assign-bd-item-checkbox-off " ></label>
+								<span class="classe-name " >${item.className }</span>
+							</li>
+						</c:forEach>
+					</ul>
+				</div>
+				<div class="assign-bd-student-right">
+					<ul class="assign-bd-student-group-check j-ul-clazz-group">
+						
+					</ul>
+					<ul class="assign-bd-student-group-check j-ul-clazz-user">
+
+					</ul>
+				</div>
+			</div>
+			<!--选择时间-->
+			<div class="assign-bd-time assign-bd-li">
+				<dl class="assign-bd-time-item">
+					<dt class="assign-bd-time-tit f-fl">选择试卷:</dt>
+					<dd class="assign-bd-time-content-dd f-fl">
+						<ul class="f-cb j-checked-paper">
+							
+						</ul>
+					</dd>
+				</dl>
+				<dl class="assign-bd-time-item">
+					<dt class="assign-bd-time-tit f-fl">选择学生:</dt>
+					<dd class="assign-bd-time-content-dd f-fl">
+						<ul class="f-cb j-checked-clazz">
+							
+						</ul>
+					</dd>
+				</dl>
+				<dl class="assign-bd-time-item assign-calendar">
+	                <dt class="assign-bd-time-tit f-fl">
+	                    	选择时间:
+	                </dt>
+	                <dd class="assign-bd-time-start f-fl">
+	                    <form action="">
+	                        <input placeholder="作业开始时间" class="assign-bd-time-start-date assign-time-selects j-time-start" onclick="laydate({start:laydate.now(0,'YYYY.MM.DD hh:mm:ss'),istime: true, format: 'YYYY-MM-DD hh:mm'})" readonly="">
+	                        <label class="laydate-icon"></label>
+	                    </form>
+	                </dd>
+	                <dd class="assign-bd-time-arrow f-fl">
+	                </dd>
+	                <dd class="assign-bd-time-end">
+	                    <form action="">
+	                        <input placeholder="作业结束时间" class="assign-bd-time-start-date assign-time-selects j-time-end" onclick="laydate({start:laydate.now(0,'YYYY.MM.DD hh:mm:ss'),istime: true, format: 'YYYY-MM-DD hh:mm'})" readonly="">
+	                        <label class="laydate-icon"></label>
+	                    </form>
+	                </dd>
+           	 </dl>
+			</div>
+		</div>
+		<div class="assign-bottom-btn">
+			<ul>
+				<li class="assign-bottom-btn-item assign-bottom-btn-item-on">下一步</li>
+				<li class="assign-bottom-btn-item">下一步</li>
+				<li class="assign-bottom-btn-item">确认布置</li>
+			</ul>
+		</div>
+	</div>
+	<leke:pref />
+<script  type="x-mustache" id="j-tmpl-paper">
+{{#dataList}}
+<li class="assign-bd-item task-li ">
+<div class="assign-bd-item-name checkall j-chk-paper">
+	<label class="assign-bd-item-checkbox assign-bd-item-checkbox-off " data-subjectid="{{subjectId}}" data-paperId="{{paperId}}" data-subjective="{{subjective}}" data-title="{{title}}">
+	</label>
+	<span class="assign-bd-item-lessoname">{{subjectName}}</span>
+</div>
+<div class="assign-bd-item-name">{{title}}</div>
+<div class="assign-bd-item-name assign-bd-item-person">
+	组卷人:<span>{{creatorName}}</span>
+</div>
+<div class="assign-bd-item-name assign-bd-item-person">
+	类型:<span>{{{paperTypeString}}}</span>
+</div>
+<div class="assign-bd-item-name">
+	主观题:<span>{{{isSubjective}}}</span>
+</div>
+<div class="assign-bd-item-name">
+	手写题:<span>{{{isHandwrite}}}</span>
+</div>
+<div class="assign-bd-item-name assign-bd-item-cite">
+	引用次数:<span>{{usedCount}}</span>
+</div>
+</li>
+{{/dataList}}
+</script>
+<script  type="x-mustache"  id="j-tmpl-clazz-group" >
+{{#.}}
+<li class="assign-bd-student-group-item j-chk-clazz-group" data-groupid="{{groupId}}" data-groupname="{{groupName}}">
+<label class="assign-bd-item-checkbox assign-bd-item-checkbox-off " data-groupid="{{groupId}}" data-groupname="{{groupName}}"></label>
+<span class="classe-name ">{{groupName}}</span></li>
+{{/.}}
+</script>
+<script  type="x-mustache"  id="j-tmpl-clazz-user" >
+{{#.}}
+<li class="assign-bd-student-group-item j-chk-clazz-user" data-userid="{{userId}}" data-username="{{userName}}">
+<label class="assign-bd-item-checkbox assign-bd-item-checkbox-off " data-userid="{{userId}}" data-username="{{userName}}" ></label>
+<span class="classe-name">{{userName}}</span></li>
+{{/.}}
+</script>
+
+</body>
+<script src="${assets }/scripts/common/mobile/common.js"></script>
+<script src="/scripts/hd/common/laydate.js"></script>
+<script src="/scripts/hd/homework/assignHomework.js"></script>
+
+<!-- <script>
+	seajs.use('/scripts/hd/common/wdatepicker.js?_t=${_t}');
+	seajs.use('/scripts/hd/homework/assignHomework.js?_t=${_t}');
+</script> -->
+</html>

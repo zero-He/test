@@ -1,0 +1,15 @@
+<div class="m-search-box f-mt20">
+	<div class="item ">
+		<input type="radio" id="hour" data-bind="click: function(){load();return true;}" name="typeData"  value="1" /><label for="hour">最近一个小时</label>
+		<input type="radio" id="today" data-bind="click: function(){load();return true;}" name="typeData" value="2" checked="checked" /><label for="today">今天</label>
+	</div>
+	<div class="item j-search-box">
+		<label class="title j-area-label">地区范围：</label>
+		<input type="hidden" name="area" class="j-area-select"/>
+		<label class="title">学校：</label>
+		<input type="text" name="school" class="u-ipt u-ipt-nm j-school-select"/>
+		<button class="u-btn u-btn-nm u-btn-bg-turquoise" data-bind="click: load">查询</button>
+	</div>
+</div>
+<div id="totalMap" style="height:500px;width:100%;">
+</div>

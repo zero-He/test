@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" ?>   
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.homework.dao.mybatis.HomeworkDataDao">
+
+	<insert id="insertHomeworkData" parameterType="cn.strong.leke.homework.model.HomeworkData">
+		<![CDATA[
+			INSERT INTO HW_HOMEWORK_DATA (homeworkId, version, isRedo, answerData, isDeleted, createdOn)
+			VALUES (#{homeworkId}, #{version}, #{isRedo}, #{answerData}, 0, NOW())
+		]]>
+		<selectKey keyProperty="dataId" order="AFTER" resultType="long">
+			SELECT LAST_INSERT_ID() AS dataId
+		</selectKey>
+	</insert>
+	
+	<update id="updateTargetHomeworkId" parameterType="map">
+		UPDATE HW_HOMEWORK_DATA
+		   SET targetHomeworkId = #{targetHomeworkId},
+		       modifiedOn = NOW()
+		 WHERE dataId = #{dataId}
+	</update>
+	
+	<update id="deleteHomeworkData" parameterType="long">
+		UPDATE HW_HOMEWORK_DATA
+		   SET isDeleted = 1,
+		       modifiedOn = NOW()
+		 WHERE dataId = #{dataId}
+	</update>
+
+	<select id="getHomeworkDataByDataId" parameterType="long" resultType="cn.strong.leke.homework.model.HomeworkData">
+		<![CDATA[
+		SELECT dataId, homeworkId, version, isRedo, targetHomeworkId, answerData, isDeleted
+		  FROM HW_HOMEWORK_DATA
+		 WHERE dataId = #{dataId}
+		   AND isDeleted = 0
+		]]>
+	</select>
+	
+	<select id="getHomeworkDataTotal" resultType="long">
+		<![CDATA[
+		select count(1) from  HW_HOMEWORK_DATA
+		where homeworkId = #{homeworkId} AND version= #{version} AND isDeleted = 0
+		]]>
+	</select>
+
+</mapper>   

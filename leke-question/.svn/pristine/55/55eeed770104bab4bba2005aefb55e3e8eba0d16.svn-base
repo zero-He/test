@@ -1,0 +1,101 @@
+<div class="top" style="height: inherit;" data-bind="visible: scopeTabs && scopeTabs.length">
+	<div class="m-tab">
+		<ul data-bind="foreach: scopeTabs">
+			<li data-bind="css:{ active: shareScope == $component.shareScope }"><a href="#" data-bind="text: name, attr:{ href: url }"></a></li>
+		</ul>
+	</div>
+</div>
+<div class="top" style="height: inherit;">
+	<div class="m-tab">
+		<ul data-bind="foreach: tabs">
+			<li data-bind="css:{ active: resType == 5 }"><a href="#" data-bind="text: name, attr:{ href: url }"></a></li>
+		</ul>
+	</div>
+</div>
+<div class="resourcecontent">
+	<!-- ko if: shareScope == 8 -->
+	<div class="left" data-bind="component: {
+		name: 'fmstch-sidebar',
+		params: {
+			famousTeacherId: query.famousTeacherId
+		}
+	}"></div>
+	<!-- /ko -->
+	<!-- ko if: shareScope == 9 -->
+	<div class="left" data-bind="component: {
+		name: 'fmssch-sidebar',
+		params: {
+			famousSchoolId: query.famousSchoolId
+		}
+	}"></div>
+	<!-- /ko -->
+	
+	<div class="right" data-bind="css: {
+		exercisebook: shareScope != 8 && shareScope != 9
+	}">
+		<div class="resourceformat dashed">
+			<span>学科：</span>
+			<select name="stageSubject" class="u-select u-select-nm" style="margin-top: 4px;"></select>
+		</div>
+		<div class="selecttype">
+		    <div class="search">
+	        	<!-- ko if: urlAdd() != null -->
+	        	<a class="c-btn-addresource" target="_blank"
+					data-bind="click: openAddDialog"><i></i>添加习题册</a>
+ 				<!-- /ko -->
+ 				
+		    	<div class="selecttext">
+		    		<input type="text" placeholder="请输入关键词" data-bind="value: query.content"/>
+		    		<a href="#" class="selectbut" data-bind="click: doSearch"></a>
+		    	</div>
+			</div>
+		</div>
+		<div class="c-resource-list">
+			<div class="m-table">
+				<table>
+					<!-- ko if: records().length > 0 -->
+					<tbody data-bind="foreach: records">
+						<tr>
+							<td>
+								<i class="c-restype beikepkg"></i>
+								<div class="item">
+									<p class="title" data-bind="attr: {title: content}">
+										<a data-bind="attr: {href: viewUrl}"  target="_blank"><em data-bind="text: content"></em></a>
+									</p>
+									<div class="remarks">
+										<span>贡献者: <em data-bind="text: creatorName">&nbsp;</em></span>
+										<span data-bind="text: createdOnStr"></span>
+										<span>收藏次数: <em data-bind="text: favCount"></em></span>
+									</div>
+								</div>
+							</td>
+							<td width="290">
+								<div class="c-maxoperationlistbtn">
+									<!-- ko if: $component.roleId != 104 && $component.roleId != 105 -->
+									<i class="nocollection" data-bind="click: function() {$component.doFavorite($data);}" ></i>
+									<!-- /ko -->
+									<i class="like" data-bind="click: function() {$component.doPraise($data);}"></i>
+									<a target="_blank" data-bind="attr: {href: editUrl}"><i class="edit" title="编辑"></i></a>
+									<i class="rename" data-bind="click: function() {$component.doRename($data);}" title="重命名"></i>
+									<a data-bind="attr: {href: viewUrl}"  target="_blank"><i class="see"></i></a>
+								</div>
+							</td>
+						</tr>
+					</tbody>
+					<!-- /ko -->
+				</table>
+			</div>
+			 <div data-bind="component: {
+				name: 'leke-page',
+				params: {
+					curPage: curPage,
+					totalSize: totalSize
+				}
+			}"></div>
+			 <!-- ko if: records().length == 0 -->
+    		<p class="m-tips"><i></i><span>当前没有教学资源!<em style="color: red;">你可以试试其他筛选条件</em></span></p>
+    		<!-- /ko -->
+		</div>
+	</div>
+</div>
+

@@ -1,0 +1,780 @@
+<?xml version="1.0" encoding="UTF-8" ?>   
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.homework.dao.mybatis.HomeworkDao">
+	<insert id="insertHomework" keyProperty="homeworkId"  useGeneratedKeys="true" >
+		<![CDATA[
+		INSERT INTO HW_HOMEWORK (
+		   	teacherId,
+		   	teacherName,
+		   	dutyMode,
+		   	parentId,
+		   	paperId,
+		   	subjectId,
+		   	subjectName,
+		   	classId,
+		   	classType,
+		   	className,
+		   	courseSingleId,
+		   	homeworkName,
+		   	homeworkType,
+		   	startTime,
+		   	closeTime,
+		   	subjective,
+		   	paperType,
+		   	finishNum,
+		   	delayNum,
+		   	correctNum,
+		   	totalNum,
+		   	maxScore,
+		   	minScore,
+		   	avgScore,
+		   	schoolId,
+		   	studentGroupsJson,
+		   	isDeleted,
+		   	createdBy,
+		   	createdOn,
+		   	modifiedBy,
+		   	modifiedOn,
+		   	isMonthHomework
+		) VALUES (
+		   	#{teacherId},
+		   	#{teacherName},
+		   	#{dutyMode},
+		   	#{parentId},
+		   	#{paperId},
+		   	#{subjectId},
+		   	#{subjectName},
+		   	#{classId},
+		   	#{classType},
+		   	#{className},
+		   	#{courseSingleId},
+		   	#{homeworkName},
+		   	#{homeworkType},
+		   	#{startTime},
+		   	#{closeTime},
+		   	#{subjective},
+		   	#{paperType},
+		   	#{finishNum},
+		   	#{delayNum},
+		   	#{correctNum},
+		   	#{totalNum},
+		   	#{maxScore},
+		   	#{minScore},
+		   	#{avgScore},
+		   	#{schoolId},
+		   	#{studentGroupsJson},
+		   	#{isDeleted},
+		   	#{createdBy},
+		   	#{createdOn},
+		   	#{modifiedBy},
+		   	#{modifiedOn},
+		   	#{isMonthHomework}
+		)
+		]]>
+	</insert>
+	<update id="updateHomeworkTotalNum" parameterType="long">
+		<![CDATA[
+		UPDATE HW_HOMEWORK a, (
+			SELECT count(*) totalNum
+			 FROM HW_HOMEWORK_DTL
+			WHERE homeworkId = #{homeworkId}
+			  AND isDeleted = 0) b
+		   SET a.totalNum = b.totalNum
+		 WHERE a.homeworkId = #{homeworkId}
+		   AND isDeleted = 0
+		]]>
+	</update>
+	
+	<select id="getUpdateHomeworkStatMap" parameterType="long" resultType="map">
+		<![CDATA[
+		SELECT sum(IF(submitTime IS NULL, 0, 1)) finishNum,
+		       sum(IF(submitStatus = 2, 1, 0)) delayNum,
+			   sum(IF(correctTime IS NULL, 0, 1)) correctNum,
+			   sum(IF(bugFixStage > 0, 1, 0)) totalFixNum,
+			   sum(IF(bugFixStage > 1, 1, 0)) bugFixNum,
+			   sum(IF(bugFixStage > 2, 1, 0)) reviewNum,
+			   max(IF(correctTime IS NULL, NULL, score)) maxScore,
+			   max(IF(correctTime IS NULL, NULL, scoreRate)) maxScoreRate,
+			   min(IF(correctTime IS NULL, NULL, score)) minScore,
+			   min(IF(correctTime IS NULL, NULL, scoreRate)) minScoreRate,
+			   ROUND(avg(IF(correctTime IS NULL, NULL, score)), 2) avgScore,
+			   ROUND(avg(IF(correctTime IS NULL, NULL, scoreRate)), 4) avgScoreRate
+		 FROM HW_HOMEWORK_DTL
+		WHERE homeworkId = #{homeworkId}
+		  AND isDeleted = 0
+		]]>
+	</select>
+	
+	<update id="updateHomeworkStat" parameterType="map">
+		<![CDATA[
+		UPDATE HW_HOMEWORK
+		   SET finishNum = #{finishNum},
+		       delayNum = #{delayNum},
+		       correctNum = #{correctNum},
+		       totalFixNum = #{totalFixNum},
+		       bugFixNum = #{bugFixNum},
+		       reviewNum = #{reviewNum},
+		       maxScore = #{maxScore},
+		       maxScoreRate = #{maxScoreRate},
+		       minScore = #{minScore},
+		       minScoreRate = #{minScoreRate},
+		       avgScore = #{avgScore},
+		       avgScoreRate = #{avgScoreRate}
+		 WHERE homeworkId = #{homeworkId}
+		   AND isDeleted = 0
+		]]>
+	</update>
+	
+	<update id="updateHomeworkStatWithBugFix" parameterType="long">
+		<![CDATA[
+		UPDATE HW_HOMEWORK a, (
+			SELECT sum(IF(bugFixStage > 0, 1, 0)) totalFixNum,
+				   sum(IF(bugFixStage > 1, 1, 0)) bugFixNum,
+				   sum(IF(bugFixStage > 2, 1, 0)) reviewNum
+			 FROM HW_HOMEWORK_DTL
+			WHERE homeworkId = #{homeworkId}
+			  AND isDeleted = 0) b
+		   SET a.totalFixNum = b.totalFixNum,
+		       a.bugFixNum = b.bugFixNum,
+		       a.reviewNum = b.reviewNum
+		 WHERE a.homeworkId = #{homeworkId}
+		   AND isDeleted = 0
+		]]>
+	</update>
+	
+	<!-- 查询 -->
+	<select id="findHomeworkIds" resultType="long">
+		<![CDATA[
+		SELECT homeworkId
+		  FROM HW_HOMEWORK
+		 WHERE homeworkId < 53833395
+		]]>
+	</select>
+	
+	<!-- 查询 -->
+	<select id="getHomeworkById" parameterType="map" resultType="cn.strong.leke.homework.model.Homework">
+		<![CDATA[
+		SELECT *
+		  FROM HW_HOMEWORK
+		 WHERE homeworkId = #{homeworkId}
+		   AND isDeleted = 0
+		]]>
+	</select>
+	
+	<select id="findHomeworkByClassId" parameterType="map" resultType="cn.strong.leke.homework.model.Homework">
+		<![CDATA[
+		SELECT *
+		  FROM HW_HOMEWORK
+		 WHERE classId = #{classId}
+		   AND isDeleted = 0
+		   AND status = 1
+		]]>
+	</select>
+	
+	<select id="findHomeworkByCourseSingleId" parameterType="map" resultType="cn.strong.leke.homework.model.Homework">
+		<![CDATA[
+		SELECT *
+		  FROM HW_HOMEWORK
+		 WHERE courseSingleId = #{courseSingleId}
+		   AND isDeleted = 0
+		   AND status = 1
+		]]>
+	</select>
+	
+	<select id="queryHomeworkList" parameterType="cn.strong.leke.homework.model.HomeworkQuery" resultType="cn.strong.leke.homework.model.HomeworkDTO">
+	<![CDATA[
+		SELECT *
+		  FROM HW_HOMEWORK a
+		 WHERE a.teacherId = #{teacherId}
+		   AND a.status != 2
+		   AND a.isDeleted = 0
+		   AND homeworkType != 7
+	]]>
+		<if test="homeworkType != null and homeworkType != 0">
+			AND a.homeworkType = #{homeworkType}
+		</if>
+		<if test="homeworkName != null and homeworkName != ''">
+			AND a.homeworkName like concat('%',#{homeworkName},'%')
+		</if>
+		<if test="homeworkFinishFlag  == 'finished'">
+			AND correctNum >0 AND correctNum = finishNum
+		</if>
+		<if test="homeworkFinishFlag == 'unfinished'">
+			<![CDATA[ 
+			AND correctNum  <  finishNum 
+			AND a.isSelfCheck != 1
+			AND a.status != 2
+			]]>
+		</if>
+		<if test="classId != null">
+			AND classId = #{classId}
+		</if>
+		<if test="className != null and className !=''">
+			AND className LIKE CONCAT('%',#{className},'%') 
+		</if>
+		<if test="closeTime != null">
+			AND closeTime <![CDATA[ >]]> #{closeTime}
+		</if>
+		<if test="isClose != null and isClose">
+			AND closeTime <![CDATA[ <]]> now()
+		</if>
+		<if test="isClose != null and !isClose">
+			AND closeTime <![CDATA[ >]]> now()
+		</if>
+		ORDER BY a.homeworkId DESC
+	</select>
+	
+	<select id="findDumpedHomeworkList" parameterType="cn.strong.leke.homework.model.HomeworkQuery"
+		resultType="cn.strong.leke.homework.model.HomeworkDTO">
+		<![CDATA[
+			SELECT *
+			  FROM HW_HOMEWORK a
+			 WHERE a.teacherId = #{teacherId} 
+			   AND a.status = 2
+			   AND a.isDeleted = 0
+		]]>
+		<if test="homeworkType != null and homeworkType != 0">
+			AND a.homeworkType = #{homeworkType}
+		</if>
+		<if test="homeworkName != null and homeworkName != ''">
+			AND a.homeworkName like concat('%',#{homeworkName},'%')
+		</if>
+		<if test="className != null and className !=''">
+			AND className LIKE CONCAT('%',#{className},'%') 
+		</if>
+		ORDER BY a.modifiedOn DESC
+	</select>
+	
+	
+	<select id="queryClassTeacherHomeworkList" parameterType="cn.strong.leke.homework.model.query.ClassHomeworkQuery" 
+		resultType="cn.strong.leke.homework.model.HomeworkDTO">
+	<![CDATA[
+		SELECT *
+		  FROM HW_HOMEWORK a
+		 WHERE a.schoolId = #{schoolId}
+		   AND a.status != 2
+		   AND a.isDeleted = 0
+		   AND a.homeworkType != 7
+	]]>
+		<if test="classType != null">
+			AND a.classType = #{classType}
+		</if>
+		<if test="homeworkType != null and homeworkType != 0">
+			AND a.homeworkType = #{homeworkType}
+		</if>
+		<if test="subjectId != null and subjectId != ''">
+			AND a.subjectId = #{subjectId}
+		</if>
+		<if test="startTime != null">
+			AND closeTime <![CDATA[>]]> #{startTime}
+		</if>
+		<if test="closeTime != null">
+			AND closeTime <![CDATA[ <]]> #{closeTime}
+		</if>
+		<if test="teacherName != null and teacherName != '' ">
+			AND a.teacherName like concat('%',#{teacherName},'%')
+		</if>
+		<if test="homeworkName != null and homeworkName != ''">
+			AND a.homeworkName like concat('%',#{homeworkName},'%')
+		</if>
+		<if test="classId != null">
+			AND a.classId in
+			<foreach collection="classId" item="item" open="(" separator="," close=")">
+			   #{item}
+			</foreach>
+		</if>
+		<if test="isClose != null and isClose">
+			AND closeTime <![CDATA[ <]]> now()
+		</if>
+		<if test="isClose != null and !isClose">
+			AND closeTime <![CDATA[ >]]> now()
+		</if>
+		ORDER BY a.homeworkId DESC
+	</select>
+	
+	<select id="findOrganClassSubject" parameterType="long" resultType="cn.strong.leke.model.base.Subject">
+		select subjectId,subjectName from HW_HOMEWORK where classType = 1 and classId = #{classId} 
+		group by subjectId
+	</select>
+	
+	<select id="queryHwByMonth" parameterType="map" resultType="cn.strong.leke.homework.model.ApiHwCount">
+	<![CDATA[
+		SELECT DATE_FORMAT(closeTime, '%Y-%m-%d') date,
+		       COUNT(*) count
+		  FROM HW_HOMEWORK
+		 WHERE isDeleted = 0
+		   AND teacherId = #{teacherId}
+		   AND closeTime >= #{headTime}
+		   AND closeTime < #{tailTime}
+		 GROUP BY date
+	]]>
+	</select>
+	
+	<select id="getHwByDay" parameterType="map" resultType="cn.strong.leke.homework.model.Homework">
+	<![CDATA[
+		SELECT homeworkId,
+		       homeworkType,
+		       homeworkName,
+		       status,
+		       paperId,
+		       subjective,
+		       className,
+		       closeTime,
+		       totalNum,
+		       finishNum,
+		       correctNum,
+		       bugFixNum,
+		       totalFixNum,
+		       reviewNum,
+		       isOpenAnswer,
+		       isSelfCheck
+		  FROM HW_HOMEWORK
+		 WHERE isDeleted = 0
+		   AND teacherId = #{teacherId}
+		   AND closeTime >= #{headTime}
+		   AND closeTime < #{tailTime}
+	]]>
+	</select>
+	
+	<select id="getHwByCourseSingleId" parameterType="map" resultType="cn.strong.leke.homework.model.Homework">
+	<![CDATA[
+		SELECT homeworkId, homeworkType, homeworkName, className, paperId, closeTime, finishNum, correctNum, totalNum
+		FROM HW_HOMEWORK as hw
+		WHERE isDeleted = 0
+		  AND status = 1
+		  AND teacherId = #{teacherId}
+		  AND courseSingleId = #{courseSingleId}
+	]]>
+	</select>
+	
+	<select id="getHwPageByCourseSingleId" parameterType="map" resultType="cn.strong.leke.homework.model.Homework">
+		SELECT homeworkId, homeworkType, homeworkName, className, paperId, closeTime, finishNum, correctNum, totalNum
+		FROM HW_HOMEWORK as hw
+		WHERE isDeleted = 0
+		  AND status = 1
+		  AND teacherId = #{teacherId}
+		  <if test="homeworkType != null">
+			  AND homeworkType = #{homeworkType}
+		  </if>
+		  <if test="homeworkName != null">
+			  AND homeworkName like concat('%',#{homeworkName},'%')
+		  </if>
+		  ORDER BY closeTime DESC
+	</select>
+	
+	<select id="getHwByCourseSingleId2" parameterType="map" resultType="cn.strong.leke.homework.model.Homework">
+	<![CDATA[
+		SELECT homeworkId, homeworkType, homeworkName, className, paperId, closeTime
+		FROM HW_HOMEWORK as hw
+		WHERE isDeleted = 0
+		  AND status = 1
+		  AND homeworkType = 2
+		  AND teacherId = #{teacherId}
+		  AND courseSingleId = #{courseSingleId}
+		ORDER BY closeTime DESC
+	]]>
+	</select>
+	
+	<select id="queryHwStuMonth" parameterType="map" resultType="cn.strong.leke.homework.model.ApiHwCount">
+	<![CDATA[
+		SELECT DATE_FORMAT(hw.closeTime, '%Y-%m-%d') date,
+			   COUNT(*) count
+		  FROM HW_HOMEWORK hw
+		  JOIN HW_HOMEWORK_DTL dtl
+		    ON hw.homeworkId = dtl.homeworkId
+		 WHERE dtl.studentId = #{studentId}
+		   AND IF(hw.homeworkType = 2, hw.closeTime, hw.startTime) <= NOW()
+		   AND hw.closeTime >= #{headTime}
+		   AND hw.closeTime < #{tailTime}	
+		   AND hw.isDeleted = 0
+		   AND dtl.isDeleted = 0
+		 GROUP BY date
+	]]>
+	</select>
+
+	<update id="updateHomeworkDate" parameterType="map">
+		UPDATE HW_HOMEWORK
+		<set>
+			<if test="startTime != null">
+				startTime = #{startTime},
+			</if>
+			<if test="closeTime != null">
+				closeTime = #{closeTime},
+			</if>
+		</set>
+		WHERE homeworkId = #{homeworkId}
+		AND isDeleted = 0
+	</update>
+
+	<update id="updateHomeworkInvalid" parameterType="long">
+	<![CDATA[
+		UPDATE HW_HOMEWORK 
+		   SET status = 2 ,modifiedOn = now(),modifiedBy = #{teacherId}
+		 WHERE homeworkId = #{homeworkId} 
+		   AND isDeleted = 0
+	]]>
+	<if test="teacherId != null">
+		   AND teacherId = #{teacherId}
+	</if>
+	</update>
+	
+	<select id="findPaperIdsByHomeworkIds" parameterType="map" resultType="long">
+	<![CDATA[
+		SELECT paperId
+		  FROM HW_HOMEWORK
+		 WHERE isDeleted = 0
+		   AND homeworkId IN
+	]]>
+		<foreach item="val" collection="homeworkIds" open="(" close=")" separator=",">#{val}</foreach>
+	</select>
+
+	<select id="findHwAssignEventsByCourseSingleId" parameterType="long" resultType="cn.strong.leke.notice.model.todo.HwAssignEvent">
+	<![CDATA[
+		SELECT teacherId,
+			   homeworkId,
+			   homeworkType,
+			   homeworkName,
+			   startTime,
+			   closeTime,
+			   courseSingleId
+		  FROM HW_HOMEWORK
+		 WHERE courseSingleId = #{courseSingleId}
+		   AND isDeleted = 0
+		   AND status = 1
+	]]>
+	</select>
+	
+	<select id="findHomeworkScheduleByQuery" parameterType="cn.strong.leke.tutor.model.course.ScheduleQuery"
+		resultType="cn.strong.leke.tutor.model.course.ScheduleStat">
+		<if test="roleId == 100">
+		<![CDATA[
+		SELECT DATE(a.closeTime) date,
+		       COUNT(*) count
+		  FROM HW_HOMEWORK a
+		  JOIN HW_HOMEWORK_DTL b
+		    ON a.homeworkId = b.homeworkId
+		 WHERE a.isDeleted = 0
+		   AND b.isDeleted = 0
+		   AND b.studentId = #{userId}
+		   AND a.closeTime >= #{startTime}
+		   AND a.closeTime < #{endTime}
+		 GROUP BY date
+		 ORDER BY date
+		]]>
+		</if>
+		<if test="roleId == 101">
+		<![CDATA[
+		SELECT DATE(closeTime) date,
+		       COUNT(*) count
+		  FROM HW_HOMEWORK
+		 WHERE isDeleted = 0
+		   AND teacherId = #{userId}
+		   AND closeTime >= #{startTime}
+		   AND closeTime < #{endTime}
+		 GROUP BY date
+		 ORDER BY date
+		]]>
+		</if>
+	</select>
+	<select id="getCorrectHomeworks" resultType="map">
+		SELECT 
+		  classId,classType,className,COUNT(homeworkId) AS toCorrectNum 
+		FROM
+		  HW_HOMEWORK a 
+		WHERE a.teacherId = #{teacherId} 
+		  AND a.isDeleted = 0 
+		  AND a.isSelfCheck != 1
+		  AND a.homeworkType != 7
+		<if test="startTime == null">
+		  AND correctNum <![CDATA[< ]]>finishNum 
+		</if>
+		<if test="startTime != null">
+		  AND a.closeTime > #{startTime}
+		</if>
+		  AND a.status != 2
+		GROUP BY classId
+		ORDER BY classType ASC,classId ASC 
+	</select>
+	<select id="getReCorrectNum" resultType="int" parameterType="cn.strong.leke.homework.model.HomeworkQuery">
+		<![CDATA[
+		SELECT COUNT(hw.homeworkId)  AS correctNum
+		FROM HW_HOMEWORK hw
+		WHERE hw.isDeleted=0 AND hw.bugFixNum > hw.reviewNum
+			AND hw.teacherId= #{teacherId}
+		]]>
+		<if test="classId != null">
+			AND hw.classId = #{classId}
+		</if>
+	</select>
+	
+	<select id="queryReCorrectHomeworkList" resultType="map" parameterType="cn.strong.leke.homework.model.HomeworkQuery">
+		<![CDATA[
+			SELECT *, 
+			CASE 
+			WHEN correctNum > 0 
+			THEN 1 ELSE -1 END orderNum 
+			FROM (
+				SELECT hw.paperId,hw.homeworkId,hw.homeworkName,hw.homeworkType,
+					hw.createdOn,hw.closeTime,hw.bugFixNum-reviewNum AS correctNum
+				FROM HW_HOMEWORK hw
+				WHERE hw.isDeleted=0 
+				AND hw.teacherId = #{teacherId}
+				AND hw.totalFixNum > 0
+			]]>
+			<if test="homeworkType != null and homeworkType != 0">
+				AND hw.homeworkType = #{homeworkType}
+			</if>
+			<if test="homeworkName != null and homeworkName !='' ">
+				AND hw.homeworkName like concat('%',#{homeworkName},'%')
+			</if>
+			<if test="classId != null ">
+				AND hw.classId = #{classId}
+			</if>
+			<if test="className != null and className != ''">
+				AND hw.className like concat('%',#{className},'%')
+			</if>
+		) t 
+		ORDER BY orderNum DESC,homeworkId DESC
+	</select>
+	
+	<update id="saveOpenAnswer" parameterType="map">
+	<![CDATA[
+		UPDATE HW_HOMEWORK
+		   SET isOpenAnswer = 1,
+		       modifiedBy = #{teacherId},
+		       modifiedOn = now()
+		 WHERE homeworkId = #{homeworkId}
+		   AND teacherId = #{teacherId}
+		   AND isDeleted = 0
+	]]>
+	</update>
+	
+	<update id="saveSelfCheck" parameterType="map">
+	<![CDATA[
+		UPDATE HW_HOMEWORK
+		   SET isSelfCheck = 1,
+		       modifiedBy = #{teacherId},
+		       modifiedOn = now()
+		 WHERE homeworkId = #{homeworkId}
+		   AND teacherId = #{teacherId}
+		   AND isDeleted = 0
+	]]>
+	</update>
+	
+	<select id="findHomeworkByPaperId" parameterType="map" resultType="map">
+	<![CDATA[
+		SELECT homeworkId, homeworkName, teacherName, className, DATE_FORMAT(closeTime,'%Y-%m-%d %H:%i') closeTime
+		  FROM HW_HOMEWORK
+		 WHERE paperId = #{paperId}
+		   AND schoolId = #{schoolId}
+		   AND isDeleted = 0
+		   AND status = 1
+		 ORDER BY closeTime DESC, className ASC
+	]]>
+	</select>
+	
+	<update id="delHomework" parameterType="long">
+		<![CDATA[
+			UPDATE HW_HOMEWORK
+			SET isDeleted = 1,modifiedOn = now(),modifiedBy = #{teacherId}
+			WHERE teacherId = #{teacherId} AND isDeleted = 0 AND  homeworkId  IN
+		]]>
+		<foreach collection="homeworkIds" item="item" open="(" separator="," close=")">
+			#{item}
+		</foreach>
+	</update>
+	
+	<update id="recoverHomework" parameterType="long">
+		<![CDATA[
+			UPDATE HW_HOMEWORK
+			SET status = 1,modifiedOn = now(),modifiedBy = #{teacherId}
+			WHERE teacherId = #{teacherId} AND isDeleted = 0 AND status =2 AND  homeworkId  IN
+		]]>
+		<foreach collection="homeworkIds" item="item" open="(" separator="," close=")">
+			#{item}
+		</foreach>
+	</update>
+	
+
+	
+	<select id="getVodDerivedHomeworkByParentId" parameterType="map" resultType="cn.strong.leke.homework.model.Homework">
+		<![CDATA[
+		SELECT *
+		  FROM HW_HOMEWORK
+		 WHERE parentId = #{parentId}
+		   AND classId = #{classId}
+		   AND teacherId = #{teacherId}
+		   AND isDeleted = 0
+		]]>
+	</select>
+
+	
+	<select id="findTeacherHomework" parameterType="cn.strong.leke.homework.model.query.ApiHomeworkListQuery" 
+		resultType="cn.strong.leke.homework.model.Homework">
+		<![CDATA[
+			SELECT homeworkId,
+			       homeworkType,
+			       homeworkName,
+			       status,
+			       paperId,
+			       paperType,
+			       subjective,
+			       className,
+			       closeTime,
+			       totalNum,
+			       finishNum,
+			       correctNum,
+			       bugFixNum,
+			       totalFixNum,
+			       reviewNum,
+			       isOpenAnswer,
+			       isSelfCheck,
+			       avgScore,
+			       avgScoreRate,
+			       CASE 
+						WHEN ( bugFixNum - reviewNum) > 0 THEN 1 
+						ELSE -1 
+				    END orderNum 
+			  FROM HW_HOMEWORK
+			 WHERE isDeleted = 0 
+			 AND teacherId = #{userId}
+		]]>
+		  <if test="businessType != null and businessType == 1">
+			 AND STATUS != 2 
+		  </if>
+		  <if test="businessType != null and businessType == 2">
+			 AND STATUS = 2 
+		  </if>
+		  <if test="homeworkType != null">
+		  	AND homeworkType = #{homeworkType}
+		  </if>
+		  <if test="homeworkName != null">
+		  	AND homeworkName like concat('%',#{homeworkName},'%')
+		  </if>
+		  <if test="type != null and type == 1">
+		  	AND finishNum > correctNum
+		  	AND isSelfCheck != 1 
+		  </if>
+		  <if test="type != null and type == 2">
+		  	AND bugFixNum >= reviewNum
+		  </if>
+		  <if test="type == null or type != 2">
+		   <if test="flagHomeworkId != null">
+			  <![CDATA[
+				 AND homeworkId < #{flagHomeworkId}
+			  ]]>
+		   </if>
+			 ORDER BY homeworkId DESC
+			 limit  #{limit}
+		  </if>
+		  <if test="type != null and type == 2">
+			 ORDER BY orderNum DESC,homeworkId DESC
+			 limit #{start},#{limit}
+		  </if>
+	</select>
+	<!-- 查询全部，待批改，待复批的作业数 -->
+	<select id="findTeacherHomeworkInfoTotal" resultType ="map">
+	<![CDATA[
+		SELECT COUNT(1) AS total,
+		 SUM(IF(finishNum > correctNum and isSelfCheck != 1 ,1,0)) AS correctTotal,
+		 SUM(IF(bugFixNum > reviewNum,1,0)) AS reviewTotal
+		FROM HW_HOMEWORK
+		WHERE isDeleted = 0 AND status = 1 
+		AND teacherId = #{teacherId}
+	]]>
+	</select>
+	<!-- api：学生端查询全部，待完成，待订正的作业数 -->
+	<select id="findStuHomeworkInfoTotal" resultType ="map">
+	<![CDATA[
+		SELECT COUNT(1) AS total,
+			SUM(IF(hd.submitStatus = 0,1,0)) AS doingTotal,
+			SUM(IF(hd.bugfixStage = 1,1,0)) AS bugfixTotal
+		FROM HW_HOMEWORK h 
+		JOIN HW_HOMEWORK_DTL hd 
+		  ON h.homeworkId = hd.homeworkId 
+		WHERE hd.studentId = #{studentId}
+		AND h.subjectId = #{subjectId}
+		AND h.status != 2 
+		AND h.isDeleted = 0 
+		AND hd.isDeleted = 0 
+		AND IF(h.homeworkType = 2,  h.closeTime,  h.startTime) <= NOW() 
+		AND h.homeworkType != 7
+	]]>
+	</select>
+	
+	<select id="findHwCorrectInfo" resultType ="cn.strong.leke.homework.model.Homework"
+	 	parameterType="cn.strong.leke.homework.model.query.HomeworkIncentiveQuery">
+		<![CDATA[
+			SELECT homeworkId,teacherId,teacherName,schoolId,finishNum,correctNum,bugFixNum,reviewNum
+			FROM `HW_HOMEWORK` 
+			WHERE isDeleted = 0 AND STATUS = 1
+			AND closeTime  >= #{start}
+			AND closeTime  < #{end}  
+			AND homeworkId > #{flagId}
+			AND subjective = 1
+			AND homeworkType != 5
+			AND isSelfCheck = 0
+			ORDER BY homeworkId ASC
+			LIMIT #{limit}
+		]]>
+	</select>
+	
+	<select id="findHwReviewInfo" resultType ="cn.strong.leke.homework.model.HomeworkReviewInfo"
+	 	parameterType="cn.strong.leke.homework.model.query.HomeworkIncentiveQuery">
+		<![CDATA[
+			SELECT hw.teacherId,hw.teacherName,hw.homeworkName,
+				hw.schoolId,homeworkDtlId,bugfixStage,reviewTime
+			FROM `HW_HOMEWORK` hw
+			JOIN HW_HOMEWORK_DTL dtl
+			ON hw.homeworkId = dtl.homeworkId
+			WHERE hw.isDeleted = 0 AND STATUS = 1
+			AND dtl.bugfixTime  >= #{start}
+			AND dtl.bugfixTime  < #{end}  
+			AND hw.homeworkId > #{flagId}
+			AND subjective = 1
+			AND homeworkType != 5
+			AND isSelfCheck = 0
+			ORDER BY hw.homeworkId ASC
+			LIMIT #{limit}
+		]]>
+	</select>
+	
+	<select id="findHolidayClassSubjects" resultMap="classSubjetIds">
+		<![CDATA[
+			SELECT classId,subjectId FROM HW_HOMEWORK 
+			WHERE homeworkType = 6 
+			  AND STATUS = 1 
+			  AND isDeleted = 0 
+			  AND isMonthHomework IS NULL
+			  AND createdOn >= #{start} 
+			  AND createdOn <= #{end} 
+		]]>
+	</select>
+	<resultMap type="cn.strong.leke.homework.model.ClassSubjectHw" id="classSubjetIds">
+		<id column="classId" property="classId"/>
+		<collection property="subjectIds"  ofType="long" javaType="ArrayList"  >
+			<result column="subjectId" />
+		</collection>
+	</resultMap>
+
+	<select id="findClassHomeworkIds" resultType ="long">
+		<![CDATA[
+			SELECT homeworkId FROM HW_HOMEWORK
+			WHERE classId= #{classId} AND subjectId = #{subjectId}
+			AND isDeleted = 0
+			AND homeworkType = 6 AND isMonthHomework IS NULL
+		]]>
+	</select>
+	
+	<select id="findWrongHwInfo" resultType="cn.strong.leke.model.wrong.HomeworkForWrong">
+		<![CDATA[
+		select homeworkId,teacherId,subjectId,subjectName,classId,schoolId,homeworkName,startTime,homeworkType
+		from HW_HOMEWORK
+		where isDeleted = 0 and status = 1  and paperType =1 
+			and homeworkType in (1,2,3) 
+			and closeTime >= #{start} and closeTime < #{end}
+			and correctNum > 0
+			and ROUND(correctNum/finishNum,2) >= 0.80
+		]]>
+	</select>
+</mapper>   

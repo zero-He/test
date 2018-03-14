@@ -1,0 +1,50 @@
+<%@ page pageEncoding="UTF-8"%>
+<%@ include file="/pages/common/tags.jsp"%>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <title>乐答</title>
+    <link rel="stylesheet" href="${assets}/styles/mobile/global.css">
+    <link rel="stylesheet" href="${assets}/styles/mobile/doubt.css">
+    <%@ include file="/pages/common/cordova.jsp"%>
+</head>
+<body id="jDroploadId">
+	<header class="c-header">
+        <span class="back"></span>
+        	乐答
+        <c:if test="${word!=null}"><a id="jAsk" href="ask.htm?resolved=${resolved}" class="operation">${word}</a></c:if>
+        <input id="jResolved" type="hidden" value="${resolved}">
+    </header>
+    <nav class="c-nav">
+        <ul>
+            <li <c:if test="${resolved eq 1}">class="cur"</c:if> data-i="1"><a href="list.htm?resolved=1">已解答</a></li>
+            <li <c:if test="${resolved eq 0}">class="cur"</c:if> data-i="0"><a href="list.htm?resolved=0">未解答</a></li>
+        </ul>
+    </nav>
+    <form id="jForm" action="">
+		<input type="hidden" name="resolved" value="${resolved}"/>
+	</form>
+
+    <!-- 问题列表 -->
+    <section class="c-doubt-list">
+        <ul id="jListBody">
+            
+        </ul>
+    </section>
+    <script id="jListTpl" type="x-mustache">
+		{{#dataList}}
+	    	<li class="c-arrow" data-i="{{doubtId}}">
+				<a href="detail.htm?doubtId={{doubtId}}&resolved=${resolved}">
+                <h5>[{{doubtTypeStr}}] {{doubtTitle}}</h5>
+                <div class="info"><c:if test="${currentRoleId==101}">{{userName}}   </c:if>{{explainTimeOnString}}</div>
+            	</a>
+			</li>
+		{{/dataList}}
+    </script>
+    <script src="${assets}/scripts/common/mobile/common.js?_t=${_t}"></script>
+    <script src="/scripts/m/doubt/list.js?_tt=${_t}"></script>
+</body>
+</html>

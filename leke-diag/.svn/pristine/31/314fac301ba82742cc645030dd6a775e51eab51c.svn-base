@@ -1,0 +1,25 @@
+package cn.strong.leke.diag.controller;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.RequestMapping;
+
+@Controller
+@RequestMapping("/auth/m/report/testing/")
+public class MobileReportTestingController {
+
+	@RequestMapping("/echarts")
+	public String echarts(Model model) {
+		return "/auth/m/report/testing-echarts";
+	}
+
+	@RequestMapping("/pull")
+	public String pull(Model model) {
+		return "/auth/m/report/testing-pull";
+	}
+
+	@RequestMapping("/iscroll")
+	public String iscroll(Model model) {
+		return "/auth/m/report/testing-iscroll";
+	}
+}

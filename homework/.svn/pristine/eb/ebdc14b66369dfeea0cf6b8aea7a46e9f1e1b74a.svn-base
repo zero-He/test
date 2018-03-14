@@ -1,0 +1,40 @@
+define(function(require, exports, module) {
+	var $ = require('jquery');
+	var Mustache = require('mustache');
+	var viewTpl = "{{day}}天{{hour}}小时{{minutes}}分钟{{seconds}}秒";
+
+	/**
+	 * 倒计时。
+	 * @param 显示容器
+	 * @param 截止时间
+	 */
+	function CountDown(target, endTime) {
+		this.start = function() {
+			setInterval(function() {
+				renderView(target, endTime);
+			}, 1000);
+		};
+	}
+
+	function renderView(target, endTime) {
+		var data = {
+			day : 0,
+			hour : 0,
+			minutes : 0,
+			seconds : 0
+		};
+		var currTime = new Date();
+		if (currTime < endTime) {
+			var value = endTime - currTime;
+			data = {
+				day : Math.floor(value / (1000 * 60 * 60 * 24)),
+				hour : Math.floor(value / (1000 * 60 * 60)) % 24,
+				minutes : Math.floor(value / (1000 * 60)) % 60,
+				seconds : Math.floor(value / 1000) % 60
+			}
+		}
+		$(target).html(Mustache.render(viewTpl, data));
+	}
+
+	module.exports = CountDown;
+});

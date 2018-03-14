@@ -1,0 +1,71 @@
+define(function(require, exports, module) {
+	var $ = require('jquery');
+	var Utils = require('utils');
+	var Render = require('homework/sheet.render');
+	require('common/ui/ui-scrollbar/jquery.scrollbar.min');
+
+	var win = {
+		init : function() {
+			this.bindEvent();
+			this.initShowView();
+			$('.j-card-scrollbar').scrollbar();
+		},
+		bindEvent : function() {
+			var _this = this;
+			$('.m-correct-question-right .btn').click(function(){
+				$('.m-correct-question-right').toggleClass('full');
+				_this.initShowView();
+			});
+			$('.j-exitBatch').click(function(){
+				var href =Leke.domain.homeworkServerName+'/auth/teacher/homework/homeworkDetail.htm?homeworkId='+$(this).data('hwid');
+				location.href=href;
+			});
+			$(document).on('click','.j-view-question',function(){
+				var $questionBody = $(this).parents('li:first').find('.j-subject-detail');
+				var id = $(this).data('questionid');
+				if($(this).data('bind') != 1){
+					var paperId = $(this).data('paperid');
+					$.post('/auth/teacher/batch/getQuestionContent.htm',{questionId:id,paperId:paperId},function(data){
+						$questionBody.html(data.datas.content);
+						Render.doRender();
+					});
+					$(this).data('bind',1);
+				}
+				if ($questionBody.hasClass('f-hide')) {
+					$questionBody.removeClass('f-hide');
+					$(this).text('收起题目');
+					$(this).parents('.item-info').removeClass('nobottom');
+				} else {
+					$questionBody.addClass('f-hide')
+					$(this).text('查看题目');
+					$(this).parents('.item-info').addClass('nobottom');
+				}
+			});
+			var showQuestionItems={
+					/*大类题型展开收缩*/
+					toggle:function(){
+						$('.j-arrow').on('click',  function(event) {
+							event.preventDefault();
+							var $this=$(this);
+							if($this.hasClass('p-arrow-hide')){
+								$this.removeClass('p-arrow-hide').parent('.p-group-title').siblings('.p-group-detail').slideDown();
+							}else{
+								$this.addClass('p-arrow-hide').parent('.p-group-title').siblings('.p-group-detail').slideUp();
+							}
+						});
+					}
+
+				}
+				showQuestionItems.toggle();
+
+		},initShowView : function () {
+			if ($('.m-correct-question-right').hasClass('full')) {
+				$('.m-correct-question-left').hide();
+			} else {
+				$('.m-correct-question-left').show();
+			}
+		}
+	};
+
+	win.init();
+});

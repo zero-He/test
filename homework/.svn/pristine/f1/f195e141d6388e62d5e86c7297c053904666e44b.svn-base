@@ -1,0 +1,78 @@
+package cn.strong.leke.homework.service;
+
+import java.util.List;
+import java.util.Map;
+
+import cn.strong.leke.homework.model.mongo.HomeworkProgress;
+import cn.strong.leke.model.user.SimpleUser;
+
+/**
+ *
+ * 描述:
+ *
+ * @author raolei
+ * @created 2016年3月11日 上午10:31:23
+ * @since v1.0.0
+ */
+public interface IHomeworkProgressService {
+
+	/**
+	 *
+	 * 描述: 初次添加保存作业动态信息
+	 *
+	 * @author raolei
+	 * @created 2016年3月29日 下午1:52:57
+	 * @since v1.0.0
+	 * @param record
+	 * @return void
+	 */
+	void insert(HomeworkProgress record);
+
+	/**
+	 *
+	 * 描述: 学生做作业心跳包
+	 *
+	 * @author raolei
+	 * @created 2016年3月11日 上午10:31:43
+	 * @since v1.0.0
+	 * @param homeworkId
+	 * @param studentId
+	 * @return void
+	 */
+	void heartbeat(Long homeworkId, Long studentId);
+
+	/**
+	 *
+	 * 描述: 学生保存作业，返回学生用时
+	 *
+	 * @author raolei
+	 * @created 2016年3月11日 上午10:32:04
+	 * @since v1.0.0
+	 * @param homeworkId
+	 * @param studentId
+	 * @return void
+	 */
+	Integer submit(Long homeworkId, Long studentId);
+
+	/**
+	 * 
+	 * @param homeworkId
+	 * @param studentId
+	 */
+	public void submitForSheet(Long homeworkId, Long studentId);
+
+	/**
+	 *
+	 * 描述:
+	 *
+	 * @author raolei
+	 * @created 2016年3月17日 上午10:35:28
+	 * @since v1.0.0
+	 * @param homeworkId
+	 * @return
+	 * @return Map<String,List<UserBase>>
+	 */
+	Map<String, List<SimpleUser>> getById(Long homeworkId);
+	
+	HomeworkProgress get(Long homeworkId, Long studentId) ;
+}

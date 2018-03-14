@@ -1,0 +1,84 @@
+<div class="selecttype">
+	<div class="search">
+		<!-- 
+		<a  target="_self" class="c-btn-addresource" data-bind="click: add"> <i></i>创建习题册</a>
+		 -->
+		
+		
+		<label class="title f-ml5 f-mr5">学段学科:</label>
+	    <select id="" name="stageSubject" class="u-select u-select-mini">
+            <option value="">请选择</option>
+        </select>
+        <label class="f-ml5 f-mr5">教材版本:</label>
+										   
+		<div class="selecttext" style="width: 162px;">
+			<input type="text" name="content" placeholder="请输入习题册关键字" data-bind="value: query.content" >
+			<a href="#" class="selectbut" data-bind="click: load"></a>
+		</div>
+     	<div class="con">
+				<input type="text" class="u-ipt u-ipt-nm" name="section"  data-bind="value: sectionPath, click: openSectionSelect,attr: {title: sectionPath}" readonly="readonly">
+				<a class="s-c-r f-csp" data-bind="click: delSection"> X </a>
+		</div>
+		
+	</div>
+</div>
+<div class="c-resource-list">
+	<div class="listoperatingarea">
+		<span class="checkbox"><input type="checkbox" id="checkAll" name="checkAll" data-bind="checked: selectAll"></span>
+		<div class="f-fr f-mr5">
+        	<input type="button" class="c-resouce-btnhollow" value="移动" data-bind="click: batchMove" >
+        	<!-- ko if: query.userResGroupId() -->
+        	<input type="button" class="c-resouce-btnhollow" value="移出分组" data-bind="click: batchRemove" >
+       		<!-- /ko -->
+       		<!-- ko if: isFavorite -->
+       		<input type="button" class="c-resouce-btnhollow" value="取消收藏" data-bind="click: doBatchUnfavorite" >
+            <!-- /ko -->
+        </div>
+	</div>
+	<ul data-bind="foreach: records">
+		<li class="item">
+			<div class="resourcelist">
+				<span class="checkbox"> <input type="checkbox" name="resId" data-bind="value: workbookId"></span>
+				<div class="info">
+					<i class="c-restype workbook"></i>
+					<div class="resourcecon">
+						<div class="title" data-bind="attr: {title: content}">
+							<a data-bind="attr: {href: viewUrl},text: content"  target="_blank">></a>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="bottomoperation">
+				<div class="attr">
+					<span data-bind="text: createdOnStr" ></span>
+				</div>
+				<div class="c-maxoperationlistbtn">
+					<!-- ko if: $parent.isPersonal -->
+					<a href="#" target="_blank"  data-bind="attr: {href: editUrl}"><i class="edit ico">编辑</i></a>
+					<!-- /ko -->
+					<a href="#" target="_blank" data-bind="attr: {href: viewUrl}"><i class="see ico">查看</i></a>
+					<!-- ko if: $parent.isFavorite -->
+					<a href="#" data-bind="click: function(data){ $parent.doUnfavorite(data);}"><i class="ico collection">取消收藏</i></a>
+                    <!-- /ko -->
+					<div class="m-btns c-btns f-fr f-mt11">
+						<div class="init-btn"><a href="#">更多</a><b><i></i></b></div>
+						<menu>
+							<li><a href="#" data-bind="click: function(data){ $parent.move(data);}">移动</a></li>
+							<!-- ko if: $parent.isPersonal -->
+							<li><a href="#" data-bind="click: function(data){ $parent.rename(data);}">重命名</a></li>
+							<li><a href="#" data-bind="click: function(data){ $parent.del(data);}">删除</a></li>
+							<!-- /ko -->
+                            <!-- ko if: $parent.query.userResGroupId() -->
+                            <li><a href="#" data-bind="click: function(data){ $parent.remove(data);}">移出分组</a></li>
+		                	<!-- /ko -->
+						</menu>
+					</div>
+				</div>
+			</div>
+		</li>
+	</ul>
+</div>
+<div data-bind="component: { name: 'leke-page', params: { curPage: query.curPage, totalSize: totalSize} }"></div>
+<!-- ko if: records().length == 0 -->
+<p class="m-tips"><i></i><span>当前没有教学资源</span></p>
+<!-- /ko -->

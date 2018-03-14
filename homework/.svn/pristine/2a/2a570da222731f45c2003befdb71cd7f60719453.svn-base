@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context" xmlns:rabbit="http://www.springframework.org/schema/rabbit"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.2.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.2.xsd
+		http://www.springframework.org/schema/rabbit http://www.springframework.org/schema/rabbit/spring-rabbit-1.1.xsd">
+
+	<bean id="homeworkSubmitSender" class="cn.strong.leke.core.mq.rabbit.RabbitMQSender">
+		<property name="exchange" value="${mq.e.homework.submit}" />
+		<property name="routingKey" value="${mq.q.homework.submit}" />
+	</bean>
+	<bean id="weekHomeworkSender" class="cn.strong.leke.core.mq.rabbit.RabbitMQSender">
+		<property name="exchange" value="${mq.e.homework.week}" />
+		<property name="routingKey" value="${mq.q.homework.week}" />
+	</bean>
+	<bean id="monthHomeworkSender" class="cn.strong.leke.core.mq.rabbit.RabbitMQSender">
+		<property name="exchange" value="${mq.e.homework.month}" />
+		<property name="routingKey" value="${mq.q.homework.month}" />
+	</bean>
+
+	<bean id="homeworkProgressSender" class="cn.strong.leke.core.mq.rabbit.RabbitMQSender">
+		<property name="exchange" value="${mq.e.homework.progress}" />
+		<property name="routingKey" value="${mq.q.homework.progress}" />
+	</bean>
+
+	<bean id="homeworkCorrectSender" class="cn.strong.leke.core.mq.rabbit.RabbitMQSender">
+		<property name="exchange" value="${mq.e.homework.correct}" />
+		<property name="routingKey" value="${mq.q.homework.correct}" />
+	</bean>
+
+	<bean id="wrongtopicSender" class="cn.strong.leke.core.mq.rabbit.RabbitMQSender">
+		<property name="exchange" value="${mq.e.wrongtopic}" />
+		<property name="routingKey" value="${mq.q.wrongtopic}" />
+	</bean>
+
+	<bean id="onlinetestSender" class="cn.strong.leke.core.mq.rabbit.RabbitMQSender">
+		<property name="exchange" value="${mq.e.onlinetest}" />
+		<property name="routingKey" value="${mq.q.onlinetest}" />
+	</bean>
+
+	<bean id="paperArrangeTimesSender" class="cn.strong.leke.core.mq.rabbit.RabbitMQSender">
+		<property name="exchange" value="${mq.e.paper.usercount}" />
+		<property name="routingKey" value="${mq.q.paper.usercount}" />
+	</bean>
+
+	<bean id="beikeHomeworkDtlSender" class="cn.strong.leke.core.mq.rabbit.RabbitMQSender">
+		<property name="exchange" value="${mq.e.beike.homeworkdtl}" />
+		<property name="routingKey" value="${mq.q.beike.homeworkdtl}" />
+	</bean>
+
+	<bean id="resourceHomeworkDtlSender" class="cn.strong.leke.core.mq.rabbit.RabbitMQSender">
+		<property name="exchange" value="${mq.e.resource.homeworkdtl}" />
+		<property name="routingKey" value="${mq.q.resource.homeworkdtl}" />
+	</bean>
+
+	<bean id="sheetWriteSender" class="cn.strong.leke.core.mq.rabbit.RabbitMQSender">
+		<property name="exchange" value="${mq.e.homework.sheet.write}" />
+		<property name="routingKey" value="${mq.q.homework.sheet.write}" />
+	</bean>
+	<bean id="holidayHwSender" class="cn.strong.leke.core.mq.rabbit.RabbitMQSender">
+		<property name="exchange" value="${mq.e.homework.holidayhw}" />
+		<property name="routingKey" value="${mq.q.homework.holidayhw}" />
+	</bean>
+	
+	<bean id="homeworkForWrongSender" class="cn.strong.leke.core.mq.rabbit.RabbitMQSender">
+		<property name="exchange" value="${mq.e.question.wrongquestion}" />
+		<property name="routingKey" value="${mq.q.question.wrongquestion}" />
+	</bean>
+
+</beans>

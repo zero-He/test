@@ -1,0 +1,221 @@
+/**
+ * 
+ */
+package cn.strong.leke.monitor.core.service.online.impl;
+
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import javax.annotation.Resource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import cn.strong.leke.common.utils.CollectionUtils;
+import cn.strong.leke.common.utils.DateUtils;
+import cn.strong.leke.context.base.UserBaseContext;
+import cn.strong.leke.core.cas.TicketEncrypt;
+import cn.strong.leke.framework.exceptions.ValidateException;
+import cn.strong.leke.framework.exceptions.Validation;
+import cn.strong.leke.model.user.RoleSchool;
+import cn.strong.leke.model.user.UserBase;
+import cn.strong.leke.monitor.core.dao.mybatis.IUserActiveStatisDao;
+import cn.strong.leke.monitor.core.model.DeviceHeartbeat;
+import cn.strong.leke.monitor.core.service.online.IDeviceOnlineUserService;
+import cn.strong.leke.monitor.core.service.online.IspFinder;
+import cn.strong.leke.monitor.core.utils.SessionHelper;
+import cn.strong.leke.monitor.mongo.online.model.DayActiveUser;
+import cn.strong.leke.monitor.mongo.online.model.DeviceOnlineUser;
+import cn.strong.leke.monitor.mongo.online.service.IDayActiveUserDao;
+import cn.strong.leke.monitor.mongo.online.service.IDeviceOnlineUserDao;
+import cn.strong.leke.monitor.util.StatUtils;
+
+/**
+ * @author liulongbiao
+ *
+ */
+@Service
+public class DeviceOnlineUserService implements IDeviceOnlineUserService {
+	private static final Logger LOG = LoggerFactory.getLogger(DeviceOnlineUserService.class);
+	@Resource
+	private IspFinder ispFinder;
+	@Resource(name = "monitorExecutor")
+	private ExecutorService monitorExecutor;
+	@Resource
+	private IDeviceOnlineUserDao deviceOnlineUserDao;
+	@Resource
+	private IUserActiveStatisDao userActiveStatisDao;
+	@Resource
+	private IDayActiveUserDao dayActiveUserDao;
+	
+	@Override
+	public void saveHeartbeat(DeviceHeartbeat hb) {
+		CompletableFuture.runAsync(() -> {
+			DeviceOnlineUser user = toDeviceOnlineUser(hb);
+			deviceOnlineUserDao.save(user);
+		}, monitorExecutor).whenComplete((t, ex) -> {
+			if (ex != null) {
+				LOG.error("保存设备心跳失败", ex);
+			}
+		});
+	}
+
+	private DeviceOnlineUser toDeviceOnlineUser(DeviceHeartbeat hb) {
+		if (hb == null || hb.getTicket() == null || hb.getD() == null) {
+			throw new ValidateException("心跳信息不完整");
+		}
+		String userId = TicketEncrypt.decode(hb.getTicket());
+		UserBase user = UserBaseContext.getUserBaseByUserId(Long.parseLong(userId));
+		Validation.notNull(user, "无法查找到用户信息");
+		DeviceOnlineUser result = new DeviceOnlineUser();
+		result.setTs(new Date());
+		result.setD(hb.getD());
+		result.setUserId(user.getId());
+		RoleSchool rs = CollectionUtils.getFirst(user.getRoleSchoolList());
+		if (rs != null) {
+			result.setSchoolId(rs.getSchoolId());
+		}
+		result.setModel(hb.getModel());
+		result.setOs(hb.getOs());
+		String ip = hb.getIp();
+		result.setIp(ip);
+		result.setIsp(ispFinder.getIsp(ip));
+
+		result.setRoleId(SessionHelper.getCurrentRoleId(userId, hb.getD()));
+
+		return result;
+	}
+	
+	/**
+	 * 保存每日活跃用户
+	 */
+	@Override
+	public void saveDayActiveUser() {
+		
+		List<DeviceOnlineUser> activeUser = deviceOnlineUserDao.getActiveUser();
+		Date date = DateUtils.addDays(new Date(), -1);
+		for (DeviceOnlineUser deviceOnlineUser : activeUser) {
+			Long userId = deviceOnlineUser.getUserId();
+			Long roleId = deviceOnlineUser.getRoleId();
+
+			if (roleId != null) {
+				int allValidUserCount = userActiveStatisDao.allValidUserCount(roleId);
+				switch (roleId.intValue()) {
+				case 100:
+					List<Map<String,Object>> studentClassInfo = userActiveStatisDao.getStudentClassInfo(userId);
+					if (studentClassInfo.size() > 0 ) {
+						for (Map<String, Object> map : studentClassInfo) {
+							DayActiveUser dayActiveUser = setOnlineUserInfo(map, deviceOnlineUser,date);
+							dayActiveUser.setHeadCount((Integer)map.get("headCount"));
+							dayActiveUser.setValidUser(userActiveStatisDao.getSchoolValidStu((Long)map.get("schoolId")));
+							dayActiveUser.setAllValidUser(allValidUserCount);
+							dayActiveUserDao.saveDayActiveUser(dayActiveUser);
+						}
+					}else {
+						DayActiveUser user = userActiveStatisDao.getSchoolNameByUserId(deviceOnlineUser);
+						if (user != null) {
+							user.setValidUser(userActiveStatisDao.getSchoolValidStu(user.getSchoolId()));
+							user.setAllValidUser(allValidUserCount);
+							user= setGraduateUserInfo(deviceOnlineUser, date, user);
+							dayActiveUserDao.saveDayActiveUser(user);
+						}
+					}
+					break;
+				case 101:
+					List<Map<String,Object>> teacherClassInfo = userActiveStatisDao.getTeacherClassInfo(userId);
+					if (teacherClassInfo.size() >0 ) {
+						for (Map<String, Object> map : teacherClassInfo) {
+							DayActiveUser dayActiveUser = setOnlineUserInfo(map, deviceOnlineUser,date);
+							int headCount = userActiveStatisDao.getTeacherNumByClassId(dayActiveUser.getClassId());
+							dayActiveUser.setHeadCount(headCount);
+							dayActiveUser.setValidUser(userActiveStatisDao.getSchoolValidTea((Long)map.get("schoolId")));
+							dayActiveUser.setAllValidUser(allValidUserCount);
+							dayActiveUserDao.saveDayActiveUser(dayActiveUser);
+						}
+					}else {
+						DayActiveUser user = userActiveStatisDao.getSchoolNameByUserId(deviceOnlineUser);
+						if (user != null) {
+							user.setValidUser(userActiveStatisDao.getSchoolValidTea(user.getSchoolId()));
+							user= setGraduateUserInfo(deviceOnlineUser, date, user);
+							user.setAllValidUser(allValidUserCount);
+							dayActiveUserDao.saveDayActiveUser(user);
+						}
+					}
+					break;
+				case 102:
+					List<Map<String,Object>> parentClassInfo = userActiveStatisDao.getParentClassInfo(userId);
+					if (parentClassInfo.size() > 0 ) {
+						for (Map<String, Object> map : parentClassInfo) {
+							DayActiveUser dayActiveUser = setOnlineUserInfo(map, deviceOnlineUser,date);
+							int headCount = userActiveStatisDao.getParentNumByClassid(dayActiveUser.getClassId());
+							dayActiveUser.setHeadCount(headCount);
+							dayActiveUser.setValidUser(userActiveStatisDao.getSchoolValidPar((Long)map.get("schoolId")));
+							dayActiveUser.setAllValidUser(allValidUserCount);
+							dayActiveUserDao.saveDayActiveUser(dayActiveUser);
+						}
+					}
+					else {
+						 List<DayActiveUser> schoolNameByPrId = userActiveStatisDao.getSchoolNameByPrId(userId);
+						if (schoolNameByPrId.size() > 0 ) {
+							for (DayActiveUser user : schoolNameByPrId) {
+								user.setValidUser(userActiveStatisDao.getSchoolValidPar(user.getSchoolId()));
+								user= setGraduateUserInfo(deviceOnlineUser, date, user);
+								user.setAllValidUser(allValidUserCount);
+								dayActiveUserDao.saveDayActiveUser(user);
+							}
+						}else {
+							DayActiveUser activeUser2 = userActiveStatisDao.getSchoolNameByUserId(deviceOnlineUser);
+							activeUser2.setValidUser(userActiveStatisDao.getSchoolValidPar(activeUser2.getSchoolId()));
+							activeUser2= setGraduateUserInfo(deviceOnlineUser, date, activeUser2);
+							activeUser2.setAllValidUser(allValidUserCount);
+							dayActiveUserDao.saveDayActiveUser(activeUser2);
+						}
+					}
+					break;
+					
+				}
+			}
+			
+		} 
+	}
+	
+	
+	private static DayActiveUser setOnlineUserInfo(Map<String, Object> map
+			,DeviceOnlineUser deviceOnlineUser,Date date){
+		Integer ts = Integer.valueOf(StatUtils.formatDate(date));
+		DayActiveUser dayActiveUser = new DayActiveUser();
+		dayActiveUser.setClassId((Long)map.get("classId"));
+		dayActiveUser.setClassName((String)map.get("className") );
+		dayActiveUser.setD(deviceOnlineUser.getD());
+		dayActiveUser.setGradeId((Long)map.get("gradeId"));
+		dayActiveUser.setGradeName((String)map.get("gradeName"));
+		dayActiveUser.setModel(deviceOnlineUser.getModel());
+		dayActiveUser.setMonth(Integer.valueOf(StatUtils.getYear(date).toString()+StatUtils.getMonth(date)));
+		dayActiveUser.setOs(deviceOnlineUser.getOs());
+		dayActiveUser.setRoleId(deviceOnlineUser.getRoleId());
+		dayActiveUser.setSchoolId((Long)map.get("schoolId"));
+		dayActiveUser.setSchoolName((String)map.get("schoolName"));
+		dayActiveUser.setSchoolStageId((Long)map.get("schoolStageId"));
+		dayActiveUser.setTs(ts);
+		dayActiveUser.setUserId(deviceOnlineUser.getUserId());
+		dayActiveUser.setWeek(Integer.valueOf(StatUtils.getYear(date).toString()+StatUtils.getWeek(date).toString()));
+		return dayActiveUser;
+	}
+	
+	
+	private static DayActiveUser setGraduateUserInfo
+	(DeviceOnlineUser deviceOnlineUser,Date date,DayActiveUser dayActiveUser){
+		Integer ts = Integer.valueOf(StatUtils.formatDate(date));
+		dayActiveUser.setD(deviceOnlineUser.getD());
+		dayActiveUser.setModel(deviceOnlineUser.getModel());
+		dayActiveUser.setMonth(Integer.valueOf(StatUtils.getYear(date).toString()+StatUtils.getMonth(date)));
+		dayActiveUser.setOs(deviceOnlineUser.getOs());
+		dayActiveUser.setRoleId(deviceOnlineUser.getRoleId());
+		dayActiveUser.setTs(ts);
+		dayActiveUser.setUserId(deviceOnlineUser.getUserId());
+		dayActiveUser.setWeek(Integer.valueOf(StatUtils.getYear(date).toString()+StatUtils.getWeek(date).toString()));
+		return dayActiveUser;
+	}
+
+}

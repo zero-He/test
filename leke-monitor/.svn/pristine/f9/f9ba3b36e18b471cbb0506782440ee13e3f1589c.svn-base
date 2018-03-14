@@ -1,0 +1,277 @@
+<%@ page pageEncoding="UTF-8"%>
+<%@ include file="/pages/common/tags.jsp"%>
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<!DOCTYPE html >
+<html>
+<head>
+<title>个人入驻-乐课网</title>
+<%@ include file="/pages/common/meta.jsp"%>
+<link rel="stylesheet"
+      type="text/css"
+      href="https://static.leke.cn/styles/common/global.css">
+<link rel="stylesheet"
+      href="https://static.leke.cn/styles/lesson-monitor/lesson-monitor-pc.css">
+</head>
+<body>
+	<%@ include file="/pages/header/header.jsp"%>
+	<div class="g-bd">
+		<%@ include file="/pages/navigate/navigate.jsp"%>
+		<div class="g-mn">
+                   <div class="tabs-bg">
+                     <div style="font-size: 16px;">
+                      	 累计入驻老师：<label id="teacherNum"></label>个
+                     </div>
+                     <div class="conditionWrap f-tar">
+                       <label for="">统计时间：</label>
+                       <input type="text" id="jStartTime" name="startTime" class="u-ipt u-ipt-sm Wdate" >
+                       <input class="u-btn u-btn-nm u-btn-bg-turquoise f-ml10" type="button"
+							value="查询" data-bind="click:loadList"> 
+                      
+                     </div>
+
+                     <div class="copiesOf4">
+                     <i class="i-question" title="1.累计入驻老师数：截止到当前日期总的老师入驻量。&#13;
+2.新增老师数：在该月中新绑定客户经理的老师数。&#13;
+3.充值金额：老师在该月中充值点数的总金额。&#13;
+4.提成金额：在该月中客户经理的提成金额。&#13;
+5.对于老师已入驻但没有绑定客户经理的老师，在营销处层级中不予展示。&#13;
+6.新入驻老师数：该月中平台新入驻的老师数"></i>
+                       <ul>
+                         <c:if test="${roleId == 604 }">
+	                         <li style="width: 25%">
+	                           <div class="tableCell">
+	                             <h5 id="newInTeacherNum"></h5>
+	                             <p>新入驻老师（个数）</p>
+	                           </div>
+	                         </li>
+                         
+	                         <li style="width: 25%">
+	                           <div class="tableCell">
+	                             <h5 id="newTeacherNum"></h5>
+	                             <p>新增老师（个数）</p>
+	                           </div>
+	                         </li>
+	                         <li style="width: 25%">
+	                           <div class="tableCell">
+	                             <h5 id="tradeAmount"></h5>
+	                             <p>老师充值金额（元）</p>
+	                           </div>
+	                         </li>
+	                         <li style="width: 25%">
+	                           <div class="tableCell">
+	                             <h5 id="commAmount"></h5>
+	                             <p>客户经理提成金额（元）</p>
+	                           </div>
+	                         </li>
+                         </c:if>
+                         <c:if test="${roleId != 604 }">
+                         	 <li style="width: 33.3%">
+	                           <div class="tableCell">
+	                             <h5 id="newTeacherNum"></h5>
+	                             <p>新增老师（个数）</p>
+	                           </div>
+	                         </li>
+	                         <li style="width: 33.3%">
+	                           <div class="tableCell">
+	                             <h5 id="tradeAmount"></h5>
+	                             <p>老师充值金额（元）</p>
+	                           </div>
+	                         </li>
+	                         <li style="width: 33.3%">
+	                           <div class="tableCell">
+	                             <h5 id="commAmount"></h5>
+	                             <p>客户经理提成金额（元）</p>
+	                           </div>
+	                         </li>
+                         </c:if>
+                       </ul>
+                     </div>
+                     <div class="titleGreen">
+                     	<c:if test="${roleId == 112 }">
+                        	<h2>充值提成统计</h2>
+                        </c:if>
+                        <c:if test="${roleId == 603}">
+                        	<h2>客户经理统计</h2>
+                        </c:if>
+                        <c:if test="${roleId != 112 &&roleId != 603}">
+                        	<h2>营销处统计</h2>
+                        </c:if>
+                      </div>
+                      <div class="conditionWrap f-tar">
+
+                       </div>
+                     <div class="chartWrap f-mt0">
+                     
+	                     <c:if test="${roleId != 112 }">
+	                       <div class="chartNav">
+	                          <button type="button" class="u-btn u-btn-bg-turquoise u-btn-at" id="but">充值/提成统计</button>
+	                          <button type="button" class="u-btn u-btn-bg-gray u-btn-at" id="but1">老师入驻统计</button>
+	                        </div>
+	                      </c:if>
+                       <div class="chartComt" id="barSta">
+
+                       </div>
+                       <div class="chartComt" id="barSta1" >
+
+                       </div>
+
+                     </div>
+                     <div class="titleGreen">
+                       <h2>数据明细</h2>
+                     </div>
+                     <div class="conditionWrap">
+	         			 <c:if test="${roleId == 112 || roleId == 603}">
+	                        <label for="">乐号：</label>
+							<input type="text" id="loginName" class="u-ipt u-ipt-nm" autocomplete="off">
+						 </c:if>
+						 <c:if test="${roleId == 112 }">
+	                        <label for="" class="f-ml15">老师名称：</label>
+	                        <input type="text" id="teacherName" class="u-ipt u-ipt-nm">
+	                     </c:if>
+	                     <c:if test="${roleId == 603 }">
+	                        <label for="" class="f-ml15">客户经理名称：</label>
+	                        <input type="text" id="sellerName" class="u-ipt u-ipt-nm">
+	                     </c:if>   
+	         			 <c:if test="${roleId != 112 && roleId != 603 && roleId != 604}">
+							<label for="" class="title f-ml0">营销处：</label>
+							<select name="marketId" class="u-select u-select-nm" id="marketId">
+								<option value="">全部</option>
+								<c:forEach var="item" items="${secondDpt }">
+									<option value="${item.id }">${item.name }</option>
+								</c:forEach>
+							</select>
+	                     </c:if> 
+						<c:if test="${roleId==604 }">
+							<label for="" class="title f-ml0">营销部：</label>
+							<select name="market" class="u-select u-select-nm" id="market" data-bind="event:{change:marketChange}">
+								<option value="">全部</option>
+								<c:forEach var="item" items="${firstDpt }">
+									<option value="${item.id }">${item.name }</option>
+								</c:forEach>
+							</select>
+
+							<label for="" class="title f-ml0">营销处：</label>
+							<select name="marketId" class="u-select u-select-nm" id="marketId"
+								data-bind="options:dptData,
+                                                       optionsText:'name',
+                                                       optionsValue:'id', optionsCaption:'全部'">
+							</select>
+						</c:if>   
+						<input type="hidden" id="jPageOrder" name="order" value="" />
+						<input type="hidden" id="jPageSort" name="sort" value="" />                                    
+                        <input class="u-btn u-btn-nm u-btn-bg-turquoise f-ml10" type="button"
+							value="查询" data-bind="click:loaddata" id="jPageSearch">
+						<input class="u-btn u-btn-nm u-btn-bg-orange f-ml10 f-fr" type="button"
+							value="导出" data-bind="click:exportExcel">
+                      </div>
+                       <div class="m-table m-table-center">
+                           <table>
+                           	<thead id="jPageHead">
+                                   <tr>
+                          			  <c:if test="${roleId == 112 }">
+	                                       <th width="14.2%">乐号</th>
+	                                       <th width="14.2%">手机</th>
+	                                       <th>绑定时间</th>
+	                                       <th width="14.2%">老师姓名 </th>
+                                      </c:if>
+                                      <c:if test="${roleId == 603 }">
+	                                       <th width="14.2%">乐号</th>
+	                                       <th width="14.2%">客户经理</th>
+                                      </c:if>
+                                      <c:if test="${roleId == 604 }">
+	                                       <th width="14.2%">营销部</th>
+                                      </c:if>
+                                      <c:if test="${roleId != 603 && roleId != 112}">
+	                                       <th width="14.2%">营销处</th>
+                                      </c:if>
+                                      <c:if test="${roleId !=112 }">
+	                                       <th width="14.2%">新增老师数</th>
+                                      </c:if>
+                                       <th width="14.2%" class="m-sort-leke" data-column="tradeAmount">充值金额</th>
+                                       <th width="14.2%">提成金额</th>
+                                       <th width="14.2%">操作区</th>
+                                   </tr>
+								</thead>
+								<tbody id="papersPage" data-bind="foreach:listdata">
+									<tr>
+										<c:if test="${roleId ==112 }">
+											<td><em data-bind="text:loginName"></em></td>
+											<td><em data-bind="text:phone"></em></td>
+											<td><em data-bind="text:tradeTime"></em></td>
+											<td><em data-bind="text:teacherName"></em></td>
+										</c:if>
+										<c:if test="${roleId == 603 }">
+	                                       <td><em data-bind="text:loginName"></em></td>
+	                                       <td><em data-bind="text:sellerName"></em></td>
+	                                    </c:if>
+	                                    <c:if test="${roleId == 604 }">
+	                                       <td><em data-bind="text:departName"></em></td>
+	                                    </c:if>
+	                                    <c:if test="${roleId != 603 && roleId != 112}">
+	                                       <td><em data-bind="text:marketName"></em></td>
+	                                    </c:if>
+	                                    <c:if test="${roleId !=112 }">
+					                        <td><em data-bind="text:newTeacherNum"></em></td>
+	                                    </c:if>
+										<td><em data-bind="text:tradeAmount"></em></td>
+										<td><em data-bind="text:commAmount"></em></td>
+								 		<c:if test="${roleId ==112 }">
+											<td class="operation">
+												<a class="f-csp s-c-turquoise" data-bind="click:$parent.openlessondetail.bind($data)">课时统计</a> 
+											</td>
+										</c:if>	
+										<c:if test="${roleId ==603 }">
+											<td class="operation">
+												<a class="f-csp s-c-turquoise" data-bind="click:$parent.openteacherdetail.bind($data)">详情</a> 
+											</td>
+										</c:if>	
+										<c:if test="${roleId !=112 && roleId !=603}">
+											<td class="operation">
+												<a class="f-csp s-c-turquoise" data-bind="click:$parent.opendetail.bind($data)">详情</a> 
+											</td>
+										</c:if>																													
+									</tr>
+								</tbody>
+                           </table>
+                           <!-- ko if: listdata().length == 0 -->
+							<div class="eval-rate-pictab m-tips f-block">
+								<i></i> <span>对不起，没有您要查询的数据</span>
+							</div>
+							<!-- /ko -->
+                       </div>
+                       <div
+							data-bind="component: {
+										name: 'leke-page',
+										params: {
+											curPage: curPage,
+											totalSize: totalSize
+					}}"></div>
+                </div>
+		</div>
+	</div>
+</body>
+<script src="${ctx}/scripts/common/ui/ui-echarts/echarts-plain.js"></script>
+<script type="text/javascript">
+window.data={areas:${areas}};
+	seajs.use('monitor/pages/common/crm/individualsIn');
+</script>
+<script src="https://cdn.bootcss.com/jquery/1.11.0/jquery.js" charset="utf-8"></script>
+<script type="text/javascript">
+
+          $('.chartNav').on('click', '.u-btn-bg-gray', function () {
+            $(this).siblings().removeClass('u-btn-bg-turquoise');
+            $(this).siblings().addClass('u-btn-bg-gray');
+            $(this).removeClass('u-btn-bg-gray');
+            $(this).addClass('u-btn-bg-turquoise');
+            if($(this).text().indexOf("老师") === -1) {
+                $('#barSta').show();
+                $('#barSta1').hide();
+            }
+            else{
+            	
+                $('#barSta').hide();
+                $('#barSta1').show();
+            }
+          });
+</script>
+</html>

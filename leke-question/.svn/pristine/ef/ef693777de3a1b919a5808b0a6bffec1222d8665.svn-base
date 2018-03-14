@@ -1,0 +1,581 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.1//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.question.dao.mybatis.IWorkbookDao">
+	
+	<insert id="addWorkbook" parameterType="cn.strong.leke.model.question.Workbook" 
+		useGeneratedKeys="true" keyProperty="workbookId">
+		INSERT INTO que_workbook(
+			workbookName, description, schoolStageId, schoolStageName, subjectId, 
+			subjectName, pressId, pressName, materialId, materialName, photoUrl,
+			status, sharePersonal, shareSchool, sharePlatform, schoolId, schoolName, 
+			creatorName, isDisabled,
+			isDeleted, createdBy, createdOn, modifiedBy, modifiedOn
+		) VALUES (
+			#{workbookName}, #{description}, #{schoolStageId}, #{schoolStageName}, #{subjectId},
+			#{subjectName}, #{pressId}, #{pressName}, #{materialId}, #{materialName}, #{photoUrl},
+			#{status}, #{sharePersonal}, #{shareSchool}, #{sharePlatform}, #{schoolId}, #{schoolName}, 
+			#{creatorName}, 0,
+			0, #{createdBy}, now(), #{modifiedBy}, now()
+		)
+	</insert>
+	
+	<!-- 删除 -->
+	<update id="deleteWorkbook" parameterType="map">
+		UPDATE 
+			que_workbook
+		<set>
+			isDeleted=1,
+			modifiedBy=#{userId},
+			modifiedOn=NOW()
+		</set>
+		WHERE 
+			workbookId=#{workbookId}
+	</update>
+	
+	<update id="deleteBatchWorkbook">
+		UPDATE 
+			que_workbook
+		<set>
+			isDeleted=1,
+			modifiedBy=#{userId},
+			modifiedOn=NOW()
+		</set>
+		WHERE 
+			createdBy = #{userId}
+		AND
+			workbookId 
+		IN 
+		<foreach collection="workbookIds" item="workbookId" separator="," open="(" close=")">
+			#{workbookId}
+		</foreach>
+	</update>
+	
+	<update id="disableWorkbook" parameterType="map">
+		UPDATE 
+			que_workbook
+		<set>
+			isDisabled=1,
+			modifiedBy=#{userId},
+			modifiedOn=NOW()
+		</set>
+		WHERE 
+			workbookId=#{workbookId}
+	</update>
+	
+	<!-- 上架 -->
+	<update id="workbookUp" parameterType="cn.strong.leke.model.question.Workbook">
+	UPDATE 
+			que_workbook
+		SET
+			status=1,modifiedBy=#{modifiedBy},modifiedOn=NOW()
+		WHERE 
+			workbookId=#{workbookId}
+	</update>
+	<!-- 下架 -->
+	<update id="workbookDown" parameterType="cn.strong.leke.model.question.Workbook">
+		UPDATE 
+			que_workbook
+		SET
+			status=0,modifiedBy=#{modifiedBy},modifiedOn=NOW()
+		WHERE 
+			workbookId=#{workbookId}
+	</update>
+	
+	<!-- 修改 -->
+	<update id="updateWorkbook" parameterType="cn.strong.leke.model.question.Workbook">
+		UPDATE 
+			que_workbook
+		SET
+			workbookName=#{workbookName},
+			schoolStageId=#{schoolStageId},
+			schoolStageName=#{schoolStageName},
+			subjectId=#{subjectId},
+			subjectName=#{subjectName},
+			pressId=#{pressId},
+			pressName=#{pressName},
+			materialId=#{materialId},
+			materialName=#{materialName},
+			modifiedBy=#{modifiedBy},
+			modifiedOn=NOW()	
+		WHERE 
+			workbookId=#{workbookId}
+	</update>
+	
+	<!-- 修改名称 -->
+	<update id="updateWorkbookName" parameterType="map">
+		UPDATE 
+			que_workbook
+		SET
+			workbookName=#{workbookName},
+			modifiedBy=#{modifiedBy},
+			modifiedOn=NOW()	
+		WHERE 
+			workbookId=#{workbookId}
+	</update>
+	
+	<!-- 上传封面 -->
+	<update id="workbookPhotoUpload" parameterType="cn.strong.leke.model.question.Workbook">
+	UPDATE 
+			que_workbook
+		SET
+			photoUrl=#{photoUrl},modifiedBy=#{modifiedBy},modifiedOn=NOW()
+		WHERE 
+			workbookId=#{workbookId}
+	</update>
+	
+	<!-- 查询单条新 -->
+	<select id="getWorkbook" resultType="cn.strong.leke.model.question.Workbook">
+		SELECT a.*
+		FROM
+			que_workbook a
+		WHERE 
+			a.isDeleted = 0 
+			AND a.workbookId=#{workbookId}
+	</select>
+	
+		<select id="queryWorkbookAmount"  resultType="cn.strong.leke.question.model.InputStatisDTO" 
+		parameterType="cn.strong.leke.question.model.InputStatisDTO">
+			SELECT COUNT(*) as inputAmount, (a.schoolStageId) as schoolStageId, (a.subjectId) as subjectId, (a.createdBy) as userId
+			FROM que_workbook a
+			WHERE a.isDeleted = 0
+			AND a.schoolId = 0 
+			AND a.isDisabled = 0
+			AND a.sharePlatform = 1
+			AND a.status = 1  
+			<if test="startDate != null">
+				AND a.createdOn <![CDATA[>=]]> #{startDate}
+			</if>
+			<if test="endDate != null">
+				AND a.createdOn <![CDATA[<=]]> #{endDate}
+			</if>
+			<if test="schoolStageId == null and subjectId == null">
+				GROUP BY a.schoolStageId
+			</if>
+			<if test="schoolStageId == null and subjectId != null">
+				GROUP BY a.subjectId
+			</if>
+			<if test="schoolStageId != null and subjectId == null">
+				AND a.schoolStageId = #{schoolStageId}
+				GROUP BY a.subjectId
+			</if>
+			<if test="schoolStageId != null and subjectId != null and userIds != null and userIds.size != 0">
+				AND a.schoolStageId = #{schoolStageId}
+				AND a.subjectId = #{subjectId}
+				AND a.createdBy IN
+				<foreach collection="userIds" item="userId" open="(" close=")" separator=",">
+					#{userId}
+				</foreach>
+				GROUP BY a.createdBy
+			</if>
+	</select>
+	
+	<select id="queryWorkbookTotalAmount"  resultType="long" 
+		parameterType="cn.strong.leke.question.model.InputStatisDTO">
+			SELECT COUNT(*) as inputAmount
+			FROM que_workbook a
+			WHERE a.isDeleted = 0
+			AND a.isDisabled = 0
+			AND a.sharePlatform = 1 
+			AND a.status = 1 
+	</select>
+	
+	<!-- 分页查询 -->
+	<select id="queryWorkbooks" parameterType="cn.strong.leke.model.question.querys.BaseWorkbookQuery"
+		resultType="cn.strong.leke.model.question.Workbook" >
+		SELECT a.*
+		FROM
+			que_workbook a
+		WHERE 
+			a.isDeleted = 0
+			AND a.isDisabled = 0
+			<if test="schoolStageId != null">AND a.schoolStageId = #{schoolStageId}</if>
+			<if test="subjectId != null">AND a.subjectId = #{subjectId}</if>
+			<if test="pressId != null">AND a.pressId = #{pressId}</if>
+			<if test="materialId != null">AND a.materialId = #{materialId}</if>
+			<if test="workbookName != null and workbookName != ''">AND a.workbookName LIKE CONCAT('%', #{workbookName}, '%')</if>
+			<if test="status != null">AND a.status = #{status}</if>
+			<if test="sharePlatform != null">AND a.sharePlatform = #{sharePlatform}</if>
+			<if test="shareSchool != null">AND a.shareSchool = #{shareSchool}</if>
+			<if test="schoolId != null">AND a.schoolId = #{schoolId}</if>
+			<if test="createdBy != null">AND a.createdBy = #{createdBy}</if>
+		ORDER BY a.workbookId DESC
+	</select>
+	
+	<select id="findWorkbookByIds" parameterType="map" resultType="cn.strong.leke.model.question.Workbook">
+		SELECT a.*
+		  FROM que_workbook a
+		 WHERE a.isDeleted = 0
+		   AND a.workbookId IN
+		<foreach item="workbookId" collection="workbookIds" open="(" close=")" separator=",">
+			#{workbookId}
+		</foreach>
+	</select>
+	
+	<update id="incUsedCount" parameterType="long">
+		UPDATE que_workbook
+		<set>
+			usedCount = usedCount + 1
+		</set>
+		<where>
+			workbookId = #{workbookId}
+		</where>
+	</update>
+	
+	<update id="incFavCount" parameterType="long">
+		UPDATE que_workbook
+		<set>
+			favCount = favCount + 1
+		</set>
+		<where>
+			workbookId = #{workbookId}
+		</where>
+	</update>
+	
+	<update id="incBatchFavCount" parameterType="long">
+		UPDATE que_workbook
+		<set>
+			favCount = favCount + 1
+		</set>
+		WHERE 	workbookId	
+		IN <foreach collection="workbookIds" item="workbookId" open="(" close=")" separator=",">#{workbookId}</foreach>
+	</update>
+	
+	<update id="incPraiseCount" parameterType="long">
+		UPDATE que_workbook
+		<set>
+			praiseCount = praiseCount + 1
+		</set>
+		<where>
+			workbookId = #{workbookId}
+		</where>
+	</update>
+	
+	<sql id="repo_criteria">
+		<if test="schoolStageId != null">AND a.schoolStageId = #{schoolStageId}</if>
+		<if test="subjectId != null">AND a.subjectId = #{subjectId}</if>
+		<if test="pressId != null">AND a.pressId = #{pressId}</if>
+		<if test="materialId != null">AND a.materialId = #{materialId}</if>
+		<if test="level != null">AND a.level = #{level}</if>
+		<if test="content != null and content != ''">AND a.workbookName LIKE CONCAT('%', #{content}, '%')</if>
+		AND a.isDeleted = 0
+		AND a.isDisabled = 0
+	</sql>
+	
+	<sql id="order_field">
+		<choose>
+			<when test="orderBy == 1">
+				a.createdOn
+			</when>
+			<when test="orderBy == 2">
+				a.usedCount
+			</when>
+			<when test="orderBy == 3">
+				a.praiseCount
+			</when>
+			<when test="orderBy == 4">
+				a.favCount
+			</when>
+			<otherwise>
+				a.workbookId
+			</otherwise>
+		</choose>
+	</sql>
+	
+	<sql id="order_dir">
+		<if test="asc == true">ASC</if>
+		<if test="asc != true">DESC</if>
+	</sql>
+	
+	<!-- 乐课资源分页查询 -->
+	<select id="queryLekeWorkbooks" parameterType="cn.strong.leke.model.question.querys.RepositoryWorkbookQuery"
+		resultType="long" >
+		SELECT a.workbookId
+		FROM que_workbook a
+		<where>
+			AND a.isDisabled = 0
+			AND a.sharePlatform = 1
+			AND a.status = 1
+			<include refid="repo_criteria"/>
+		</where>
+		ORDER BY
+		<include refid="order_field"/>
+		<include refid="order_dir"/>
+	</select>
+	
+	<sql id="group_join">
+		<if test="userResGroupId != null and userResGroupId !=''">
+			JOIN 
+				que_workbook_user_res_group c
+			ON 
+				a.workbookId = c.workbookId
+			AND 
+				c.isDeleted = 0
+			AND 
+				c.createdBy = #{userId}
+			AND 
+				c.userResGroupId = #{userResGroupId}
+		</if>
+	</sql>
+	
+	<select id="queryPersonalWorkbooks" parameterType="cn.strong.leke.model.question.querys.RepositoryWorkbookQuery"
+		resultType="long" >
+		SELECT DISTINCT(a.workbookId)
+		FROM que_workbook a
+		<include refid="group_join"/>
+		<where>
+			AND a.createdBy = #{userId}
+			AND a.sharePersonal = 1
+			<include refid="repo_criteria"/>
+		</where>
+		ORDER BY a.workbookId DESC
+	</select>
+	
+	<select id="queryFavoriteWorkbooks" parameterType="cn.strong.leke.model.question.querys.RepositoryWorkbookQuery"
+		resultType="long" >
+		SELECT DISTINCT(a.workbookId)
+		FROM que_workbook a
+		JOIN que_teacher_workbook tw
+		ON a.workbookId = tw.workbookId
+		AND tw.isDeleted = 0
+		<include refid="group_join"/>
+		<where>
+			AND tw.teacherId = #{userId}
+			<include refid="repo_criteria"/>
+		</where>
+		ORDER BY tw.createdOn DESC
+	</select>
+	
+	<select id="querySchoolWorkbooks" parameterType="cn.strong.leke.model.question.querys.RepositoryWorkbookQuery"
+		resultType="long" >
+		SELECT a.workbookId
+		FROM que_workbook a
+		JOIN que_school_workbook sw
+		ON a.workbookId = sw.workbookId
+		AND sw.isDeleted = 0
+		<where>
+			AND sw.schoolId = #{schoolId}
+			AND sw.status IN (0, 1)
+			AND a.status = 1
+			<include refid="repo_criteria"/>
+		</where>
+		ORDER BY
+		<if test="orderBy == 0">sw.createdOn</if>
+		<if test="orderBy != 0"><include refid="order_field"/></if>
+		<include refid="order_dir"/>
+	</select>
+	
+	<select id="queryLeagueWorkbooks" parameterType="cn.strong.leke.model.question.querys.RepositoryWorkbookQuery"
+		resultType="long" >
+		SELECT a.workbookId
+		FROM que_workbook a
+		JOIN que_school_workbook sw
+		ON a.workbookId = sw.workbookId
+		AND sw.isDeleted = 0
+		<where>
+			AND sw.schoolId IN
+			<foreach collection="leagueMemberIds" item="memberId" open="(" separator="," close=")">
+				#{memberId}
+			</foreach>
+			AND sw.status IN (0, 1)
+			AND a.status = 1
+			<include refid="repo_criteria"/>
+		</where>
+		ORDER BY
+		<if test="orderBy == 0">sw.createdOn</if>
+		<if test="orderBy != 0"><include refid="order_field"/></if>
+		<include refid="order_dir"/>
+	</select>
+	
+	<select id="queryLekeShareWorkbooks" parameterType="cn.strong.leke.model.question.querys.RepositoryWorkbookQuery"
+		resultType="long" >
+		SELECT a.workbookId
+		FROM que_workbook a
+		<where>
+			<![CDATA[
+			AND a.schoolId <> 0
+			]]>
+			AND a.sharePlatform = 1
+			AND a.status = 1
+			<include refid="repo_criteria"/>
+		</where>
+		ORDER BY
+		<include refid="order_field"/>
+		<include refid="order_dir"/>
+	</select>
+	
+	<select id="queryLekeBoutiqueWorkbooks" parameterType="cn.strong.leke.model.question.querys.RepositoryWorkbookQuery"
+		resultType="long" >
+		SELECT a.workbookId
+		FROM que_workbook a
+		<where>
+			AND a.schoolId = 0
+			AND a.sharePlatform = 1
+			AND a.status = 1
+			<include refid="repo_criteria"/>
+		</where>
+		ORDER BY
+		<include refid="order_field"/>
+		<include refid="order_dir"/>
+	</select>
+	
+	<select id="queryFamousTeacherWorkbooks" parameterType="cn.strong.leke.model.question.querys.RepositoryWorkbookQuery"
+		resultType="long" >
+		SELECT a.workbookId
+		FROM que_workbook a
+		JOIN que_famous_teacher_workbook ftw
+		ON a.workbookId = ftw.workbookId
+		AND ftw.isDeleted = 0
+		<where>
+			<if test="famousTeacherId != null">
+			AND ftw.teacherId = #{famousTeacherId}
+			</if>
+			AND ftw.status IN (0, 1)
+			<include refid="repo_criteria"/>
+		</where>
+		ORDER BY
+		<if test="orderBy == 0">ftw.createdOn</if>
+		<if test="orderBy != 0"><include refid="order_field"/></if>
+		<include refid="order_dir"/>
+	</select>
+	
+	<select id="queryFamousSchoolWorkbooks" parameterType="cn.strong.leke.model.question.querys.RepositoryWorkbookQuery"
+		resultType="long" >
+		SELECT a.workbookId
+		FROM que_workbook a
+		JOIN que_famous_school_workbook fsw
+		ON a.workbookId = fsw.workbookId
+		AND fsw.isDeleted = 0
+		<where>
+			<if test="famousSchoolId != null">
+			AND fsw.schoolId = #{famousSchoolId}
+			</if>
+			AND fsw.status IN (0, 1)
+			<include refid="repo_criteria"/>
+		</where>
+		ORDER BY
+		<if test="orderBy == 0">fsw.createdOn</if>
+		<if test="orderBy != 0"><include refid="order_field"/></if>
+		<include refid="order_dir"/>
+	</select>
+	
+
+	<select id="queryPersonalAll"  parameterType="cn.strong.leke.model.question.querys.RepositoryWorkbookQuery"
+		resultType="long" >
+		SELECT a.workbookId
+		FROM que_workbook a
+		<where>
+			((a.createdBy = #{userId} AND a.sharePersonal = 1)
+				<if test="schoolId != null and schoolId != 0">
+					OR (a.schoolId IN (#{schoolId}
+					    <foreach collection="leagueMemberIds" item="memberId" separator=" ">
+					        , #{memberId}
+					    </foreach>
+					))
+				</if>
+			OR a.sharePlatform = 1)
+			AND a.status = 1
+			<include refid="repo_criteria"/>
+		</where>
+		ORDER BY
+		<if test="orderBy == 0">a.createdOn</if>
+		<if test="orderBy != 0"><include refid="order_field"/></if>
+		<include refid="order_dir"/>
+	</select>
+	
+	<update id="addToPersonal" parameterType="map">
+		UPDATE que_workbook 
+		<set>
+			sharePersonal = 1,
+			modifiedBy = #{modifiedBy},
+			modifiedOn = now()
+		</set>
+		WHERE workbookId = #{workbookId} 
+		AND createdBy = #{userId}
+		AND sharePersonal = 0
+		AND isDeleted = 0
+	</update>
+	
+	<update id="removeFromPersonal" parameterType="map">
+		UPDATE que_workbook 
+		<set>
+			sharePersonal = 0,
+			modifiedBy = #{modifiedBy},
+			modifiedOn = now()
+		</set>
+		WHERE workbookId = #{workbookId} 
+		AND createdBy = #{userId}
+		AND sharePersonal = 1
+		AND isDeleted = 0
+	</update>
+	
+	<update id="addToLekeBoutique" parameterType="map">
+		UPDATE que_workbook 
+		<set>
+			sharePlatform = 1,
+			modifiedBy = #{modifiedBy},
+			modifiedOn = now()
+		</set>
+		WHERE workbookId = #{workbookId} 
+		AND schoolId = 0
+		AND sharePlatform = 0
+		AND isDeleted = 0
+	</update>
+	
+	<update id="removeFromLekeBoutique" parameterType="map">
+		UPDATE que_workbook 
+		<set>
+			sharePlatform = 0,
+			modifiedBy = #{modifiedBy},
+			modifiedOn = now()
+		</set>
+		WHERE workbookId = #{workbookId} 
+		AND schoolId = 0
+		AND sharePlatform = 1
+		AND isDeleted = 0
+	</update>
+	
+	<update id="addToLekeShare" parameterType="map">
+		UPDATE que_workbook 
+		<set>
+			sharePlatform = 1,
+			modifiedBy = #{modifiedBy},
+			modifiedOn = now()
+		</set>
+		WHERE workbookId = #{workbookId}
+		<![CDATA[
+		AND schoolId <> 0
+		]]>
+		AND sharePlatform = 0
+		AND isDeleted = 0
+	</update>
+	
+	<update id="removeFromLekeShare" parameterType="map">
+		UPDATE que_workbook 
+		<set>
+			sharePlatform = 0,
+			modifiedBy = #{modifiedBy},
+			modifiedOn = now()
+		</set>
+		WHERE workbookId = #{workbookId} 
+		<![CDATA[
+		AND schoolId <> 0
+		]]>
+		AND sharePlatform = 1
+		AND isDeleted = 0
+	</update>
+	
+	
+	<update id="setWorkbooLeve" parameterType="map">
+		UPDATE 
+			que_workbook a
+		SET
+			a.level = #{level},
+			a.modifiedBy = #{userId},
+			a.modifiedOn = now()
+		WHERE
+			a.workbookId = #{workbookId}
+		AND
+			a.isDeleted = 0
+	</update>
+</mapper>

@@ -1,0 +1,91 @@
+package cn.strong.leke.homework.controller;
+
+import java.util.List;
+
+import javax.annotation.Resource;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
+
+import cn.strong.leke.context.user.ParentContext;
+import cn.strong.leke.context.user.UserContext;
+import cn.strong.leke.context.user.cst.RoleCst;
+import cn.strong.leke.framework.exceptions.ValidateException;
+import cn.strong.leke.framework.page.jdbc.Page;
+import cn.strong.leke.framework.web.JsonResult;
+import cn.strong.leke.homework.model.HomeworkDtlQuery;
+import cn.strong.leke.homework.model.MyHomeworkDTO;
+import cn.strong.leke.homework.model.SubjectHwStatistics;
+import cn.strong.leke.homework.service.HomeworkDtlService;
+import cn.strong.leke.model.user.Student;
+import cn.strong.leke.model.user.User;
+
+@Controller
+@RequestMapping("/auth/*")
+public class HomeworkDtlController {
+
+	protected static final Logger logger = LoggerFactory.getLogger(HomeworkDtlController.class);
+
+	@Resource
+	private HomeworkDtlService homeworkDtlService;
+
+	
+	/*学生我的作业-按学科统计待完成和待订正的作业*/
+	@RequestMapping("student/exercise/homework/myHomeworkList")
+	public String myHomeworkList(Model model,Long subjectId) {
+		return "/auth/student/homework/myHomework";
+	}
+	@ResponseBody
+	@RequestMapping(value = { "student/homeworkDtl/getMyHomeworkList", "parent/homework/loadStuHomeworkList" })
+	public JsonResult getMyHomeworkList(HomeworkDtlQuery homeworkDtlQuery, Page page) {
+		User user = UserContext.user.get();
+		if (RoleCst.STUDENT.equals(user.getCurrentRole().getId())) {
+			homeworkDtlQuery.setStudentId(user.getId());
+		}
+		List<MyHomeworkDTO> homeworkList = homeworkDtlService.getMyHomeworkList(homeworkDtlQuery, page);
+		
+		page.setDataList(homeworkList);
+		JsonResult json = new JsonResult();
+		json.addDatas("page", page);
+		return json;
+	}
+	
+	/*学生我的作业-作业列表*/
+	@RequestMapping("student/exercise/homework/myHomework")
+	public String myHomework(Model model,Long subjectId,Long ord) {
+		model.addAttribute("subjectId", subjectId);
+		model.addAttribute("ord", ord);
+		return "/auth/student/homework/myHomeworkList";
+	}
+	/*学生我的作业-按学科统计待完成和待订正的作业 data*/
+	@ResponseBody
+	@RequestMapping(value = { "student/homeworkDtl/getMyHomework" })
+	public JsonResult getMyHomework() {
+		User user = UserContext.user.get();
+		long studentId = user.getId();
+		List<SubjectHwStatistics> list = homeworkDtlService.findStudentSubjectHwStatisticsList(studentId,true);
+		return new JsonResult().addDatas("dataList", list);
+	}
+
+
+	/**
+	 * 描述:家长子女作业
+	 * @author  DuanYanming
+	 * @created 2014年10月15日 下午6:35:28
+	 * @since   v1.0.0 
+	 * @param model
+	 * @return  void
+	 */
+	@RequestMapping("/parent/homework/stuHomeworkList")
+	public void stuHomeworkList(Model model) {
+		List<Student> studentList = ParentContext.parent.get().getStudents();
+		if (studentList.isEmpty()) {
+			throw new ValidateException("homework.homework.nochildren");
+		}
+		model.addAttribute("studentList", studentList);
+	}
+}

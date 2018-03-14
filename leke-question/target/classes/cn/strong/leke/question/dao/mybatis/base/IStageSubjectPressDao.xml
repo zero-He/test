@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="cn.strong.leke.question.dao.mybatis.base.IStageSubjectPressDao">
+	
+	<insert id="insert" parameterType="cn.strong.leke.question.model.base.StageSubjectPress" useGeneratedKeys="true" keyProperty="stageSubjectPressId">
+    	INSERT INTO que_stage_subject_press (
+    		schoolStageId, subjectId,pressId,ord,isMain
+    	) VALUES (
+    		#{schoolStageId},  #{subjectId}, #{pressId},#{ord},#{isMain}
+    	)
+    </insert>
+    
+    <insert id="insertList" parameterType="map">
+    	INSERT INTO que_stage_subject_press (
+    		schoolStageId, subjectId,pressId,ord,isMain
+    	) VALUES 
+    	<foreach collection="assocs" item="assoc" separator=",">
+    		(#{assoc.schoolStageId}, #{assoc.subjectId}, #{assoc.pressId},#{assoc.ord},#{assoc.isMain})
+    	</foreach>
+    </insert>
+    
+    <delete id="delete" parameterType="long">
+    	DELETE FROM que_stage_subject_press 
+    	WHERE stageSubjectPressId = #{stageSubjectPressId}
+    </delete>
+    
+    <delete id="deleteBySchoolStageIdSubjectId" parameterType="map">
+    	DELETE FROM que_stage_subject_press 
+    	WHERE schoolStageId = #{schoolStageId} AND subjectId = #{subjectId}
+    </delete>
+	
+	<select id="findAll"  resultType="cn.strong.leke.question.model.base.StageSubjectPress">
+		SELECT a.* 
+   		FROM que_stage_subject_press a
+	</select>
+	
+	<select id="findPresses" parameterType="map" resultType="cn.strong.leke.model.question.Press">
+   		SELECT b.* 
+   		FROM que_stage_subject_press a
+   		JOIN que_press b
+   		ON a.pressId = b.pressId
+   		WHERE schoolStageId = #{schoolStageId} 
+   		AND subjectId = #{subjectId}
+   		AND b.isDeleted = 0
+   		ORDER BY a.ord ASC
+   </select>
+   
+   <select id="getStageSubjectPress" parameterType="map" 
+   	resultType="cn.strong.leke.question.model.base.StageSubjectPress">
+	   	SELECT a.* 
+		FROM que_stage_subject_press a
+		WHERE a.schoolStageId = #{schoolStageId} 
+		AND a.subjectId = #{subjectId}
+		AND a.pressId = #{pressId}
+   	</select>
+   	
+</mapper>

@@ -1,0 +1,40 @@
+
+<!-- 操作区 -->
+<div class="m-operation">
+	<div class="btns">
+		<div class="item show-status">
+			作业<br>动态
+		</div>
+	</div>
+	<div class="box">
+		<!-- nothing-无动态、doing-做作业、done-已完成、doning-done-有在做有完成 -->
+		<div class="status " data-bind="css:{'doing-done': workState,nothing: !workState}">
+			<div class="bg">
+				<a target="_blank" data-bind="attr:{href: dynamicUrl}" title="查看作业动态"></a>
+			</div>
+			<div class="con">
+				<!-- ko if: finished().length > 0 -->
+				<p>已有<em data-bind="text: finished().length"></em>位最强大脑完成作业</p>
+				<div class="collection">
+					<!-- ko foreach: finished -->
+						<!-- ko if: $index() < 7 -->
+							<img data-bind="attr:{src: photo,title: userName}" height="20" width="20" alt="">
+						<!-- /ko -->
+					<!-- /ko -->
+				</div>
+				<!-- /ko -->
+				<!-- ko if: unfinished().length > 0 -->
+				<hr>
+				<p>当前有<em data-bind="text: unfinished().length"></em>名同学正在与你一起答题哦~</p>
+				<div class="collection">
+					<!-- ko foreach: unfinished -->
+						<!-- ko if: $index() < 7 -->
+							<img data-bind="attr:{src: photo,title: userName}" height="20" width="20" alt="">
+						<!-- /ko -->
+					<!-- /ko -->
+				</div>
+				<!-- /ko -->
+			</div>
+		</div>
+	</div>
+</div>

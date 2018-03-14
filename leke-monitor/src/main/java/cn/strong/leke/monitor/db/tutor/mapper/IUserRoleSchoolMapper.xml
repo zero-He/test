@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.1//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.monitor.db.tutor.mapper.IUserRoleSchoolMapper">
+
+	<select id="countUsersBySchool" resultType="_int" parameterType="long">
+		SELECT COUNT(DISTINCT a.userId) 
+		FROM tutor_user_role_school a 
+		JOIN tutor_user b
+		ON a.userId = b.userId
+		JOIN tutor_school c
+		ON a.schoolId = c.schoolId
+		WHERE a.isDeleted = 0 
+		AND b.isDeleted = 0
+		AND c.isDeleted = 0
+		AND a.schoolId = #{schoolId}
+	</select>
+	
+	<select id="countUsersByRole" resultType="_int" parameterType="map">
+		SELECT COUNT(DISTINCT a.userId) 
+		FROM tutor_user_role_school a 
+		JOIN tutor_user b
+		ON a.userId = b.userId
+		JOIN tutor_school c
+		ON a.schoolId = c.schoolId
+		WHERE a.isDeleted = 0 
+		AND b.isDeleted = 0
+		AND c.isDeleted = 0
+		AND a.schoolId = #{schoolId}
+		AND a.roleId = #{roleId}
+	</select>
+
+	<select id ="findUpdatedSchoolIds" resultType="long"
+		parameterType="map">
+		SELECT DISTINCT a.schoolId
+		FROM tutor_user_role_school a
+		JOIN tutor_user b
+		ON a.userId = b.userId
+		JOIN tutor_school c
+		ON a.schoolId = c.schoolId
+		<where>
+		<![CDATA[
+		AND (a.createdOn >= #{since}
+		OR a.modifiedOn >= #{since})
+		]]>
+		</where>
+	</select>
+	
+	<select id ="findAllSchoolIds" resultType="long"
+		parameterType="map">
+		SELECT DISTINCT a.schoolId
+		FROM tutor_user_role_school a
+		JOIN tutor_user b
+		ON a.userId = b.userId
+		JOIN tutor_school c
+		ON a.schoolId = c.schoolId
+		WHERE a.isDeleted = 0
+		AND b.isDeleted = 0
+		AND c.isDeleted = 0
+	</select>
+</mapper>

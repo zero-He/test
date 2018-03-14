@@ -1,0 +1,53 @@
+var Utils = {
+	hwTypes : [{
+		label : '全部作业',
+		value : 0
+	}, {
+		label : '预习作业',
+		value : 1
+	}, {
+		label : '随堂作业',
+		value : 2
+	}, {
+		label : '课后作业',
+		value : 3
+	}],
+	/**
+	 * 将秒转分钟。
+	 * @param time 秒
+	 */
+	toSecond : function(time) {
+		if (time < 60) {
+			return 1;
+		} else {
+			return toFixed(time / 60, 1);
+		}
+	},
+	/**
+	 * 返回分数级别
+	 * @param score 分数
+	 */
+	toLevel : function(score) {
+		if (score == undefined || score == null) {
+			return 6;
+		}
+		if (score >= 85) {
+			return 1;
+		} else if (score >= 70) {
+			return 2;
+		} else if (score >= 60) {
+			return 3;
+		} else if (score >= 45) {
+			return 4;
+		} else {
+			return 5;
+		}
+	},
+	toLevelName : function(score) {
+		var idx = Utils.toLevel(score);
+		return Utils.levelNames[idx - 1];
+	},
+	levelNames : ["优秀", "良好", "及格", "较差", "危险", null]
+};
+
+module.exports = Utils;

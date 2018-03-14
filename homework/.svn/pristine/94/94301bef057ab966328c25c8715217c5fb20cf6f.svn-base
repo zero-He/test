@@ -1,0 +1,348 @@
+/* 
+ * 包名: cn.strong.leke.homework.controller
+ *
+ * 文件名：DoubtController.java
+ *
+ * 版权所有：Copyright www.leke.cn Corporation 2014 
+ * 
+ * 创建者: luf
+ *
+ * 日期：2014-6-18
+ */
+package cn.strong.leke.homework.controller;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import javax.annotation.Resource;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.ui.ModelMap;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
+
+import cn.strong.leke.common.thread.ThreadLocalHolder;
+import cn.strong.leke.common.utils.StringUtils;
+import cn.strong.leke.context.base.UserBaseContext;
+import cn.strong.leke.context.user.StudentContext;
+import cn.strong.leke.context.user.UserContext;
+import cn.strong.leke.context.user.cst.RoleCst;
+import cn.strong.leke.core.business.incentive.DynamicHelper;
+import cn.strong.leke.core.cas.SessionCst;
+import cn.strong.leke.core.dfs.FileUtils;
+import cn.strong.leke.framework.exceptions.ValidateException;
+import cn.strong.leke.framework.page.jdbc.Page;
+import cn.strong.leke.framework.web.JsonResult;
+import cn.strong.leke.homework.manage.WorkDetailService;
+import cn.strong.leke.homework.model.Doubt;
+import cn.strong.leke.homework.model.DoubtDtl;
+import cn.strong.leke.homework.model.Explain;
+import cn.strong.leke.homework.model.WorkDetail;
+import cn.strong.leke.homework.service.DoubtService;
+import cn.strong.leke.homework.service.ExplainService;
+import cn.strong.leke.homework.service.HomeworkDtlService;
+import cn.strong.leke.homework.service.impl.HomeworkDtlServiceImpl;
+import cn.strong.leke.model.incentive.Award;
+import cn.strong.leke.model.incentive.DynamicInfo;
+import cn.strong.leke.model.incentive.DynamicTypes;
+import cn.strong.leke.model.incentive.IncentiveTypes;
+import cn.strong.leke.model.question.QuestionResult;
+import cn.strong.leke.model.user.User;
+import cn.strong.leke.model.user.UserBase;
+import cn.strong.leke.remote.service.lesson.IKlassRemoteService;
+import cn.strong.leke.remote.service.tutor.base.ISubjectRemoteService;
+
+/**
+ * 〈一句话功能简述〉
+ * 〈功能详细描述〉
+ * @author    luf
+ * @version   Avatar 
+ */
+@Controller
+@RequestMapping("/auth/*")
+public class DoubtController {
+
+	protected static final Logger logger = LoggerFactory.getLogger(HomeworkDtlServiceImpl.class);
+
+	@Resource
+	private ISubjectRemoteService subjectRemoteService;
+	@Resource
+	private IKlassRemoteService klassRemoteService;
+
+	@Resource
+	private DoubtService doubtServie;
+	@Resource
+	private ExplainService explainService;
+	@Resource
+	private HomeworkDtlService homeworkDtlService;
+	@Resource
+	private WorkDetailService workDetailService;
+
+	/**
+	 * 描述:跳转到学生我 要提问页面
+	 * @author  DuanYanming
+	 * @created 2014年8月28日 下午3:20:37
+	 * @since   v1.0.0 
+	 * @param model
+	 * @return
+	 * @return  String
+	 */
+	@RequestMapping("student/myDoubt/ask/doubt")
+	public String askDoubt(ModelMap model, Long teacherId) {
+		if(teacherId != null){
+			UserBase userBase = UserBaseContext.getUserBaseByUserId(teacherId);
+			model.addAttribute("teacherId", teacherId);
+			model.addAttribute("teacherName", userBase != null ? userBase.getUserName() : "");
+		}
+		model.addAttribute("comeFromExam", false);
+		return "/auth/student/doubt/doubt";
+	}
+
+	@RequestMapping("student/myDoubt/doubtList/doubt")
+	public String doubt(ModelMap model,Long teacherId) {
+		model.addAttribute("teacherId", teacherId);
+		return "/auth/student/doubt/doubt";
+	}
+
+	/**
+	 * 通过题目弹出窗口提问
+	 * @param questionId 题目ID
+	 * @param subjectId 学科ID
+	 * @param crossDomain 是否跨域
+	 * @param model
+	 * @return
+	 */
+	@RequestMapping("student/myDoubt/doubtList/doubtForQuestion")
+	public String doubtForQuestion(Long homeworkDtlId, Long questionId, Long subjectId, Long teacherId,boolean crossDomain, Model model) {
+		Long userId = StudentContext.student.getUserId();
+		List<Long> teacherIds;
+		if (teacherId == null) {
+			teacherIds = this.klassRemoteService.findTeacherIdsByStudentId(userId, subjectId);
+			List<UserBase> teacherList = UserBaseContext.findUserBaseByUserId(teacherIds.toArray(new Long[0]));
+			model.addAttribute("teacherList", teacherList);
+		} else {
+			UserBase userBase = UserBaseContext.getUserBaseByUserId(teacherId);
+			model.addAttribute("teacherId", teacherId);
+			model.addAttribute("teacherName", userBase != null ? userBase.getUserName() : "");
+		}
+
+		model.addAttribute("subjectId", subjectId);
+		model.addAttribute("homeworkDtlId", homeworkDtlId);
+		model.addAttribute("questionId", questionId);
+		model.addAttribute("crossDomain", crossDomain);
+
+		return "/auth/student/doubt/doubtForPaper";
+	}
+
+	@RequestMapping("student/myDoubt/saveDoubt")
+	@ResponseBody
+	public JsonResult saveDoubt(Doubt doubt,
+			@RequestParam(value = "needIncentive", defaultValue = "false") Boolean needIncentive) {
+		if(StringUtils.isEmpty(doubt.getDoubtContent())){
+			throw new ValidateException("请上传内容");
+		}
+		if(StringUtils.isEmpty(doubt.getDoubtTitle())){
+			throw new ValidateException("请填写标题");
+		}
+		JsonResult jsonresult = new JsonResult();
+		User user = UserContext.user.get();
+		doubt.setCreatedBy(user.getId());
+		doubt.setSchoolId(user.getCurrentSchool().getId());
+		doubt.setSchoolName(user.getCurrentSchool().getName());
+		doubt.setUserName(user.getUserName());
+		doubtServie.saveDoubt(doubt);
+
+		DynamicInfo dynamicInfo = new DynamicInfo();
+		dynamicInfo.setUserId(user.getId());
+		dynamicInfo.setUserName(user.getUserName());
+		dynamicInfo.setRoleId(RoleCst.STUDENT);
+		dynamicInfo.setSchoolId(user.getCurrentSchool().getId());
+		dynamicInfo.setDynamicType(DynamicTypes.HW_SPONSOR_DOUBT);
+		Map<String, Object> params = new HashMap<String, Object>();
+		params.put("doubtId", doubt.getDoubtId());
+		dynamicInfo.setParams(params);
+		dynamicInfo.setTitle(doubt.getDoubtTitle());
+		dynamicInfo.setTypeId(IncentiveTypes.STUDENT.HW_STUDENT_DOUBT);
+		Award award = DynamicHelper.publish(dynamicInfo);
+		if (award.getSucc() && award.getHave()) {
+			Map<String, Object> map = new HashMap<String, Object>();
+			map.put("leke", award.getLekeVal());
+			map.put("exp", award.getExpVal());
+			map.put("type", dynamicInfo.getTypeId());
+			jsonresult.addDatas("tips", map);
+		} else {
+			jsonresult.addDatas("tips", null);
+		}
+		jsonresult.setSuccess(true);
+		return jsonresult;
+	}
+
+	/**
+	 * 描述:返回我的提问列表页面
+	 * @author  DuanYanming
+	 * @created 2014年8月28日 下午3:20:56
+	 * @since   v1.0.0 
+	 * @param doubt
+	 * @param page
+	 * @param model
+	 * @return
+	 * @return  String
+	 */
+	@RequestMapping("student/myDoubt/doubtList/enterDoubtList")
+	public String enterDoubtList(DoubtDtl doubt, Page page, ModelMap model) {
+		return "/auth/student/doubt/doubtList";
+	}
+
+	@RequestMapping("student/myDoubt/getDoubtList")
+	@ResponseBody
+	public JsonResult getDoubtList(DoubtDtl doubt, Page page) {
+		JsonResult jsonresult = new JsonResult();
+		doubt.setCreatedBy(UserContext.user.getUserId());
+		List<DoubtDtl> list = doubtServie.doubtList(doubt, page);
+		page.setDataList(list);
+		jsonresult.addDatas("page", page);
+		return jsonresult;
+	}
+
+	@RequestMapping("student/doubt/doubtList_tpl")
+	@ResponseBody
+	public JsonResult getDoubtListTpl(DoubtDtl doubt, Page page) {
+		JsonResult json = new JsonResult();
+		doubt.setCreatedBy(UserContext.user.getUserId());
+		List<DoubtDtl> list = doubtServie.doubtList(doubt, page);
+		page.setDataList(list);
+		json.addDatas("page", page);
+		return json;
+	}
+
+	/**
+	 * 描述:我的提问详细
+	 * @author  DuanYanming
+	 * @created 2014年8月28日 下午3:21:14
+	 * @since   v1.0.0 
+	 * @param model
+	 * @param doubt
+	 * @return
+	 * @return  String
+	 */
+	@RequestMapping("student/myDoubt/doubtList/getDoubtDetail")
+	public String getDoubtDetail(ModelMap model, DoubtDtl doubt) {
+		String domainStr = FileUtils.getDomain();
+		DoubtDtl doubtDetail = doubtServie.getDetail(doubt);
+		if (doubtDetail.getDoubtAudio() != null && !"".equals(doubtDetail.getDoubtAudio())) {
+			doubtDetail.setDoubtAudio((domainStr + "/" + doubtDetail.getDoubtAudio()));
+		}
+		if (doubtDetail.getHomeworkDtlId() != null && doubtDetail.getDoubtType() != null
+				&& doubtDetail.getDoubtType() == 2) {
+			WorkDetail workDetail = this.workDetailService.getWorkDetailByHomeworkDtlId(doubtDetail.getHomeworkDtlId());
+			if (workDetail != null) {
+				Optional<QuestionResult> optional = workDetail.getQuestions().stream()
+						.filter(v -> v.getQuestionId().equals(doubtDetail.getQuestionId())).findFirst();
+				optional.ifPresent(questionResult -> model.addAttribute("questionResult", questionResult));
+			}
+		}
+
+		Explain explain = new Explain();
+		explain.setDoubtId(doubtDetail.getDoubtId());
+		explain.setCreatedBy(doubtDetail.getCreatedBy());
+		List<Explain> explains = explainService.getExplainList(explain);
+		for (Explain e : explains) {
+			String expainAudio = e.getExpainAudio();
+			if (expainAudio != null && !"".equals(expainAudio)) {
+				e.setExpainAudio(domainStr + "/" + e.getExpainAudio());
+			}
+		}
+		model.addAttribute("doubt", doubtDetail);
+
+		model.addAttribute("explains", explains);
+		return "/auth/student/doubt/doubtDetail";
+	}
+
+	/**
+	 * 描述: 跳转到试题答疑页面
+	 * @author  DuanYanming
+	 * @created 2014年8月28日 下午3:19:23
+	 * @since   v1.0.0 
+	 * @return
+	 * @return  String
+	 */
+	@RequestMapping("teacher/myDoubt/enterTeacherDoubtList")
+	public String enterTeacerDoubtList() {
+
+		return "/auth/teacher/doubt/doubtList";
+	}
+
+	@RequestMapping("teacher/doubt/teacherDoubtList_tpl")
+	@ResponseBody
+	public JsonResult getTeacherDoubtList(DoubtDtl doubt, Page page) {
+		JsonResult json = new JsonResult();
+		List<DoubtDtl> doubts = doubtServie.getTeacherDoubtl(doubt, page);
+		page.setDataList(doubts);
+		json.addDatas("page", page);
+		return json;
+	}
+
+	/**
+	 * 描述:试题答疑查看
+	 * @author  DuanYanming
+	 * @created 2014年8月28日 下午3:19:58
+	 * @since   v1.0.0 
+	 * @param model
+	 * @param doubt
+	 * @return
+	 * @return  String
+	 */
+	@RequestMapping("teacher/myDoubt/getDoubtDetail")
+	public String getDoubtDetailForExplain(ModelMap model, DoubtDtl doubt) {
+		DoubtDtl doubtDetail = doubtServie.getDetail(doubt);
+		String doubtAudio = doubtDetail.getDoubtAudio();
+		if (doubtAudio != null && !"".equals(doubtAudio)) {
+			doubtDetail.setDoubtAudio(FileUtils.getDomain() + "/" + doubtDetail.getDoubtAudio());//重置录音路径
+		}
+
+		if (doubtDetail.getHomeworkDtlId() != null && doubtDetail.getDoubtType() != null
+				&& doubtDetail.getDoubtType() == 2) {
+			model.addAttribute("homeworkDtlId", doubtDetail.getHomeworkDtlId());
+			WorkDetail workDetail = this.workDetailService.getWorkDetailByHomeworkDtlId(doubtDetail.getHomeworkDtlId());
+			if (workDetail != null) {
+				Optional<QuestionResult> optional = workDetail.getQuestions().stream()
+						.filter(v -> v.getQuestionId().equals(doubtDetail.getQuestionId())).findFirst();
+				optional.ifPresent(questionResult -> model.addAttribute("questionResult", questionResult));
+			}
+		}
+
+		Explain explain = new Explain();
+		explain.setDoubtId(doubtDetail.getDoubtId());
+		explain.setCreatedBy(doubtDetail.getCreatedBy());
+		List<Explain> explains = explainService.getExplainList(explain);
+		for (Explain e : explains) {
+			String expainAudio = e.getExpainAudio();
+			if (expainAudio != null && !"".equals(expainAudio)) {
+				e.setExpainAudio(FileUtils.getDomain() + "/" + e.getExpainAudio());
+			}
+		}
+		model.addAttribute("doubt", doubtDetail);
+		model.addAttribute("teacherName", UserContext.user.getUserName());
+		model.addAttribute(SessionCst.TICKET, ThreadLocalHolder.getResource(SessionCst.TICKET));
+		model.addAttribute("explains", explains);
+		return "/auth/teacher/doubt/doubtDetail";
+	}
+
+	@RequestMapping("/student/myDoubt/getTeachers")
+	@ResponseBody
+	public JsonResult queryTeacherForDoubt(Long subjectId) {
+		Long userId = StudentContext.student.getUserId();
+		List<Long> teacherIds = this.klassRemoteService.findTeacherIdsByStudentId(userId, subjectId);
+		List<UserBase> teacherList = UserBaseContext.findUserBaseByUserId(teacherIds.toArray(new Long[0]));
+
+		JsonResult jsonresult = new JsonResult();
+		jsonresult.addDatas("resultList", teacherList);
+		return jsonresult;
+	}
+}

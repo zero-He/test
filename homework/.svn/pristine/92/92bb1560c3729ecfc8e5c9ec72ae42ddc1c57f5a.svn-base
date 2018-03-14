@@ -1,0 +1,19 @@
+package cn.strong.leke.homework.service;
+
+import cn.strong.leke.homework.model.LayerAssign;
+import cn.strong.leke.model.user.User;
+
+/**
+ * 布置作业服务。
+ * @author  andy
+ * @since   v1.0.0
+ */
+public interface HomeworkAssignService {
+
+	/**
+	 * 分层作业布置
+	 * @param assign
+	 * @param user
+	 */
+	public Long saveAssign(LayerAssign assign, User user);
+}

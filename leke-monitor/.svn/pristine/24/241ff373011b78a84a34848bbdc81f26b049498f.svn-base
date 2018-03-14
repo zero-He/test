@@ -1,0 +1,274 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.monitor.core.dao.mybatis.IWorkStatisticsDao">
+	<select id="querySchoolMarket" parameterType="cn.strong.leke.monitor.core.model.WorkStatistics" resultType="cn.strong.leke.monitor.core.model.WorkStatistics">
+		SELECT s.schoolId,s.schoolName,m.marketId,m.marketName,tss.schoolStageId,tss.schoolStageName
+		FROM tutor.tutor_school s
+		LEFT OUTER JOIN tutor.um_market_school m ON s.schoolId=m.schoolId AND
+		m.isDeleted=0
+		LEFT OUTER JOIN crm.scs_customer c
+		ON s.schoolId=c.lekeId AND c.isDeleted=0 AND c.customerType=2
+		LEFT OUTER JOIN tutor.tutor_school_stage tss ON s.schoolId=tss.schoolId
+		WHERE s.isDeleted=0  <![CDATA[ AND s.schoolNature <> 3 ]]>
+		AND s.schoolCode is not null
+		AND tss.isDeleted=0
+		<if test="sellerName != null and sellerName != ''">
+			AND c.sellerName LIKE CONCAT(CONCAT('%',
+			#{sellerName}),'%')
+		</if>
+		<if test="sellerId != null and sellerId != ''">
+			AND c.sellerId =#{sellerId}
+		</if>
+		<if test="schoolStageId != null and schoolStageId != ''">
+			AND tss.schoolStageId = #{schoolStageId}
+		</if>
+		<if test="schoolId != null and schoolId != ''">
+			AND s.schoolId=#{schoolId}
+		</if>
+		ORDER BY s.schoolId,s.schoolName,m.marketId,m.marketName
+	</select>
+
+	<select id="queryLeaderMarket" parameterType="cn.strong.leke.monitor.core.model.WorkStatistics" resultType="cn.strong.leke.monitor.core.model.WorkStatistics">
+		SELECT
+		cc.sellerId,cc.sellerName,u.loginName AS lekeSn,tss.schoolId,tss.schoolName,tss.schoolStageId,tss.schoolStageName,m.marketId,m.marketName
+		FROM crm.scs_customer cc
+		LEFT OUTER JOIN
+		tutor.tutor_user_role_school tus ON cc.sellerId=tus.userId AND tus.isDeleted=0
+		LEFT OUTER JOIN tutor.tutor_user u ON cc.sellerId=u.userId AND u.isDeleted=0
+		LEFT OUTER JOIN tutor.tutor_school_stage tss
+		ON cc.lekeId=tss.schoolId AND tss.isDeleted=0
+		LEFT OUTER JOIN tutor.tutor_school s ON tss.schoolId=s.schoolId
+		LEFT OUTER JOIN tutor.um_market_manager mm ON cc.sellerId = mm.userId AND mm.roleId = 112 AND mm.isDeleted = 0
+		LEFT OUTER JOIN tutor.um_market m ON
+		mm.secondDptIds = m.marketId
+		WHERE cc.isDeleted=0 AND tus.isDeleted=0
+		AND cc.customerType=2 AND tus.isDeleted=0 AND
+		tus.roleId=112 AND cc.status = 1 AND tss.isDeleted=0
+		<if test="sellerName != null and sellerName != ''">
+			AND cc.sellerName LIKE CONCAT(CONCAT('%',
+			#{sellerName}),'%')
+		</if>
+		<if test="schoolId != null and schoolId != ''">
+			AND tss.schoolId =#{schoolId}
+		</if>
+		<if test="schoolStageId != null and schoolStageId != ''">
+			AND tss.schoolStageId = #{schoolStageId}
+		</if>
+		<if test="listSeller != null and listSeller.size() > 0">
+			AND
+			cc.sellerId IN (
+			<foreach collection="listSeller" item="item" separator=",">#{item}
+			</foreach>
+			)
+		</if>
+		<if test="listMarketId != null and listMarketId.size() > 0">
+			AND
+			m.marketId IN (
+			<foreach collection="listMarketId" item="item" separator=",">#{item}
+			</foreach>
+			)
+		</if>
+		<if test="lekeSn != null and lekeSn != ''">
+			AND u.loginName =#{lekeSn}
+		</if>
+		<if test="marketId != null and marketId != ''">
+			AND m.marketId =#{marketId}
+		</if>
+		ORDER BY cc.sellerId,tss.schoolId,tss.schoolStageId
+	</select>
+
+	<select id="getStudentNum" parameterType="Map" resultType="java.util.HashMap">
+		SELECT r.schoolId,lk.schoolStageId,COUNT(1) AS num FROM tutor.tutor_user u
+		LEFT OUTER JOIN tutor.tutor_user_role_school r ON u.userId=r.userId
+		LEFT OUTER JOIN tutor.tutor_school s ON
+		r.schoolId=s.schoolId
+		LEFT OUTER
+		JOIN lesson.ls_klass_student ks ON u.userId=ks.userId AND ks.isDeleted=0
+		LEFT OUTER JOIN lesson.ls_klass lk ON ks.classId=lk.classId
+		WHERE
+		u.isDeleted=0 AND r.isDeleted=0
+		AND r.roleId=100 <![CDATA[ AND s.schoolNature <> 3 ]]>
+		AND s.schoolCode is not null AND lk.isExpired=0 AND lk.isDeleted=0 AND lk.type=1
+		AND r.schoolId
+		IN (
+		<foreach collection="schoolId" item="schoolId" separator=",">#{schoolId}
+		</foreach>
+		)
+		AND lk.schoolStageId IN (
+		<foreach collection="schoolStageId" item="schoolStageId" separator=",">#{schoolStageId}
+		</foreach>
+		)
+		<if test="statisticsTimeStart != null and statisticsTimeStart != ''">
+		<![CDATA[
+			AND u.createdOn >= DATE_FORMAT(#{statisticsTimeStart},'%Y-%m-%d') 
+		]]>
+		</if>
+		<if test="statisticsTimeEnd != null and statisticsTimeEnd != ''">
+		<![CDATA[
+			AND u.createdOn < DATE_ADD(#{statisticsTimeEnd},INTERVAL 1 DAY)   
+		]]>
+		</if>
+		GROUP BY r.schoolId,lk.schoolStageId
+	</select>
+
+	<select id="getBuyNum" parameterType="Map" resultType="java.util.HashMap">
+		SELECT t.schoolId,lk.schoolStageId,COUNT(1) AS num
+		FROM
+		(SELECT py.createdBy,py.schoolId,MIN(payTime) AS payTime
+		FROM
+		pay.pay_order py
+		WHERE py.createdRole = 100 AND py.isDeleted = 0 AND
+		py.orderStatus in (2,5,6)
+		GROUP BY
+		py.createdBy,py.schoolId) t
+		LEFT OUTER JOIN lesson.ls_klass_student ks ON
+		t.createdBy=ks.userId AND
+		ks.isDeleted=0
+		LEFT OUTER JOIN lesson.ls_klass lk ON
+		ks.classId=lk.classId
+		WHERE lk.isExpired=0 AND
+		lk.isDeleted=0 AND
+		lk.type=1
+		AND lk.schoolStageId IN (
+		<foreach collection="schoolStageId" item="schoolStageId" separator=",">#{schoolStageId}
+		</foreach>
+		) 
+		AND t.schoolId IN (
+		<foreach collection="schoolId" item="schoolId" separator=",">#{schoolId}
+		</foreach>
+		)
+		<if test="statisticsTimeStart != null and statisticsTimeStart != ''">
+		<![CDATA[
+			AND t.payTime >= DATE_FORMAT(#{statisticsTimeStart},'%Y-%m-%d') 
+		]]>
+		</if>
+		<if test="statisticsTimeEnd != null and statisticsTimeEnd != ''">
+		<![CDATA[
+			AND t.payTime < DATE_ADD(#{statisticsTimeEnd},INTERVAL 1 DAY)   
+		]]>
+		</if>
+		GROUP BY t.schoolId,lk.schoolStageId
+	</select>
+
+	<select id="getWorkStudentNum" parameterType="Map" resultType="java.util.HashMap">
+		SELECT t.schoolId,lk.schoolStageId,COUNT(1) AS cou FROM (
+		SELECT
+		a.studentId,a.schoolId,MIN(submitTime) AS submitTime FROM
+		homework.HW_HOMEWORK_DTL a FORCE INDEX(index_hw_homework_dtl_submitTime)
+		WHERE a.submitTime IS NOT NULL AND a.studentId>0
+		AND a.schoolId IN (
+		<foreach collection="schoolId" item="schoolId" separator=",">#{schoolId}
+		</foreach>
+		) AND a.isDeleted=0
+		GROUP BY a.studentId,a.schoolId ) t
+		LEFT OUTER JOIN lesson.ls_klass_student ks ON t.studentId=ks.userId AND ks.isDeleted=0
+		LEFT OUTER JOIN lesson.ls_klass lk ON
+		ks.classId=lk.classId
+		WHERE lk.isExpired=0 AND lk.isDeleted=0 AND lk.type=1
+		AND
+		lk.schoolStageId IN (
+		<foreach collection="schoolStageId" item="schoolStageId" separator=",">#{schoolStageId}
+		</foreach>
+		)
+		<if test="statisticsTimeStart != null and statisticsTimeStart != ''">
+		<![CDATA[
+			AND t.submitTime >= DATE_FORMAT(#{statisticsTimeStart},'%Y-%m-%d') 
+		]]>
+		</if>
+		<if test="statisticsTimeEnd != null and statisticsTimeEnd != ''">
+		<![CDATA[
+			AND t.submitTime < DATE_ADD(#{statisticsTimeEnd},INTERVAL 1 DAY)   
+		]]>
+		</if>
+		GROUP BY t.schoolId,lk.schoolStageId
+	</select>
+
+	<select id="getNewStudent" parameterType="cn.strong.leke.monitor.core.model.WorkStatistics" resultType="cn.strong.leke.monitor.core.model.WorkStatistics">
+		SELECT u.loginName AS lekeSn,u.userName AS studentName,tg.gradeId,tg.gradeName,u.createdOn AS useDate
+		FROM
+		tutor.tutor_user u
+		LEFT OUTER JOIN tutor.tutor_user_role_school r ON u.userId = r.userId
+		LEFT
+		OUTER JOIN tutor.tutor_school s ON r.schoolId=s.schoolId
+		LEFT OUTER JOIN tutor.tutor_user_struct us ON u.userId = us.userId AND us.isDeleted = 0
+		LEFT OUTER JOIN tutor.tutor_struct ts ON us.depId =
+		ts.depId AND ts.isDeleted = 0
+		LEFT OUTER JOIN tutor.tutor_grade tg ON ts.gradeId=tg.gradeId
+		LEFT OUTER JOIN lesson.ls_klass_student ks ON u.userId=ks.userId AND ks.isDeleted=0
+		LEFT OUTER JOIN
+		lesson.ls_klass lk ON ks.classId=lk.classId
+		WHERE u.isDeleted = 0 AND lk.isExpired=0 AND lk.isDeleted=0 AND lk.type=1 AND
+		r.isDeleted = 0 AND r.roleId = 100 AND r.schoolId = #{schoolId} <![CDATA[ AND s.schoolNature <> 3 ]]>
+		AND s.schoolCode is not null
+		<if test="schoolStageId != null and schoolStageId != ''">
+			AND lk.schoolStageId=#{schoolStageId}
+		</if>
+		<if test="gradeId != null and gradeId != ''">
+			AND tg.gradeId = #{gradeId}
+		</if>
+		<if test="lekeSn != null and lekeSn != ''">
+			AND u.loginName = #{lekeSn}
+		</if>
+		<if test="studentName != null and studentName != ''">
+			AND u.userName LIKE CONCAT(CONCAT('%',
+			#{studentName}),'%')
+		</if>
+		<if test="statisticsTimeStart != null and statisticsTimeStart != ''">
+		<![CDATA[
+			AND u.createdOn >= DATE_FORMAT(#{statisticsTimeStart},'%Y-%m-%d') 
+		]]>
+		</if>
+		<if test="statisticsTimeEnd != null and statisticsTimeEnd != ''">
+		<![CDATA[
+			AND u.createdOn < DATE_ADD(#{statisticsTimeEnd},INTERVAL 1 DAY)   
+		]]>
+		</if>
+		ORDER BY u.userId
+	</select>
+
+	<select id="getWorkNewStudent" parameterType="cn.strong.leke.monitor.core.model.WorkStatistics" resultType="cn.strong.leke.monitor.core.model.WorkStatistics">
+		SELECT u.loginName AS lekeSn,u.userName AS studentName,tg.gradeId,tg.gradeName,t.submitTime AS useDate
+		FROM
+		(SELECT a.studentId,MIN(submitTime) AS submitTime
+		FROM
+		homework.HW_HOMEWORK_DTL a FORCE INDEX
+		(index_hw_homework_dtl_submitTime)
+		WHERE a.submitTime IS NOT NULL AND a.studentId > 0 AND a.isDeleted = 0
+		AND a.schoolId = #{schoolId}
+		GROUP BY a.studentId) t
+		LEFT OUTER JOIN tutor.tutor_user u ON
+		t.studentId = u.userId
+		LEFT OUTER JOIN tutor.tutor_user_struct us ON u.userId = us.userId AND us.isDeleted = 0
+		LEFT OUTER JOIN tutor.tutor_struct ts ON us.depId = ts.depId AND ts.isDeleted = 0
+		LEFT
+		OUTER JOIN tutor.tutor_grade tg ON ts.gradeId=tg.gradeId
+		LEFT OUTER JOIN lesson.ls_klass_student ks ON u.userId=ks.userId AND ks.isDeleted=0
+		LEFT OUTER JOIN lesson.ls_klass lk ON ks.classId=lk.classId
+		WHERE lk.isExpired=0 AND lk.isDeleted=0 AND lk.type=1
+		<if test="schoolStageId != null and schoolStageId != ''">
+			AND lk.schoolStageId=#{schoolStageId}
+		</if>
+		<if test="gradeId != null and gradeId != ''">
+			AND tg.gradeId = #{gradeId}
+		</if>
+		<if test="lekeSn != null and lekeSn != ''">
+			AND u.loginName = #{lekeSn}
+		</if>
+		<if test="studentName != null and studentName != ''">
+			AND u.userName LIKE CONCAT(CONCAT('%',
+			#{studentName}),'%')
+		</if>
+		<if test="statisticsTimeStart != null and statisticsTimeStart != ''">
+		<![CDATA[
+			AND t.submitTime >= DATE_FORMAT(#{statisticsTimeStart},'%Y-%m-%d') 
+		]]>
+		</if>
+		<if test="statisticsTimeEnd != null and statisticsTimeEnd != ''">
+		<![CDATA[
+			AND t.submitTime < DATE_ADD(#{statisticsTimeEnd},INTERVAL 1 DAY)   
+		]]>
+		</if>
+		ORDER BY u.userId
+	</select>
+</mapper>

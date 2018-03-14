@@ -1,0 +1,104 @@
+//init
+$(".back").click(function(){
+	    	window.history.go(-1);
+	    });
+DoubtTools.commonEvent();
+DoubtTools.selectSubjectAndTeacherForPad();
+DoubtTools.handbord();
+DoubtTools.takePhoto();
+DoubtTools.record();
+function trim(str){ 
+	//删除左右两端的空格 
+	if(str){
+		return str.replace(/(^\s*)|(\s*$)/g, ""); 
+	}
+	return;
+}
+String.prototype.replaceAll  = function(s1,s2){     
+    return this.replace(new RegExp(s1,"gm"),s2);     
+}
+
+$(".c-tab li").click(function() {
+	var i = $(this).data("i");
+	if (i == 2) {
+
+	} else {
+		window.location.href = "list.htm?resolved=" + i;
+	}
+});
+
+$(".c-choose-box").on("click", ".item", function() {
+	var teacherId = $(this).data("teacherid");
+	var subjectId = $(this).data("subjectid");
+	if (teacherId) {
+		$(".teacher .item").removeClass("cur");
+		$(this).addClass("cur");
+	} else if (subjectId) {
+		$(".teachercon").hide();
+		$(".c-choose-box .item").removeClass("cur");
+		$(this).addClass("cur");
+		$("#subjectTeacher_" + subjectId).show();
+	}
+});
+
+$("#jSubmit").click(function() {
+	var jTitle = trim($("#jTitle").val());
+	var jDescribe = trim($("#jDescribe").val())||"";
+	jDescribe = jDescribe.replace(/([\uE000-\uF8FF]|\uD83C[\uDF00-\uDFFF]|\uD83D[\uDC00-\uDDFF])/g, '');
+	if(jDescribe){
+		jDescribe += "<br>";
+	}
+	var subjectId = $('.result').data("subjectid");
+	var teacherId = $('.result').data("teacherid");
+	if (!jTitle) {
+		Utils.Notice.alert("请输入标题");
+		$("#jTitle").val("");
+	} else {
+		var subjectName = $('.result').data("subjectname");
+		var promiseArray = DoubtTools.imgBase64FileUpload();
+		var duration = $("#jAudioLength").html()||"";
+		$(".m-load").show();
+		var audioMission = DoubtTools.audioBase64FileUpload();
+		promiseArray.push(audioMission);
+		new Mission().all(promiseArray).run(function(result) {
+			var doubtAudio = null;
+			for(var i in result){
+				var d = result[i];
+				if(d.indexOf("<img")<0){
+					doubtAudio = d;
+					result.splice(i, 1)
+				}
+			}
+			datas = {
+				"doubtType" : 1,
+				"doubtTitle" : jTitle,
+				"doubtContent" : jDescribe + result.join("<br>"),
+				"teacherId" : teacherId,
+				"questionId" : 0,
+				"subjectId" : subjectId,
+				"subjectName" : subjectName,
+				"doubtAudio" : doubtAudio,
+				"duration" : duration
+			}
+			if(!(datas.doubtContent||datas.doubtAudio)){
+				Utils.Notice.alert("请输入内容");
+				$("#jDescribe").val("");
+				$("#jCount").html(0);
+				$(".m-load").hide();
+				return;
+			}else if (!teacherId) {
+				Utils.Notice.alert("请选择老师");
+				$(".m-load").hide();
+				return;
+			} 
+			var form = $("#jForm");
+			for ( var data in datas) {
+				var input = $("<input></input>");
+				input.attr("name",data);
+				input.val(datas[data]);
+				form.append(input);
+			}
+			form.submit();
+		});
+	}
+});

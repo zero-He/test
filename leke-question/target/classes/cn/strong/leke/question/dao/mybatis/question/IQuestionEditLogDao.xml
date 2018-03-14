@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.1//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.question.dao.mybatis.question.IQuestionEditLogDao">
+	<insert id="add"  useGeneratedKeys="true" keyProperty="questionEditId"
+		parameterType="cn.strong.leke.question.model.question.QuestionEditLog">
+		INSERT INTO que_question_edit_log (
+			questionId,isDeleted,createdBy,createdOn
+		)VALUES(
+			#{questionId},0,#{createdBy},NOW()
+		)
+	</insert>
+</mapper>

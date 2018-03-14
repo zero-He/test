@@ -1,0 +1,504 @@
+<?xml version="1.0" encoding="UTF-8" ?>   
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.diag.dao.teachingMonitor.CorrectHWDao">
+	
+	<sql id="teacherOfGradeSubject">
+	    <!-- 关联年级、学科下的老师 -->
+		AND EXISTS (
+					SELECT 1 FROM lesson.ls_klass f, lesson.ls_klass_teacher t 
+		            WHERE t.userId = a.teacherId 
+		            AND f.classId = t.classId
+		            AND f.isExpired = 0
+		            AND f.isDeleted = 0
+		            AND f.type = 1
+		            AND t.roleId = 101
+		            AND f.schoolId = #{schoolId}
+		            <if test="gradeId != null and gradeId != -1">
+		            AND f.gradeId = #{gradeId}
+					</if>
+					<if test="subjectId != null and subjectId != -1">
+					AND t.subjectId = #{subjectId}
+					</if>
+		            )
+	</sql>
+	
+	<select id="findCorrectHWLessonTeacherNum" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.teachingMonitor.CorrectHW">
+		SELECT 
+		  COUNT(a.courseSingleId) lessonNum
+		FROM lesson.ls_lesson a, lesson.ls_attendance_lesson b
+		WHERE a.isDeleted = 0
+		AND a.startTime <![CDATA[>=]]> DATE(#{startDate})
+		AND a.endTime <![CDATA[<]]> DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+		AND a.schoolId = #{schoolId}
+		AND a.courseSingleId = b.scId 
+		AND EXISTS (SELECT 1 FROM lesson.ls_klass f 
+		            WHERE f.classId = a.classId 
+		            AND f.isExpired = 0
+		            AND f.isDeleted = 0
+					<if test="gradeId != null and gradeId != -1">
+		            AND f.gradeId = #{gradeId} 
+					</if>
+					)
+		<if test="subjectId != null and subjectId != -1">
+		AND EXISTS (SELECT 1 FROM lesson.ls_klass_subject e WHERE e.classSubjId = a.classSubjId AND e.subjectId = #{subjectId})
+		</if>
+		<include refid="teacherOfGradeSubject"/>
+	</select>
+	
+	<select id="findCorrectHWAssignNum" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.teachingMonitor.CorrectHW">
+		SELECT 
+		  COUNT(1) assignNum,
+		  COUNT(DISTINCT a.teacherId) teacherNum,
+	      COUNT(IF(a.subjective = 1, 1, NULL)) subjectiveNum,
+		  IF(COUNT(1) = 0, 0, ROUND(COUNT(IF(a.subjective = 1, 1, NULL)) / COUNT(1) * 100, 1)) subjectiveNumRate,
+		  COUNT(IF(a.subjective = 0, 1, NULL)) objectiveNum,
+	      IF(COUNT(1) = 0, 0, ROUND(COUNT(IF(a.subjective = 0, 1, NULL)) / COUNT(1) * 100, 1)) objectiveNumRate
+		FROM homework.HW_HOMEWORK a
+		WHERE a.isDeleted = 0
+		AND a.status = 1 
+		AND a.isDeleted = 0 
+		AND a.isSnapshot = 0 
+		AND a.resType = 3
+		AND a.homeworkType = 3
+		AND a.createdOn <![CDATA[>=]]> DATE(#{startDate})
+		AND a.createdOn <![CDATA[<]]> DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+		AND a.schoolId = #{schoolId}
+		<if test="subjectId != null and subjectId != -1">
+		AND a.subjectId = #{subjectId}
+		</if>
+		AND EXISTS (SELECT 1 FROM lesson.ls_klass f 
+		            WHERE f.classId = a.classId 
+		            AND f.isExpired = 0
+		            AND f.isDeleted = 0
+					<if test="gradeId != null and gradeId != -1">
+		            AND f.gradeId = #{gradeId} 
+					</if>
+					)
+	    <include refid="teacherOfGradeSubject"/>
+	</select>
+	
+	<sql id="hwCommQuery">
+	           SELECT
+	                a.teacherId,
+			        a.teacherName,
+	                a.subjectId,
+	                a.subjectName,
+	                a.classId,
+	                f.gradeId,
+					d.homeworkDtlId,
+					d.homeworkId,
+					a.subjective,
+                    d.correctTime,
+                    d.correctUserId,
+                    CASE
+			            WHEN a.subjective = 1 AND d.correctUserId IS NULL THEN
+			              101
+			            WHEN a.subjective = 1 AND d.correctUserId IS NOT NULL THEN
+										(SELECT u.roleId FROM tutor.tutor_user_role_school u 
+										 WHERE u.userId = d.correctUserId 
+										 AND u.roleId IN (100, 101) 
+										 AND u.schoolId = #{schoolId}
+										 AND u.isDeleted = 0
+										 LIMIT 1)
+			            ELSE 
+			              NULL
+			        END roleId,
+                    a.closeTime
+				FROM homework.HW_HOMEWORK a, homework.HW_HOMEWORK_DTL d, lesson.ls_klass f
+				WHERE a.homeworkId = d.homeworkId 
+				AND f.classId = a.classId
+				AND f.isExpired = 0
+				AND f.isDeleted = 0
+                AND d.submitStatus = 1
+				AND a.finishNum <![CDATA[>]]> 0
+		        AND a.isDeleted = 0
+		        AND a.status = 1
+				AND a.isSnapshot = 0
+				AND a.resType = 3
+				AND a.homeworkType = 3
+		        AND a.schoolId = #{schoolId}
+				AND a.closeTime <![CDATA[>=]]> DATE(#{startDate})
+				AND a.closeTime <![CDATA[<]]> DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+				<if test="subjectId != null and subjectId != -1">
+				AND a.subjectId = #{subjectId} 
+				</if>
+				<if test="gradeId != null and gradeId != -1">
+				AND f.gradeId = #{gradeId}
+				</if>
+				<if test="classId != null and classId != -1">
+				AND a.classId = #{classId}
+				</if>
+				<include refid="teacherOfGradeSubject"/>
+	</sql>
+	
+	<select id="findCorrectHWComm" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.teachingMonitor.CorrectHW">
+		SELECT
+			p.shouldCorrectNum,
+			(p.shouldCorrectNum - p.notCorrectNum) actualCorrectNum,
+		    CONVERT(IF(p.shouldCorrectNum = 0, 0, ROUND((p.shouldCorrectNum - p.notCorrectNum) / p.shouldCorrectNum * 100, 1)), DECIMAL(4,1)) correctNumRate,
+			p.autoCorrectNum,
+			CONVERT(IF(p.shouldCorrectNum = 0, 0, ROUND(p.autoCorrectNum / p.shouldCorrectNum * 100, 1)), DECIMAL(4,1)) autoCorrectNumRate,
+			p.teacherCorrectNum,
+			CONVERT(IF(p.shouldCorrectNum = 0, 0, ROUND(p.teacherCorrectNum / p.shouldCorrectNum * 100, 1)), DECIMAL(4,1)) teacherCorrectNumRate,
+			p.studentCorrectNum,
+			CONVERT(IF(p.shouldCorrectNum = 0, 0, ROUND(p.studentCorrectNum / p.shouldCorrectNum * 100, 1)), DECIMAL(4,1)) studentCorrectNumRate,
+			p.notCorrectNum,
+			CONVERT(IF(p.shouldCorrectNum = 0, 0, ROUND(p.notCorrectNum / p.shouldCorrectNum * 100, 1)), DECIMAL(4,1)) notCorrectNumRate
+		FROM
+		(
+			SELECT
+				COUNT(1) shouldCorrectNum,
+				COUNT(CASE WHEN z.subjective = 0 THEN 1 ELSE NULL END) autoCorrectNum,
+				COUNT(CASE WHEN z.subjective = 1 THEN 1 ELSE NULL END) subjectiveNum,
+				COUNT(CASE WHEN z.correctTime IS NOT NULL AND z.subjective = 1 AND z.roleId = 101 THEN 1 ELSE NULL END) teacherCorrectNum,
+				COUNT(CASE WHEN z.correctTime IS NOT NULL AND z.subjective = 1 AND z.roleId = 100 THEN 1 ELSE NULL END) studentCorrectNum,
+				COUNT(CASE WHEN z.correctTime IS NULL THEN 1 ELSE NULL END) notCorrectNum
+			FROM
+		  (
+				<include refid="hwCommQuery"/>
+		  ) z) p
+	</select>
+	
+	<select id="findCorrectHWByDay" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.teachingMonitor.CorrectHW">
+		SELECT
+		    m.startDate,
+		    m.startDate endDate,
+		    m.startDate dateStr,
+		    IFNULL(n.shouldCorrectNum, 0) shouldCorrectNum,
+		    IFNULL(n.actualCorrectNum, 0) actualCorrectNum,
+		    IFNULL(n.correctNumRate, 0) correctNumRate
+			FROM
+				(SELECT @d :=@d + 1 AS rn, 
+		            DATE_ADD(#{startDate}, INTERVAL @d DAY) startDate 
+		         FROM lesson.ls_dateAssistant c,(SELECT @d :=- 1) b LIMIT #{limit}) m
+		LEFT JOIN
+		(
+			SELECT
+		        p.closeTime,
+				p.subjectiveNum shouldCorrectNum,
+				p.teacherCorrectNum actualCorrectNum,
+				CONVERT(IF(p.subjectiveNum = 0, 0, ROUND(p.teacherCorrectNum / p.subjectiveNum * 100, 1)), DECIMAL(4,1)) correctNumRate
+			FROM
+			(
+				SELECT
+					DATE_FORMAT(z.closeTime, '%Y-%m-%d') closeTime,
+					COUNT(CASE WHEN z.subjective = 1 THEN 1 ELSE NULL END) subjectiveNum,
+					COUNT(CASE WHEN z.correctTime IS NOT NULL AND z.subjective = 1 AND z.roleId = 101 THEN 1 ELSE NULL END) teacherCorrectNum
+				FROM
+				(
+					<include refid="hwCommQuery"/>
+				)z GROUP BY DATE_FORMAT(z.closeTime, '%Y-%m-%d')) p
+		)n
+		ON m.startDate = n.closeTime order by m.startDate
+	</select>
+	
+	<select id="findCorrectHWByWeek" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.teachingMonitor.CorrectHW">
+		SELECT
+		    m.startDate,
+		    m.startDate endDate,
+		    CONCAT_WS('/',m.startDate,m.endDate) dateStr,
+		    IFNULL(n.shouldCorrectNum, 0) shouldCorrectNum,
+		    IFNULL(n.actualCorrectNum, 0) actualCorrectNum,
+		    IFNULL(n.correctNumRate, 0) correctNumRate
+			FROM
+				(SELECT
+					a.startDate,
+					CASE
+						WHEN DATE(#{endDate}) BETWEEN a.startDate AND a.endDate THEN
+							DATE(#{endDate})
+						ELSE
+							a.endDate
+					END endDate,
+					SUBDATE(a.startDate,WEEKDAY(a.startDate)) firstDate
+				FROM
+					(SELECT t.startDate, 
+									SUBDATE(t.startDate,WEEKDAY(t.startDate)-6) endDate 
+						 FROM (SELECT @d :=@d + 1 AS rn, DATE_ADD(#{startDate}, INTERVAL @d DAY) startDate FROM lesson.ls_dateAssistant,(SELECT @d := -1) b LIMIT #{limit}) t) a
+						WHERE DAYOFWEEK(a.startDate) = 2
+							 OR a.startDate = DATE(#{startDate}))m
+		LEFT JOIN
+		(
+			SELECT
+		        p.closeTime,
+				p.subjectiveNum shouldCorrectNum,
+				p.teacherCorrectNum actualCorrectNum,
+				CONVERT(IF(p.subjectiveNum = 0, 0, ROUND(p.teacherCorrectNum / p.subjectiveNum * 100, 1)), DECIMAL(4,1)) correctNumRate
+			FROM
+			(
+				SELECT
+					DATE_FORMAT(SUBDATE(z.closeTime,WEEKDAY(z.closeTime)), '%Y-%m-%d') closeTime,
+					COUNT(CASE WHEN z.subjective = 1 THEN 1 ELSE NULL END) subjectiveNum,
+					COUNT(CASE WHEN z.correctTime IS NOT NULL AND z.subjective = 1 AND z.roleId = 101 THEN 1 ELSE NULL END) teacherCorrectNum
+				FROM
+				(
+					<include refid="hwCommQuery"/>
+				)z GROUP BY DATE_FORMAT(SUBDATE(z.closeTime,WEEKDAY(z.closeTime)), '%Y-%m-%d')) p
+		)n
+		ON m.firstDate = n.closeTime
+	</select>
+	
+	<select id="findCorrectHWByMonth" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.teachingMonitor.CorrectHW">
+		SELECT
+		    m.startDate,
+		    m.startDate endDate,
+		    CONCAT_WS('/',m.startDate,m.endDate) dateStr,
+		    IFNULL(n.shouldCorrectNum, 0) shouldCorrectNum,
+		    IFNULL(n.actualCorrectNum, 0) actualCorrectNum,
+		    IFNULL(n.correctNumRate, 0) correctNumRate
+			FROM
+				(SELECT
+					p.startDate,
+					CASE
+				    WHEN DATE(#{endDate}) BETWEEN p.startDate AND p.endDate THEN
+					    DATE(#{endDate})
+				    ELSE
+					    p.endDate
+				  END endDate,
+				  DATE_FORMAT(DATE_ADD(p.startDate,INTERVAL -DAY(p.startDate) + 1 DAY), '%Y-%m-%d') firstDate
+				FROM
+					(SELECT t.*, 
+		              LAST_DAY(t.startDate) endDate 
+		         FROM (SELECT @d :=@d + 1 AS rn, DATE_ADD(#{startDate}, INTERVAL @d DAY) startDate FROM lesson.ls_dateAssistant,(SELECT @d := -1) b LIMIT #{limit}) t) p
+				    WHERE DATE_ADD(p.startDate,INTERVAL -DAY(p.startDate) + 1 DAY) = p.startDate
+				       OR p.startDate = DATE(#{startDate})) m
+		LEFT JOIN
+		(
+			SELECT
+		        p.closeTime,
+				p.subjectiveNum shouldCorrectNum,
+				p.teacherCorrectNum actualCorrectNum,
+				CONVERT(IF(p.subjectiveNum = 0, 0, ROUND(p.teacherCorrectNum / p.subjectiveNum * 100, 1)), DECIMAL(4,1)) correctNumRate
+			FROM
+			(
+				SELECT
+					DATE_FORMAT(DATE_ADD(z.closeTime,INTERVAL -DAY(z.closeTime) + 1 DAY), '%Y-%m-%d') closeTime,
+					COUNT(CASE WHEN z.subjective = 1 THEN 1 ELSE NULL END) subjectiveNum,
+					COUNT(CASE WHEN z.correctTime IS NOT NULL AND z.subjective = 1 AND z.roleId = 101 THEN 1 ELSE NULL END) teacherCorrectNum
+				FROM
+				(
+					<include refid="hwCommQuery"/>
+				)z GROUP BY DATE_FORMAT(DATE_ADD(z.closeTime, INTERVAL -DAY(z.closeTime) + 1 DAY), '%Y-%m-%d')) p
+		)n
+		ON m.firstDate = n.closeTime
+	</select>
+	
+	<select id="findCorrectHWByGrade" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.teachingMonitor.CorrectHW">
+		SELECT
+		    p.gradeId,
+		    p.gradeName,
+			p.subjectiveNum shouldCorrectNum,
+			p.teacherCorrectNum actualCorrectNum,
+			CONVERT(IF(p.subjectiveNum = 0, 0, ROUND(p.teacherCorrectNum / p.subjectiveNum * 100, 1)), DECIMAL(4,1)) correctNumRate
+		FROM
+		(
+			SELECT
+		        gradeId,
+		        gradeName,
+				COUNT(CASE WHEN z.subjective = 1 THEN 1 ELSE NULL END) subjectiveNum,
+				COUNT(CASE WHEN z.correctTime IS NOT NULL AND z.subjective = 1 AND z.roleId = 101 THEN 1 ELSE NULL END) teacherCorrectNum
+			FROM
+		    (
+				SELECT
+				    g.gradeId,
+		            g.gradeName,
+					h.subjective,
+					h.correctTime,
+					h.correctUserId,
+					h.roleId
+				FROM (<include refid="hwCommQuery"/>)h
+			    RIGHT JOIN tutor.tutor_grade g
+			    ON g.gradeId = h.gradeId
+			    WHERE EXISTS (SELECT 1 from tutor.tutor_school_stage s, tutor.tutor_schoolStage_grade t
+		                      WHERE s.schoolStageId = t.schoolStageId
+		                      AND g.gradeId = t.gradeId
+		                      AND s.schoolId = #{schoolId})
+		  )z GROUP BY z.gradeId)p
+	</select>
+	
+	<select id="findCorrectHWByAllSubject" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.teachingMonitor.CorrectHW">
+		SELECT
+		    p.subjectId,
+		    p.subjectName,
+			p.subjectiveNum shouldCorrectNum,
+			p.teacherCorrectNum actualCorrectNum,
+			CONVERT(IF(p.subjectiveNum = 0, 0, ROUND(p.teacherCorrectNum / p.subjectiveNum * 100, 1)), DECIMAL(4,1)) correctNumRate
+		FROM
+		(
+			SELECT
+		        subjectId,
+		        subjectName,
+				COUNT(CASE WHEN z.subjective = 1 THEN 1 ELSE NULL END) subjectiveNum,
+				COUNT(CASE WHEN z.correctTime IS NOT NULL AND z.subjective = 1 AND z.roleId = 101 THEN 1 ELSE NULL END) teacherCorrectNum
+			FROM
+		    (
+				SELECT
+				    g.subjectId,
+		            g.subjectName,
+					h.subjective,
+					h.correctTime,
+					h.correctUserId,
+					h.roleId
+				FROM (<include refid="hwCommQuery"/>)h
+		        RIGHT JOIN tutor.tutor_subject g
+			    ON g.subjectId = h.subjectId
+			    WHERE EXISTS (SELECT 1 from tutor.tutor_school_stage s, tutor.tutor_schoolStage_subject t
+			                   WHERE s.schoolStageId = t.schoolStageId
+			                   AND g.subjectId = t.subjectId
+			                   <if test="subjectId != null and subjectId != -1">
+							   AND g.subjectId = #{subjectId} 
+							   </if>
+			                   AND s.schoolId = #{schoolId})
+		  )z GROUP BY z.subjectId)p
+	</select>
+	
+	<select id="findCorrectHWByClazz" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.teachingMonitor.CorrectHW">
+		SELECT
+		    p.classId,
+		    p.className,
+			p.subjectiveNum shouldCorrectNum,
+			p.teacherCorrectNum actualCorrectNum,
+			CONVERT(IF(p.subjectiveNum = 0, 0, ROUND(p.teacherCorrectNum / p.subjectiveNum * 100, 1)), DECIMAL(4,1)) correctNumRate
+		FROM
+		(
+			SELECT
+			    classId,
+			    className,
+			    type,
+				COUNT(CASE WHEN z.subjective = 1 THEN 1 ELSE NULL END) subjectiveNum,
+				COUNT(CASE WHEN z.correctTime IS NOT NULL AND z.subjective = 1 AND z.roleId = 101 THEN 1 ELSE NULL END) teacherCorrectNum
+			FROM
+		    (
+				SELECT
+				    g.classId,
+				    g.className,
+				    g.type,
+					h.subjective,
+					h.correctTime,
+					h.correctUserId,
+					h.roleId
+				FROM (<include refid="hwCommQuery"/>)h
+			    RIGHT JOIN lesson.ls_klass g
+			    ON g.classId = h.classId
+			    WHERE g.schoolId = #{schoolId}
+			    AND g.gradeId = #{gradeId}
+			    <if test="subjectId != null and subjectId != -1">
+				AND EXISTS (SELECT 1 FROM ls_klass_subject e WHERE e.classId = g.classId AND e.subjectId = #{subjectId})
+				</if>
+			    AND g.isExpired = 0
+		    )z GROUP BY z.classId)p ORDER BY p.type, p.className
+	</select>
+	
+	<select id="findCorrectHWByGradeSubject" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.teachingMonitor.CorrectHW">
+		SELECT
+		    p.subjectId,
+		    p.subjectName,
+			p.subjectiveNum shouldCorrectNum,
+			p.teacherCorrectNum actualCorrectNum,
+			CONVERT(IF(p.subjectiveNum = 0, 0, ROUND(p.teacherCorrectNum / p.subjectiveNum * 100, 1)), DECIMAL(4,1)) correctNumRate
+		FROM
+		(
+			SELECT
+			    subjectId,
+			    subjectName,
+				COUNT(CASE WHEN z.subjective = 1 THEN 1 ELSE NULL END) subjectiveNum,
+				COUNT(CASE WHEN z.correctTime IS NOT NULL AND z.subjective = 1 AND z.roleId = 101 THEN 1 ELSE NULL END) teacherCorrectNum
+			FROM
+		    (
+				SELECT
+				    g.subjectId,
+				    g.subjectName,
+					h.subjective,
+					h.correctTime,
+					h.correctUserId,
+					h.roleId
+				FROM (<include refid="hwCommQuery"/>)h
+			    RIGHT JOIN tutor.tutor_subject g
+			    ON g.subjectId = h.subjectId
+		        WHERE EXISTS (SELECT 1 from tutor.tutor_school_stage s, tutor.tutor_schoolStage_subject t, tutor.tutor_schoolStage_grade e
+		                   WHERE s.schoolStageId = t.schoolStageId
+		                   AND s.schoolStageId = e.schoolStageId
+		                   AND g.subjectId = t.subjectId
+		                   <if test="subjectId != null and subjectId != -1">
+						   AND g.subjectId = #{subjectId} 
+						   </if>
+		                   AND e.gradeId = #{gradeId}
+		                   AND s.schoolId = #{schoolId})
+		    )z GROUP BY z.subjectId)p
+	</select>
+	
+	<select id="findCorrectHWByRank" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.teachingMonitor.CorrectHW">
+		SELECT
+			p.teacherId,
+			p.teacherName,
+			teacherCorrectNum,
+		    CONVERT(IF(p.shouldCorrectNum = 0, 0, ROUND(p.teacherCorrectNum / p.shouldCorrectNum * 100, 1)), DECIMAL(4,1)) correctNumRate
+		FROM
+		(
+			SELECT
+				teacherId,
+				teacherName,
+				COUNT(1) shouldCorrectNum,
+				COUNT(CASE WHEN z.correctTime IS NOT NULL AND z.subjective = 1 AND z.roleId = 101 THEN 1 ELSE NULL END) teacherCorrectNum
+			FROM
+		    (
+				<include refid="hwCommQuery"/>
+		    ) z GROUP BY z.teacherId) p
+	</select>
+	
+	<select id="findCorrectHWDtl" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.teachingMonitor.CorrectHW">
+		SELECT
+  		  m.*
+		FROM
+		(SELECT
+			p.teacherId,
+			p.teacherName,
+		    p.subjectId,
+		    p.subjectName,
+		    p.assignNum,
+		    p.subjectiveNum,
+		    p.objectiveNum,
+			p.autoCorrectNum,
+			CONVERT(IF(p.shouldCorrectNum = 0, 0, ROUND(p.autoCorrectNum / p.shouldCorrectNum * 100, 1)), DECIMAL(4,1)) autoCorrectNumRate,
+			p.teacherCorrectNum,
+			CONVERT(IF(p.shouldCorrectNum = 0, 0, ROUND(p.teacherCorrectNum / p.shouldCorrectNum * 100, 1)), DECIMAL(4,1)) teacherCorrectNumRate,
+			p.studentCorrectNum,
+			CONVERT(IF(p.shouldCorrectNum = 0, 0, ROUND(p.studentCorrectNum / p.shouldCorrectNum * 100, 1)), DECIMAL(4,1)) studentCorrectNumRate,
+		    p.notCorrectNum,
+			CONVERT(IF(p.shouldCorrectNum = 0, 0, ROUND(p.notCorrectNum / p.shouldCorrectNum * 100, 1)), DECIMAL(4,1)) notCorrectNumRate,
+			CONVERT(IF(p.shouldCorrectNum = 0, 0, ROUND((p.shouldCorrectNum - p.notCorrectNum) / p.shouldCorrectNum * 100, 1)), DECIMAL(4,1)) correctNumRate
+		FROM
+		(
+			SELECT
+				teacherId,
+				teacherName,
+		        subjectId,
+		    	subjectName,
+				COUNT(distinct z.homeworkId) assignNum,
+				COUNT(distinct CASE WHEN z.subjective = 1 THEN z.homeworkId ELSE NULL END) subjectiveNum,
+				COUNT(distinct CASE WHEN z.subjective = 0 THEN z.homeworkId ELSE NULL END) objectiveNum,
+				COUNT(1) shouldCorrectNum,
+				COUNT(CASE WHEN z.subjective = 0 THEN 1 ELSE NULL END) autoCorrectNum,
+				COUNT(CASE WHEN z.correctTime IS NOT NULL AND z.subjective = 1 AND z.roleId = 101 THEN 1 ELSE NULL END) teacherCorrectNum,
+				COUNT(CASE WHEN z.correctTime IS NOT NULL AND z.subjective = 1 AND z.roleId = 100 THEN 1 ELSE NULL END) studentCorrectNum,
+				COUNT(CASE WHEN z.correctTime IS NULL THEN 1 ELSE NULL END) notCorrectNum
+			FROM
+		    (
+				<include refid="hwCommQuery"/>
+		    ) z GROUP BY z.teacherId, z.subjectId) p)m 
+		    <if test="orderAttr != null and orderAttr != ''">
+			ORDER BY ${orderAttr} ${orderType}
+			</if>
+	</select>
+</mapper>   

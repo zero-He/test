@@ -1,0 +1,234 @@
+import React, {Component, PropTypes} from 'react';
+import ReactChart from '../../common/ReactChart';
+import ReactPieChart from '../../common/ReactPieChart';
+import {parseQuery} from '../actions';
+import Anchor from '../../common/Anchor';
+import Section from '../../common/Section';
+import {toFixed, toRate} from '../../utils/number';
+import {toLevel, toLevelName} from '../../utils/analyze';
+import {buildClassScoreBar, buildScoreTrend} from './ChartConfig';
+import SimpleTable from '../../common/SimpleTable';
+
+let anchor_items = [
+	{title: '成绩分析', link: 'ach_summary'},
+	{title: '班级成长走势', link: 'ach_trend'},
+	{title: '班级成绩排行', link: 'ach_ranklist'},
+	{title: '知识点掌握程度', link: 'ach_knorate'}
+];
+
+export default class AnalyseResult extends Component {
+    render() {
+        const {store, actions} = this.props;
+        const {view} = store.result;
+        return (
+            <section className="c-detail">
+                <SummaryInfo id="ach_summary" view={view} actions={actions} userName={store.control.userName} />
+				<ScoreTrendInfo id="ach_trend" view={view} actions={actions} />
+				<ScoreRankInfo id="ach_ranklist" view={view} actions={actions} control={store.control} />
+				<KnoScoreInfo id="ach_knorate" view={view} actions={actions} />
+				<Anchor items={anchor_items} />
+            </section>
+        );
+    }
+}
+
+class SummaryInfo extends Component {
+    render() {
+        const {view, actions, userName} = this.props;
+		const {avgScore, maxScore, minScore, totalNum, otherNum, levelA, levelB, levelC, levelD, levelE} = view.summary;
+		const total = totalNum - otherNum;
+        let dear = `敬爱的<span class="fc-green">${userName}</span>老师：`;
+        let text = `您好，在此期间，本班级的学科平均分为<span class="fc-green">${toFixed(avgScore, 1)}</span>分，最高分<span class="fc-green">${toFixed(maxScore, 1)}</span>分，`;
+        text += `最低分<span class="fc-orange">${toFixed(minScore, 1)}</span>分，班级整体表现<span class="fc-orange">${toLevelName(avgScore)}</span>；`;
+        text += `本班共有学生<span class="fc-green">${totalNum}</span>人，`;
+        text += `其中成绩优秀<span class="fc-green">${levelA}</span>人，占比<span class="fc-green">${toRate(levelA, total, 1)}%</span>，`;
+        text += `良好<span class="fc-green">${levelB}</span>人，占比<span class="fc-green">${toRate(levelB, total, 1)}%</span>，`;
+        text += `及格<span class="fc-green">${levelC}</span>人，占比<span class="fc-green">${toRate(levelC, total, 1)}%</span>，`;
+        text += `较差<span class="fc-orange">${levelD}</span>人，占比<span class="fc-orange">${toRate(levelD, total, 1)}%</span>，`;
+        text += `危险<span class="fc-orange">${levelE}</span>人，占比<span class="fc-orange">${toRate(levelE, total, 1)}%</span>。`;
+		const datas = [
+            { value : levelA, name : '优秀' },
+            { value : levelB, name : '良好' },
+            { value : levelC, name : '及格' },
+            { value : levelD, name : '较差' },
+            { value : levelE, name : '危险' }
+        ];
+		const summary = `有成绩总人数${levelA+levelB+levelC+levelD+levelE}人。`;
+        return (
+            <section id={this.props.id} className="ana-module">
+				<div className="title">成绩分析</div>
+                <div className="texts">
+                    <section dangerouslySetInnerHTML={{__html: dear}}></section>
+                    <section className="txt-idt" dangerouslySetInnerHTML={{__html: text}}></section>
+                </div>
+				<ReactChart className="maps" option={buildClassScoreBar(avgScore, maxScore, minScore)} />
+				<ReactPieChart datas={datas} summary={summary} unit="人" color={['#2fbd68', '#74d64b', '#5cc0ff', '#ffcd61', '#ff6661']} />
+            </section>
+        );
+    }
+}
+
+class ScoreTrendInfo extends Component {
+	constructor(props) {
+		super(props);
+		this.state = {
+			idx: 0
+		};
+	}
+	renderTabs(trends) {
+		if (!(trends && trends.length > 1)) {
+			return null;
+		}
+		let that = this;
+		let idx = this.state.idx;
+		return (
+			<div className="switch">
+			{trends.map((trend, i) => {
+				return <span key={i} className={idx == i ? 'cur' : ''} onClick={() => that.setState({idx: i})}>{trend.label}</span>
+			})}
+			</div>
+		);
+	}
+	render() {
+		let {trends, title} = this.props.view;
+		if (!(trends && trends.length)) {
+			return null;
+		}
+		let {names, selfs, klass} = trends[this.state.idx];
+		return (
+			<section id={this.props.id} className="ana-module">
+				<div className="title">班级成长走势{this.renderTabs(trends)}</div>
+				<ReactChart className="maps" style={{height: 180}} option={buildScoreTrend(names, selfs, klass)} />
+			</section>
+		);
+	}
+}
+
+class ScoreRankInfo extends React.Component {
+	static levelNames = ['优秀', '良好', '及格', '较差', '危险', '无成绩'];
+	markRankIndex(scoreRanks) {
+		let prev = 10000, index = 0;
+		for (var i = 0; i < scoreRanks.length; i++) {
+			let score = scoreRanks[i].score;
+			if (score != null) {
+				if (score < prev) {
+					index++;
+					prev = score;
+				}
+				scoreRanks[i].index = index;
+			} else {
+				scoreRanks[i].index = '--';
+			}
+			scoreRanks[i].level = toLevel(score);
+		}
+	}
+	render() {
+		const {view, control} = this.props;
+		const {scoreRanks, scope} = view;
+		if (scoreRanks == undefined || scoreRanks == null) {
+			return null;
+		}
+		this.markRankIndex(scoreRanks);
+		const query = parseQuery(control);
+		let columns = [
+			{ title: '名次', width: '15%', field: 'index' },
+			{ title: '姓名', width: '60%', field: (data, index) => {
+				if (data.level <= 5) {
+					return <a href={`klass-score-detail/${query.klassId}-${query.cycleId}-${data.userId}.htm?_newtab=1`}>{data.userName}</a>
+				}
+				return data.userName;
+			} },
+			{ title: '成绩', width: '25%', field: (data, index) => toFixed(data.score, 1) }
+		];
+
+		return (
+			<section id={this.props.id} className="ana-module">
+				<div className="title">班级成绩排行</div>
+				<div className="c-table">
+					<SimpleTable key="head" columns={columns} datas={[]} showHead={true} />
+					{ScoreRankInfo.levelNames.map((levelName, i) => {
+						let datas = scoreRanks.filter(v => v.level == i + 1);
+						var caption = <caption key={'t'+i} className={`r-${i + 1}`}>{`${levelName}(${datas.length}人)`}</caption>;
+						return <SimpleTable key={i} caption={caption} columns={columns} datas={datas} defVal="--" />;
+					})}
+				</div>
+			</section>
+		);
+	}
+}
+
+class KnoFilterBox extends Component {
+	constructor(props) {
+		super(props);
+		this.state = {
+			levels: props.levels || [1, 2, 3]
+		};
+	}
+	handleChange(val) {
+		let levels = this.state.levels;
+		if (levels.indexOf(val) >= 0) {
+			levels = levels.filter(v => v != val);
+		} else {
+			levels.push(val);
+		}
+		this.setState({ levels: levels });
+		if (this.props.onChange) {
+			this.props.onChange(levels);
+		}
+	}
+	render() {
+		let levels = this.state.levels;
+		return (
+			<ul className="filter">
+				<li className={levels.indexOf(1) >= 0 ? 'selected' : ''} onClick={this.handleChange.bind(this, 1)}><i className="icon"></i><span className="l-1"></span> 已掌握</li>
+				<li className={levels.indexOf(2) >= 0 ? 'selected' : ''} onClick={this.handleChange.bind(this, 2)}><i className="icon"></i><span className="l-2"></span> 掌握不牢</li>
+				<li className={levels.indexOf(3) >= 0 ? 'selected' : ''} onClick={this.handleChange.bind(this, 3)}><i className="icon"></i><span className="l-3"></span> 未掌握</li>
+			</ul>
+		);
+	}
+}
+
+class KnoScoreInfo extends React.Component {
+	static columns = [
+		{ title: '班级得分率', width: '50%', field: (item, index) => {return toFixed(item.classRate, 1) + '%';} },
+		{ title: '掌握程度', width: '50%', field: (item, index) => {return <span className={`l-${item.level}`}></span>;} }
+	];
+	constructor(props) {
+		super(props);
+		this.state = {
+			levels : [1, 2, 3]
+		};
+	}
+	resolveKnoRates(knoRates) {
+		knoRates.forEach(item => {
+			if (item.classRate >= 85) {
+				item.level = 1;
+			} else if (item.classRate >= 50) {
+				item.level = 2;
+			} else {
+				item.level = 3;
+			}
+		});
+	}
+	handleChangeLevel = (levels) => {
+		this.setState({levels: levels});
+	}
+	render() {
+		let levels = this.state.levels;
+		let {knoRates} = this.props.view;
+		if (!(knoRates && knoRates.length)) {
+			return null;
+		}
+		this.resolveKnoRates(knoRates);
+		knoRates = knoRates.filter(v => levels.indexOf(v.level) >= 0);
+		return (
+			<Section id={this.props.id} title="知识点掌握程度" help={`${Leke.domain.staticServerName}/pages/help-center/diag/zw-cd.html?_newtab=1`}>
+				<KnoFilterBox levels={levels} onChange={this.handleChangeLevel} />
+				<div className="c-table c-table-fixed">
+					<SimpleTable key="head" caption={<caption>知识点名称</caption>} columns={KnoScoreInfo.columns} datas={[]} showHead={true} />
+					{knoRates.map((data, i) => <SimpleTable key={i} caption={<caption>{data.name}</caption>} columns={KnoScoreInfo.columns} datas={[data]} defVal="--" />)}
+				</div>
+			</Section>
+		);
+	}
+}

@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8" ?>   
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.diag.dao.homework.mybatis.ReviewWorkStatDao">
+
+	<sql id="sql_lessonIds">
+		AND a.courseSingleId IN
+		<foreach collection="lessonIds" item="lessonId" separator="," open="(" close=")">
+			#{lessonId}
+		</foreach>
+	</sql>
+
+	<sql id="sql_usePhase">
+		<if test="phase == 1">
+		<![CDATA[
+		   AND a.usePhase = 1
+		]]>
+		</if>
+		<if test="phase == 3">
+		<![CDATA[
+		   AND a.usePhase >= 2
+		   AND a.resType != 2
+		   AND a.isSnapshot = 0
+		]]>
+		</if>
+	</sql>
+
+	<select id="findReviewResNumByLessonId" parameterType="map" resultType="int">
+		<![CDATA[
+		SELECT COUNT(*)
+		  FROM HW_HOMEWORK a
+		 WHERE a.isDeleted = 0
+		   AND a.status = 1
+		   AND a.courseSingleId = #{lessonId}
+		   AND a.resType = #{resType}
+		]]>
+		<include refid="sql_usePhase" />
+	</select>
+
+	<select id="findReviewUserIdsByLessonId" parameterType="map" resultType="long">
+		<![CDATA[
+		SELECT b.studentId userId
+		  FROM HW_HOMEWORK a
+		  JOIN HW_HOMEWORK_DTL b
+		    ON a.homeworkId = b.homeworkId
+		   AND b.isDeleted = 0
+		 WHERE a.isDeleted = 0
+		   AND a.status = 1
+		   AND a.courseSingleId = #{lessonId}
+		   AND a.resType = #{resType}
+		]]>
+		<include refid="sql_usePhase" />
+		<![CDATA[
+		 GROUP BY b.studentId
+		HAVING COUNT(a.homeworkId) = SUM(IF(b.submitStatus = 1, 1, 0))
+		]]>
+	</select>
+
+	<select id="findResReviewStateByStudentId" parameterType="map"
+		resultType="cn.strong.leke.diag.model.report.ResReviewState">
+		<![CDATA[
+		SELECT a.courseSingleId,
+		       COUNT(*) = COUNT(b.studentId) state
+		  FROM HW_HOMEWORK a
+		  LEFT JOIN HW_HOMEWORK_DTL b
+		    ON a.homeworkId = b.homeworkId
+		   AND b.studentId = #{studentId}
+		   AND b.submitStatus = 1
+		 WHERE a.isDeleted = 0
+		   AND a.status = 1
+		   AND a.resType = #{resType}
+		]]>
+		<include refid="sql_lessonIds" />
+		<include refid="sql_usePhase" />
+		<![CDATA[
+		 GROUP BY a.courseSingleId
+		]]>
+	</select>
+
+	<select id="getBeikeLessonNumByLessonIds" parameterType="map" resultType="int">
+		<![CDATA[
+		SELECT COUNT(DISTINCT courseSingleId) lessonNum
+		  FROM HW_HOMEWORK a
+		 WHERE a.isDeleted = 0
+		   AND a.status = 1
+		   AND a.isSnapshot = 0
+		]]>
+		<include refid="sql_lessonIds" />
+	</select>
+
+	<select id="findResTypeStatByLessonIds" parameterType="map"
+		resultType="cn.strong.leke.diag.dao.homework.model.ResTypeStat">
+		<![CDATA[
+		SELECT resType,
+			   COUNT(DISTINCT courseSingleId) lessonNum
+		  FROM HW_HOMEWORK a
+		 WHERE a.isDeleted = 0
+		   AND a.status = 1
+		   AND a.isSnapshot = 0
+		]]>
+		<include refid="sql_lessonIds" />
+		<![CDATA[
+		 GROUP BY a.resType
+		]]>
+	</select>
+
+	<select id="findTeacherReviewCountByLessonIds" parameterType="map" resultType="cn.strong.leke.diag.model.ReviewCount">
+		<![CDATA[
+		SELECT a.courseSingleId lessonId,
+			   count(*) num
+		  FROM HW_HOMEWORK a
+		 WHERE a.isDeleted = 0
+		   AND a.status = 1
+		]]>
+		<include refid="sql_lessonIds" />
+		<include refid="sql_usePhase" />
+		GROUP BY a.courseSingleId
+	</select>
+	
+	<select id="findStudentReviewCountByLessonIds" parameterType="map" resultType="cn.strong.leke.diag.model.ReviewCount">
+		<![CDATA[
+		SELECT a.courseSingleId lessonId,
+			   b.studentId userId,
+			   count(*) num
+		  FROM HW_HOMEWORK a
+		  JOIN HW_HOMEWORK_DTL b
+		    ON a.homeworkId = b.homeworkId
+		   AND b.isDeleted = 0
+		   AND b.submitStatus = 1
+		 WHERE a.isDeleted = 0
+		   AND a.status = 1
+		]]>
+		<if test="resType != null and resType > 0">
+		   AND a.resType = #{resType}
+		</if>
+		<include refid="sql_lessonIds" />
+		<include refid="sql_usePhase" />
+		GROUP BY a.courseSingleId, b.studentId
+	</select>
+
+	<select id="getStudentReviewCountByLessonIds" parameterType="map" resultType="cn.strong.leke.diag.model.ReviewCount">
+		<![CDATA[
+		SELECT a.courseSingleId lessonId,
+			   count(*) num
+		  FROM HW_HOMEWORK a
+		  JOIN HW_HOMEWORK_DTL b
+		    ON a.homeworkId = b.homeworkId
+		   AND b.isDeleted = 0
+		   AND b.submitStatus = 1
+		   AND b.studentId = #{userId}
+		 WHERE a.isDeleted = 0
+		   AND a.status = 1
+		]]>
+		<if test="resType != null and resType > 0">
+		   AND a.resType = #{resType}
+		</if>
+		<include refid="sql_lessonIds" />
+		<include refid="sql_usePhase" />
+		GROUP BY a.courseSingleId
+	</select>
+
+</mapper>   

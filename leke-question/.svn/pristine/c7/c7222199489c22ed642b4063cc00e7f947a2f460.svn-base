@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.1//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.question.dao.mybatis.QuestionTypeDao">
+
+	<select id="findAllQuestionTypes"
+		resultType="cn.strong.leke.model.question.QuestionType">
+		SELECT 
+			questionTypeId, questionTypeName, hasSub, subjective, template
+		FROM que_question_type
+	</select>
+	
+	<select id="findQuestionTypesBySubjectId" parameterType="long"
+		resultType="cn.strong.leke.model.question.QuestionType">
+		SELECT 
+			a.questionTypeId, a.questionTypeName, a.hasSub, a.subjective, a.template, b.ord
+		FROM que_question_type a, que_subject_question_type b
+		<where>
+			a.questionTypeId = b.questionTypeId
+			AND b.subjectId = #{subjectId}
+		</where>
+		ORDER BY b.ord ASC
+	</select>
+	
+	<select id="findSubTypesByQuestionTypeId" parameterType="long"
+		resultType="cn.strong.leke.model.question.QuestionType">
+		SELECT 
+			a.questionTypeId, a.questionTypeName, a.hasSub, a.subjective, a.template, b.ord
+		FROM que_question_type a, que_question_type_sub b
+		<where>
+			a.questionTypeId = b.subTypeId
+			AND b.questionTypeId = #{questionTypeId}
+		</where>
+		ORDER BY b.ord ASC
+	</select>
+	
+	<select id="findAllSubjectQueTypes"
+		resultType="cn.strong.leke.question.model.SubjectQueType">
+		SELECT 
+			a.questionTypeId, a.questionTypeName, a.hasSub, a.subjective, a.template, b.ord, b.subjectId
+		FROM que_question_type a, que_subject_question_type b
+		<where>
+			a.questionTypeId = b.questionTypeId
+		</where>
+		ORDER BY b.subjectId ASC, b.ord ASC
+	</select>
+	
+	<select id="findSimilarQuestionTypes" parameterType="cn.strong.leke.question.model.SimilarQueTypeQuery"
+		resultType="cn.strong.leke.model.question.QuestionType">
+		SELECT 
+			a.questionTypeId, a.questionTypeName, a.hasSub, a.subjective, a.template, b.ord
+		FROM que_question_type a, que_subject_question_type b, que_question_type c
+		WHERE a.questionTypeId = b.questionTypeId
+		AND c.questionTypeId = #{questionTypeId}
+		AND a.template = c.template
+		AND b.subjectId = #{subjectId}
+		ORDER BY b.subjectId ASC, b.ord ASC
+	</select>
+	
+	<select id="findQuestionTypesByHasSub"
+		resultType="cn.strong.leke.model.question.QuestionType">
+		SELECT 
+			questionTypeId, questionTypeName, hasSub, subjective, template
+		FROM que_question_type
+		WHERE hasSub=#{IsHasSub}
+	</select>
+</mapper>

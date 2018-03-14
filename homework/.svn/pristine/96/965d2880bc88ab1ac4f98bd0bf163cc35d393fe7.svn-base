@@ -1,0 +1,57 @@
+package cn.strong.leke.homework.controller;
+
+import static java.util.stream.Collectors.toList;
+
+import java.util.List;
+
+import javax.annotation.Resource;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.RequestMapping;
+
+import cn.strong.leke.common.utils.CollectionUtils;
+import cn.strong.leke.context.user.UserContext;
+import cn.strong.leke.homework.model.LayerClazz;
+import cn.strong.leke.model.paper.PaperQuery;
+import cn.strong.leke.model.user.User;
+import cn.strong.leke.remote.model.user.ClazzGroupRemote;
+import cn.strong.leke.remote.service.lesson.IStudentGroupRemoteService;
+
+@Controller
+@RequestMapping("/auth/hd/**")
+public class HDHomeworkController {
+
+	@Resource
+	private IStudentGroupRemoteService studentGroupRemoteService;
+	
+	@RequestMapping("teacher/assignHomework")
+	public String assignHomework(Model model) {
+		model.addAttribute("shareScopeList", PaperQuery.ShareScope.values());
+		User user = UserContext.user.get();
+		List<ClazzGroupRemote> clazzList = studentGroupRemoteService.findClazzGroupByTeacherId(user.getId());
+		List<LayerClazz> classes = clazzList.stream().map(v -> {
+			LayerClazz clazz = new LayerClazz();
+			clazz.setClassId(v.getClassId());
+			clazz.setClassName(v.getClassName());
+			clazz.setClassType(v.getType());
+			if (CollectionUtils.isNotEmpty(v.getStudentGroupList())) {
+				clazz.setGroups(v.getStudentGroupList().stream().map(g -> {
+					LayerClazz.Group group = new LayerClazz.Group();
+					group.setGroupId(g.getGroupId());
+					group.setGroupName(g.getGroupName());
+					return group;
+				}).collect(toList()));
+			}
+			return clazz;
+		}).sorted((a, b) -> {
+			int result = Integer.compare(a.getClassType(), b.getClassType());
+			if (result == 0) {
+				result = Long.compare(b.getClassId(), a.getClassId());
+			}
+			return result;
+		}).collect(toList());
+		model.addAttribute("classes", classes);
+		return "auth/hd/homework/assignHomework";
+	}
+}

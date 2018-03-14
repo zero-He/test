@@ -1,0 +1,70 @@
+package cn.strong.leke.diag.report.stat;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.stereotype.Component;
+
+import cn.strong.leke.common.serialize.support.json.JsonUtils;
+import cn.strong.leke.common.utils.CollectionUtils;
+import cn.strong.leke.diag.model.StudentAnswer;
+import cn.strong.leke.diag.model.WorkStats;
+import cn.strong.leke.model.question.AnswerResult;
+import cn.strong.leke.model.question.QuestionDTO;
+
+/**
+ * 生成填空题分析数据格式。
+ * 格式：
+ * <pre>
+ * [{right:32,wrong:21},{right:32,wrong:21},{right:21,wrong:34},{right:41,wrong:4},
+ *  {right:35,wrong:8},{right:34,wrong:12},{right:29,wrong:15},{right:31,wrong:10}]
+ * </pre>
+ * @author  andy
+ * @created 2014年8月7日 下午2:48:35
+ * @since   v1.0.0
+ */
+@Component("stat_FillBlank")
+public class FillBlankStatAnalyzer implements QuestionStatAnalyzer {
+
+	@Override
+	public void analyze(QuestionDTO questionDTO, List<StudentAnswer> stuAnswerList, WorkStats workStats) {
+		int answerSize = questionDTO.getAnswers().size();
+		int[] rightCounters = new int[answerSize];
+		int[] wrongCounters = new int[answerSize];
+
+		for (StudentAnswer stuAnswer : stuAnswerList) {
+			List<AnswerResult> answerResults = stuAnswer.getQuestionResult().getAnswerResults();
+			if (answerResults.size() != questionDTO.getAnswers().size()) {
+				continue;
+			}
+			if (CollectionUtils.isEmpty(answerResults)) {
+				for (int i = 0; i < answerSize; i++) {
+					wrongCounters[i]++;
+				}
+				continue;
+			}
+
+			for (int i = 0; i < answerSize; i++) {
+				AnswerResult answerResult = answerResults.get(i);
+				if (answerResult.getIsRight() != null) {
+					if (answerResult.getIsRight()) {
+						rightCounters[i]++;
+					} else {
+						wrongCounters[i]++;
+					}
+				}
+			}
+		}
+
+		List<Map<String, Object>> datas = new ArrayList<Map<String, Object>>();
+		for (int i = 0; i < answerSize; i++) {
+			Map<String, Object> item = new HashMap<String, Object>();
+			item.put("right", rightCounters[i]);
+			item.put("wrong", wrongCounters[i]);
+			datas.add(item);
+		}
+		workStats.getCharts().add(new WorkStats.Chart(questionDTO.getQuestionId(), JsonUtils.toJSON(datas)));
+	}
+}

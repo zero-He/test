@@ -1,0 +1,329 @@
+/*
+ * Copyright (c) 2014 Strong Group - 版权所有
+ * 
+ * This software is the confidential and proprietary information of
+ * Strong Group. You shall not disclose such confidential information 
+ * and shall use it only in accordance with the terms of the license 
+ * agreement you entered into with www.cnstrong.cn.
+ */
+package cn.strong.leke.homework.model;
+
+import java.math.BigDecimal;
+import java.util.Date;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
+import cn.strong.leke.common.utils.DateUtils;
+
+/**
+ *
+ * 描述:
+ *
+ * @author  DuanYanming
+ * @created 2014年9月18日 下午6:15:31
+ * @since   v1.0.0
+ */
+public class StuHwByDayDTO {
+
+	// 老师作业ID
+	private Long homeworkId;
+	// 老师标识
+	private String teacherName;
+	// 试卷标识
+	private Long paperId;
+	// 作业状态，1：正常，2：作废
+	private Integer status;
+	// 学科标识
+	private Long subjectId;
+	// 年级学科名称
+	private String subjectName;
+	// 班级名称
+	private String className;
+	// 课程名称
+	private String courseName;
+	// 作业名称
+	private String homeworkName;
+	// 作业类型
+	private Integer homeworkType;
+	// 开始时间
+	private Date startTime;
+	// 截止时间
+	private Date closeTime;
+	// 主观性
+	private Boolean subjective;
+	// 统计状态
+	private Integer statsStatus;
+	// 平均分
+	private BigDecimal avgScore;
+	// 学生作业标识
+	private Long homeworkDtlId;
+	// 学生ID
+	private Long studentId;
+	// 学生姓名
+	private String studentName;
+	//	作业提交状态，0：未提交，1：正常提交，2：延迟提交
+	private Integer submitStatus;
+	//	批改时间，如果为空表示未批改。格式：yyyy-MM-dd HH:mm:ss
+	private Date correctTime;
+	//	音频文件地址，老师语音点评
+	private String soundFile;
+	//	得分，如果作业未提交时，为空值；已提交且未批改时，为客观题得分；已批改时为作业得分。注意：这个数保留两位小数，显示时要保留一位小数
+	private BigDecimal score;
+	//是否公布答案
+	private Boolean isOpenAnswer;
+	//是否自行校对
+	private Boolean isSelfCheck;
+	//订正状态
+	private Integer bugFixStage;
+	
+	/**
+	 * 作业用时（秒数）
+	 */
+	private Integer usedTime;
+
+	public Long getHomeworkId() {
+		return homeworkId;
+	}
+
+	public void setHomeworkId(Long homeworkId) {
+		this.homeworkId = homeworkId;
+	}
+
+	public String getHomeworkType() {
+		if (homeworkType.equals(1)) {
+			return "预习作业";
+		} else if (homeworkType.equals(2)) {
+			return "随堂作业";
+		} else if (homeworkType.equals(3)) {
+			return "课后作业";
+		} else if (homeworkType.equals(4)) {
+			return "阶段作业";
+		}
+		return "";
+	}
+
+	public String getTeacherName() {
+		return teacherName;
+	}
+
+	public void setTeacherName(String teacherName) {
+		this.teacherName = teacherName;
+	}
+
+	public Long getPaperId() {
+		return paperId;
+	}
+
+	public void setPaperId(Long paperId) {
+		this.paperId = paperId;
+	}
+
+	public Long getSubjectId() {
+		return subjectId;
+	}
+
+	public void setSubjectId(Long subjectId) {
+		this.subjectId = subjectId;
+	}
+
+	public String getSubjectName() {
+		return subjectName;
+	}
+
+	public void setSubjectName(String subjectName) {
+		this.subjectName = subjectName;
+	}
+
+	public String getClassName() {
+		return className;
+	}
+
+	public void setClassName(String className) {
+		this.className = className;
+	}
+
+	public String getCourseName() {
+		return courseName;
+	}
+
+	public void setCourseName(String courseName) {
+		this.courseName = courseName;
+	}
+
+	public String getHomeworkName() {
+		return homeworkName;
+	}
+
+	public void setHomeworkName(String homeworkName) {
+		this.homeworkName = homeworkName;
+	}
+
+	public void setHomeworkType(Integer homeworkType) {
+		this.homeworkType = homeworkType;
+	}
+
+	@JsonFormat(pattern = DateUtils.LONG_DATE_PATTERN)
+	public Date getStartTime() {
+		return this.startTime;
+	}
+
+	public void setStartTime(Date startTime) {
+		this.startTime = startTime;
+	}
+
+	@JsonFormat(pattern = DateUtils.LONG_DATE_PATTERN)
+	public Date getCloseTime() {
+		return this.closeTime;
+	}
+
+	public void setCloseTime(Date closeTime) {
+		this.closeTime = closeTime;
+	}
+
+	public Boolean getSubjective() {
+		return subjective;
+	}
+
+	public void setSubjective(Boolean subjective) {
+		this.subjective = subjective;
+	}
+
+	@JsonIgnore
+	public Integer getStatsStatus() {
+		return statsStatus;
+	}
+
+	public void setStatsStatus(Integer statsStatus) {
+		this.statsStatus = statsStatus;
+	}
+
+	public BigDecimal getAvgScore() {
+		return avgScore;
+	}
+
+	public void setAvgScore(BigDecimal avgScore) {
+		this.avgScore = avgScore;
+	}
+
+	public Long getHomeworkDtlId() {
+		return homeworkDtlId;
+	}
+
+	public void setHomeworkDtlId(Long homeworkDtlId) {
+		this.homeworkDtlId = homeworkDtlId;
+	}
+
+	public Long getStudentId() {
+		return studentId;
+	}
+
+	public void setStudentId(Long studentId) {
+		this.studentId = studentId;
+	}
+
+	public String getStudentName() {
+		return studentName;
+	}
+
+	public void setStudentName(String studentName) {
+		this.studentName = studentName;
+	}
+
+	public Integer getSubmitStatus() {
+		return submitStatus;
+	}
+
+	public void setSubmitStatus(Integer submitStatus) {
+		this.submitStatus = submitStatus;
+	}
+
+	@JsonFormat(pattern = DateUtils.LONG_DATE_PATTERN)
+	public Date getCorrectTime() {
+		return this.correctTime;
+	}
+
+	public void setCorrectTime(Date correctTime) {
+		this.correctTime = correctTime;
+	}
+
+	public String getSoundFile() {
+		return soundFile;
+	}
+
+	public void setSoundFile(String soundFile) {
+		this.soundFile = soundFile;
+	}
+
+	public BigDecimal getScore() {
+		return score;
+	}
+
+	public void setScore(BigDecimal score) {
+		this.score = score;
+	}
+
+	public Integer getStatus() {
+		return status;
+	}
+
+	public void setStatus(Integer status) {
+		this.status = status;
+	}
+
+	/**
+	 * @return the isOpenAnswer
+	 */
+	public Boolean getIsOpenAnswer() {
+		return isOpenAnswer;
+	}
+
+	/**
+	 * @param isOpenAnswer the isOpenAnswer to set
+	 */
+	public void setIsOpenAnswer(Boolean isOpenAnswer) {
+		this.isOpenAnswer = isOpenAnswer;
+	}
+
+	/**
+	 * @return the isSelfCheck
+	 */
+	public Boolean getIsSelfCheck() {
+		return isSelfCheck;
+	}
+
+	/**
+	 * @param isSelfCheck the isSelfCheck to set
+	 */
+	public void setIsSelfCheck(Boolean isSelfCheck) {
+		this.isSelfCheck = isSelfCheck;
+	}
+
+	/**
+	 * @return the bugFixStage
+	 */
+	public Integer getBugFixStage() {
+		return bugFixStage;
+	}
+
+	/**
+	 * @param bugFixStage the bugFixStage to set
+	 */
+	public void setBugFixStage(Integer bugFixStage) {
+		this.bugFixStage = bugFixStage;
+	}
+
+	/**
+	 * @return the usedTime
+	 */
+	public Integer getUsedTime() {
+		return usedTime;
+	}
+
+	/**
+	 * @param usedTime the usedTime to set
+	 */
+	public void setUsedTime(Integer usedTime) {
+		this.usedTime = usedTime;
+	}
+}

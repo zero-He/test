@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8" ?>   
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.diag.dao.note.mybatis.NoteBookDao">
+
+	<select id="findNoteReadUserIdByLessonId" parameterType="long" resultType="long">
+	<![CDATA[
+		SELECT DISTINCT a.createdBy
+		  FROM note_summary a
+		  JOIN note_read_record b
+		    ON a.noteCsId = b.noteCsId
+		 WHERE csId = #{courseSingleId}
+	]]>
+	</select>
+
+	<select id="findResReviewStateByCourseSingleId" parameterType="map"
+		resultType="cn.strong.leke.diag.model.report.ResReviewState">
+	<![CDATA[
+		SELECT a.createdBy studentId, IF(COUNT(b.noteCsId) > 0, 1, 0) state
+		  FROM note_summary a
+		  LEFT JOIN note_read_record b
+		    ON a.noteCsId = b.noteCsId
+		 WHERE a.csId = #{courseSingleId}
+		 GROUP BY a.createdBy
+	]]>
+	</select>
+
+	<select id="findResReviewStateByStudentId" parameterType="map"
+		resultType="cn.strong.leke.diag.model.report.ResReviewState">
+	<![CDATA[
+		SELECT a.csId courseSingleId, IF(COUNT(b.noteCsId) > 0, 1, 0) state
+		  FROM note_summary a
+		  LEFT JOIN note_read_record b
+		    ON a.noteCsId = b.noteCsId
+		 WHERE a.createdBy = #{studentId}
+		   AND a.csId IN
+	]]>
+		<foreach collection="courseSingleIds" item="courseSingleId" separator="," open="(" close=")">
+			#{courseSingleId}
+		</foreach>
+	<![CDATA[
+		 GROUP BY a.csId
+	]]>
+	</select>
+
+	<select id="getStudentWriteNoteNumByTime" parameterType="map" resultType="int">
+	<![CDATA[
+		SELECT COUNT(*)
+		  FROM note_summary
+		 WHERE (noteType != 1 OR idType != 1)
+		   AND createdBy = #{studentId}
+		   AND createdOn >= #{start}
+		   AND createdOn <= #{end}
+	]]>
+	</select>
+
+	<select id="findStudentReviewCountByCourseSingleId" parameterType="map"
+		resultType="cn.strong.leke.diag.model.ReviewCount">
+	<![CDATA[
+		SELECT a.createdBy userId,
+		       a.csId lessonId,
+		       IF(COUNT(b.noteCsId) > 0, 1, 0) num
+		  FROM note_summary a
+		  LEFT JOIN note_read_record b
+		    ON a.noteCsId = b.noteCsId
+		 WHERE a.isDeleted = 0
+		   AND a.csId IN
+	]]>
+		<foreach collection="courseSingleIds" item="courseSingleId" separator="," open="(" close=")">
+			#{courseSingleId}
+		</foreach>
+	<![CDATA[
+		 GROUP BY a.createdBy, a.csId
+	]]>
+	</select>
+
+</mapper>   

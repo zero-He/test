@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.question.dao.mybatis.question.IQuestionCheckPendingDao">
+
+	<insert id="add" useGeneratedKeys="true" keyProperty="questionCheckPendingId"
+		parameterType="cn.strong.leke.question.model.question.QuestionCheckPending">
+		INSERT INTO que_question_check_pending(
+			questionId,schoolStageId,subjectId,isDeleted
+		) VALUES (
+			#{questionId},#{schoolStageId},#{subjectId},0
+		)
+	</insert>
+	
+	<select id="queryResearcherQuestionIdList" resultType="long" 
+		parameterType="cn.strong.leke.question.model.ResearcherQuestionQuery">
+		SELECT DISTINCT a.questionId FROM que_question_check_pending a
+		WHERE a.isDeleted = 0
+		<if test="schoolStageId != null">AND a.schoolStageId = #{schoolStageId}</if>
+		<if test="subjectId != null">AND a.subjectId = #{subjectId}</if>
+		ORDER BY a.questionId DESC
+	</select>
+	
+	<update id="del" parameterType="long">
+		UPDATE que_question_check_pending SET isDeleted = 1 WHERE questionId = #{questionId}
+	</update>
+
+</mapper>

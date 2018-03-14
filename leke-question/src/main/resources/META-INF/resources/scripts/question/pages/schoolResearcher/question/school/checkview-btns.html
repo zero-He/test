@@ -1,0 +1,31 @@
+<div class="previewoperation">
+	<div data-bind="visible: !fold()">
+		<ul>
+			<li data-bind="click: doPass">
+				通过
+			</li>
+			<li data-bind="click: doReject">
+				不通过
+			</li>
+			<li data-bind="click: openEditOutlineNode">
+				<i class="edit"></i> 编辑章节
+			</li>
+			<li data-bind="click: openEditDialog">
+				<i class="edit"></i> 编辑内容
+			</li>
+			<li data-bind="click: function() {
+				window.close();
+			}">
+				<i class="closingwin"></i> 退出预览
+			</li>
+		</ul>
+		<i class="close" data-bind="click: function() {
+			fold(true);
+		}">收起</i>
+	</div>
+	<i class="open" data-bind="style: {
+		display: fold() ? 'block' : 'none'
+	}, click: function() {
+		fold(false);
+	}">展开</i>
+</div>

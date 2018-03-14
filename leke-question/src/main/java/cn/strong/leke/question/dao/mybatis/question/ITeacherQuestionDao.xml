@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8" ?>   
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.question.dao.mybatis.question.ITeacherQuestionDao">
+
+	<insert id="addFavorite" parameterType="map">
+		INSERT INTO que_teacher_question (
+			questionId, teacherId,
+			isDeleted, createdBy, createdOn, modifiedBy, modifiedOn
+		) VALUES (
+			#{questionId}, #{userId},
+			0, #{userId}, now(), #{userId}, now()
+		)
+	</insert>
+	
+	<update id="deleteFavorites" parameterType="map">
+		UPDATE que_teacher_question
+		<set>
+			isDeleted = 1,
+			modifiedBy = #{userId},
+			modifiedOn = now()
+		</set>
+		<where>
+			teacherId = #{userId}
+			AND isDeleted = 0
+			AND questionId IN
+			<foreach collection="questionIds" item="item" open="(" close=")" separator=",">
+				#{item}
+			</foreach>
+		</where>
+	</update>
+	
+	<select id="countFavorite" resultType="_int" parameterType="map">
+		SELECT count(*)
+		FROM que_teacher_question
+		<where>
+			questionId = #{questionId}
+			AND teacherId = #{userId}
+			AND isDeleted = 0
+		</where>
+	</select>
+	
+	<select id="filterFavoriteQuestions" resultType="_long">
+		SELECT questionId
+		FROM que_teacher_question
+		<where>
+			teacherId = #{userId}
+			AND isDeleted = 0
+			AND questionId 
+			IN <foreach collection="questionIds" item="questionId" separator="," open="(" close=")">
+				#{questionId}
+			</foreach>
+		</where>
+	</select>
+</mapper>

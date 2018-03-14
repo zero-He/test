@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.1//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.question.dao.mybatis.QuestionStemDao">
+
+	<insert id="insertQuestionStem" useGeneratedKeys="true" keyProperty="questionStemId"
+		parameterType="cn.strong.leke.model.question.QuestionStem">
+		INSERT INTO que_question_stem(
+			questionId, stemContent, isFbUnord, isDeleted
+		) VALUES (
+			#{questionId}, #{stemContent}, #{isFbUnord}, 0
+		)
+	</insert>
+	
+	<update id="deleteQuestionStemByQuestionId" parameterType="long">
+		UPDATE que_question_stem
+		<set>
+			isDeleted = 1
+		</set>
+		<where>
+			questionId= #{questionId}
+			AND isDeleted = 0
+		</where>
+	</update>
+	
+	<select id="findQuestionStemByQuestionId" parameterType="long"
+		resultType="cn.strong.leke.model.question.QuestionStem">
+		SELECT *
+		FROM que_question_stem
+		<where>
+			questionId = #{questionId}
+			AND isDeleted = 0
+		</where>
+	</select>
+	
+	<update id="updateQuestionStem" parameterType="cn.strong.leke.model.question.QuestionStem">
+		UPDATE que_question_stem
+		<set>
+			<if test="isFbUnord != null">
+			isFbUnord = #{isFbUnord},
+			</if>
+			stemContent = #{stemContent}
+		</set>
+		<where>
+			questionStemId= #{questionStemId}
+		</where>
+	</update>
+</mapper>

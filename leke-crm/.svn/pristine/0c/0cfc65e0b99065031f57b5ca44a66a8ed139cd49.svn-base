@@ -1,0 +1,49 @@
+
+<div>
+	<div style="margin: 30px;">
+		<table style="width: 100%;">
+			<tr>
+				<td>可用点数：<span id="jPointUnable">0</span></td>
+				<td>总点数：<span id="jPointTotal">0</span></td>
+			</tr>
+		</table>
+	</div>
+	<div style="font-size:16px; margin: 10px 0;">变化记录</div>
+	<form id="jPointPageForm" action="" method="post" class="m-search-box">
+		<label class="title">变化类型：</label>
+		<select name="changeType" class="u-select u-select-nm">
+			<option value="">全部</option>
+			<option value="1001">充值</option>
+			<option value="1101">赠送</option>
+			<option value="2001">扣除</option>
+		</select>
+		<label class="title">查询时间：</label>
+		<input type="text" id="jPointStartTime" name="startTime" class="u-ipt u-ipt-nm Wdate">
+		-
+		<input type="text" id="jPointEndTime" name="endTime" class="u-ipt u-ipt-nm Wdate">
+		<input type="hidden" id="jPointBookId" name="bookId" value="">
+		<input type="button" class="u-btn u-btn-nm u-btn-bg-turquoise" id="jPointPageSearch" value="查询">
+	</form>
+	<div class="m-table m-table-center">
+		<table>
+			<thead id="jPointPageHead">
+				<tr>
+					<th>变化时间</th>
+					<th>变化类型</th>
+					<th>变化点数</th>
+				</tr>
+			</thead>
+			<tbody id="jPointPageBody"></tbody>
+		</table>
+		<div id="jPointPageFoot" class="page"></div>
+	</div>
+</div>
+<script id="jPointPageTpl" type="text/handlebars">
+{{#dataList}}
+<tr>
+	<td>{{fmt createdOn 'yyyy-MM-dd HH:mm:ss'}}</td>
+	<td>{{map changeType '{"1001":"充值", "1101":"赠送", "2001":"扣除"}'}}{{#if remark}}（{{remark}}）{{/if}}</td>
+	<td>{{amount}}</td>
+</tr>
+{{/dataList}}
+</script>

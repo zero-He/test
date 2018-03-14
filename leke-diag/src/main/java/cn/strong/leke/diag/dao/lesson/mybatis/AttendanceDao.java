@@ -1,0 +1,92 @@
+package cn.strong.leke.diag.dao.lesson.mybatis;
+
+import java.util.List;
+
+import org.apache.ibatis.annotations.Param;
+
+import cn.strong.leke.diag.dao.lesson.model.AttendStatInfo2;
+import cn.strong.leke.diag.dao.lesson.model.UserAttendInfo;
+import cn.strong.leke.diag.model.UserRate;
+import cn.strong.leke.lessonlog.model.AttendStatInfo;
+
+public interface AttendanceDao {
+
+	/**
+	 * 判断单课是否生成了考勤
+	 * @param courseSingleId
+	 * @return
+	 */
+	public Boolean checkHasAttendByCourseSingleId(Long courseSingleId);
+
+	/**
+	 * 查询单课考勤统计信息
+	 * @param courseSingleId
+	 * @return
+	 */
+	public AttendStatInfo getAttendStatInfoByCourseSingleId(Long courseSingleId);
+
+	/**
+	 * 查询学生考勤信息。
+	 * @param studentId
+	 * @param courseSingleIds
+	 * @return
+	 */
+	public AttendStatInfo2 getAttendStatInfoByStudentId(@Param("studentId") Long studentId,
+			@Param("courseSingleIds") List<Long> courseSingleIds);
+
+	/**
+	 * 根据单课统计所有学生的考勤(人次统计)
+	 * @param courseSingleIds
+	 * @return
+	 */
+	public AttendStatInfo2 getAttendStatInfoByCourseSingleIds(@Param("courseSingleIds") List<Long> courseSingleIds);
+
+	/**
+	 * 根据单课统计所有学生的考勤(人次统计)
+	 * @param courseSingleIds
+	 * @return
+	 */
+	public List<UserAttendInfo> findUserAttendInfoByCourseSingleIds(
+			@Param("courseSingleIds") List<Long> courseSingleIds);
+
+	/**
+	 * 获取单课某个状态的学生名单
+	 * @param courseSingleId
+	 * @param status
+	 * @return
+	 */
+	public List<String> findNamesByCourseSingleIdAndStatus(@Param("courseSingleId") Long courseSingleId,
+			@Param("status") Integer status);
+
+	/**
+	 * 过滤没有考勤的课堂ID
+	 * @param courseSingleIds
+	 * @return
+	 */
+	public List<Long> filterNotAttendCourseSingleIds(@Param("courseSingleIds") List<Long> courseSingleIds);
+
+	/**
+	 * 根据单课查询老师考勤统计。
+	 * @param teacherId
+	 * @param courseSingleIds
+	 * @return
+	 */
+	public AttendStatInfo2 getTeachAttendStatInfoByCourseSingleIds(
+			@Param("courseSingleIds") List<Long> courseSingleIds);
+
+	/**
+	 * 查询学生全勤比率
+	 * @param userId 学生ID
+	 * @param courseSingleIds
+	 * @return
+	 */
+	public Integer getUserRateByCourseSingleIds(@Param("userId") Long userId,
+			@Param("courseSingleIds") List<Long> courseSingleIds);
+
+	/**
+	 * 查询单课下学生全勤比率
+	 * @param courseSingleIds
+	 * @return
+	 */
+	public List<UserRate> findUserRateByCourseSingleIds(@Param("courseSingleIds") List<Long> courseSingleIds);
+}

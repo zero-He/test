@@ -1,0 +1,249 @@
+import React, {Component, PropTypes} from 'react';
+import ReactChart from '../../common/ReactChart';
+import ReactPieChart from '../../common/ReactPieChart';
+import Anchor from '../../common/Anchor';
+import Section from '../../common/Section';
+import {toFixed, toRate} from '../../utils/number';
+
+let anchor_items = [
+	{title: '回到顶部', link: 'ach_summary'},
+	{title: '备课', link: 'ach_beike'},
+	{title: '课堂评价', link: 'ach_evaluate'},
+	{title: '课堂互动', link: 'ach_interact'},
+	{title: '作业批改', link: 'ach_workfinish'},
+	{title: '考勤', link: 'ach_attend'}
+];
+
+export default class AnalyseResult extends Component {
+    render() {
+        const {store, actions} = this.props;
+        const {view} = store.result;
+        return (
+            <section className="c-detail">
+                <SummaryInfo id="ach_summary" view={view} actions={actions} />
+                <BeikeInfo id="ach_beike" view={view} actions={actions} />
+                <EvaluateInfo id="ach_evaluate" view={view} actions={actions} />
+                <InteractInfo id="ach_interact" view={view} actions={actions} />
+                <WorkFinishInfo id="ach_workfinish" view={view} actions={actions} />
+                <AttendInfo id="ach_attend" view={view} actions={actions} />
+                <Anchor items={anchor_items} />
+            </section>
+        );
+    }
+}
+
+class SummaryInfo extends Component {
+    render() {
+        const {view, actions, userName} = this.props;
+        const {beikeInfo, evalInfo, attendInfo, interactInfo, workInfo} = view;
+        const beikeRate = toRate(beikeInfo.beikeNum, beikeInfo.totalNum);
+        const evalScore = toFixed((evalInfo.interactionScore + evalInfo.professionalScore + evalInfo.rhythmScore) / 3, 1);
+        const {totalDtlNum, checkDtlNum} = workInfo;
+        let dear = `敬爱的<span class="fc-green">${view.userName}</span>老师：`;
+        let text = `在此期间，您共上课<span class="fc-green">${attendInfo.realNum}</span>堂，备课<span class="fc-green">${beikeInfo.beikeNum}</span>堂，`;
+        text += `备课率为<span class="fc-green">${beikeRate}%</span>，课堂评价得分为<span class="fc-green">${evalScore}</span>分，`;
+        text += `课堂互动<span class="fc-green">${interactInfo.totalNum}</span>次，`
+        text += `批改作业<span class="fc-green">${checkDtlNum}</span>人份，批改率<span class="fc-green">${toRate(checkDtlNum, totalDtlNum)}%</span>，`;
+        text += `良好的教学行为习惯是保证教学质量的基础，老师，您辛苦了。`;
+        return (
+            <section id={this.props.id} className="ana-module">
+                <div className="texts">
+                    <section dangerouslySetInnerHTML={{__html: dear}}></section>
+                    <section className="txt-idt" dangerouslySetInnerHTML={{__html: text}}></section>
+                </div>
+            </section>
+        );
+    }
+}
+
+class BeikeInfo extends Component {
+    buildBarOptions(datas) {
+        return {
+            grid: {
+                top: 10,
+                left: 10,
+                right: 10,
+                bottom: 10,
+                containLabel: true
+            },
+            color: ['#619eed'],
+            tooltip : {
+                trigger: 'axis',
+                formatter : '有备{b}课堂数: {c}'
+            },
+        	xAxis: [{
+        		type: 'category',
+        		data: ['课件', '微课', '试卷']
+        	} ],
+        	yAxis: [{
+        		type: 'value'
+        	}],
+        	series: [{
+        		type: 'bar',
+                barWidth: '40%',
+        		data: datas
+        	}]
+        };
+    }
+	render() {
+        const {totalNum, beikeNum, resType1, resType2, resType3} = this.props.view.beikeInfo;
+        const datas = [
+            { value : beikeNum, name : '有备课' },
+	        { value : totalNum - beikeNum, name : '无备课' }
+        ];
+        let summary = `共需备课<span class="green-txt">${totalNum}</span>堂。`;
+		return (
+			<section id={this.props.id} className="ana-module">
+				<div className="title">备课</div>
+                <ReactPieChart datas={datas} summary={summary} unit="堂" />
+                <ReactChart className="maps" option={this.buildBarOptions([resType1, resType2, resType3])} />
+			</section>
+		);
+	}
+}
+
+class EvaluateInfo extends Component {
+    buildLineOptions(datas) {
+        const labels = datas.map(v => v.name.replace(/（\S*）/, ''));
+        const values = datas.map(v => v.value);
+        return {
+			color: ['#76b3a1'],
+        	title: {
+        		text: '课堂评价得分走势',
+        		left: 'center',
+				textStyle: {
+		            fontWeight:'normal'
+		        }
+        	},
+        	grid: {
+        		left: '5%',
+        		right: '6%',
+        		bottom: '5%',
+        		containLabel: true
+        	},
+        	xAxis: {
+        		type: 'category',
+				boundaryGap: false,
+        		data: labels
+        	},
+        	yAxis: {
+        		type: 'value'
+        	},
+        	series: [{
+        		type: 'line',
+				areaStyle: {normal: {}},
+        		data: values
+        	}]
+        };
+    }
+	render() {
+        const view = this.props.view;
+        const {flowerNum, prevFlowerNum} = view.interactInfo;
+        const {goodCount, interactionScore, professionalScore, rhythmScore, userCount, trends} = view.evalInfo;
+        const avgScore = toFixed((interactionScore + professionalScore + rhythmScore) / 3, 1);
+		return (
+			<section id={this.props.id} className="ana-module">
+				<div className="title">课堂评价</div>
+				<div className="m-evaluation">
+                    <div className="ev-scores">
+                        <div className="sc-sum">
+                            <p><span>{avgScore}</span>分</p>
+                            <div className="stars"><em><i style={{width: toRate(avgScore, 5) + '%'}}></i></em></div>
+                        </div>
+                        <div>
+                            <div className="classify">
+                                教学效果：
+                                <div className="stars"><em><i style={{width: toRate(professionalScore, 5) + '%'}}></i></em></div>
+                                <div><span className="fc-orange">{professionalScore}</span></div>
+                            </div>
+                            <div className="classify">
+                                教学态度：
+                                <div className="stars"><em><i style={{width: toRate(rhythmScore, 5) + '%'}}></i></em></div>
+                                <div><span className="fc-orange">{rhythmScore}</span></div>
+                            </div>
+                            <div className="classify">
+                                课堂互动：
+                                <div className="stars"><em><i style={{width: toRate(interactionScore, 5) + '%'}}></i></em></div>
+                                <div><span className="fc-orange">{interactionScore}</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="ev-data">
+                        <div className="data-con">
+                            <div><div>好评率：</div><p><span>{userCount}</span>个评价</p></div>
+							<div className="data">{toRate(goodCount, userCount)}%</div>
+                        </div>
+						<div className="data-con">
+							<div><div>收到鲜花：</div><p>上周期：<span>{prevFlowerNum}</span></p></div>
+							<div className="data">{flowerNum}</div>
+						</div>
+                    </div>
+                </div>
+				<ReactChart className="maps" option={this.buildLineOptions(trends)} />
+			</section>
+		);
+	}
+}
+
+class InteractInfo extends Component {
+	render() {
+        const {view} = this.props;
+        const {calledNum, discuNum, quickNum, examNum, authedNum, delayNum, totalNum, prevTotalNum} = view.interactInfo;
+        let datas = [
+            { value : calledNum, name : '点名' },
+            { value : discuNum, name : '分组讨论' },
+            { value : quickNum, name : '快速问答' },
+            { value : examNum, name : '随堂作业' },
+            { value : authedNum, name : '授权' },
+            { value : delayNum, name : '拖堂' }
+        ];
+        let summary = `共上课<span class="green-txt">${view.attendInfo.realNum}</span>堂，发起课堂互动<span class="green-txt">${totalNum}</span>次，上周期<span class="green-txt">${prevTotalNum}</span>次。`;
+		return (
+			<section id={this.props.id} className="ana-module">
+				<div className="title">课堂互动</div>
+				<ReactPieChart datas={datas} summary={summary} unit="次" />
+			</section>
+		);
+	}
+}
+
+class WorkFinishInfo extends Component {
+	render() {
+        const {workInfo} = this.props.view;
+        const {totalHwNum, checkHwNum, partHwNum, unchkHwNum, totalDtlNum, checkDtlNum} = workInfo;
+        const checkRate = toRate(checkDtlNum, totalDtlNum);
+        const datas = [
+            { value : checkHwNum, name : '全部批改' },
+            { value : partHwNum, name : '部分批改' },
+            { value : unchkHwNum, name : '未批改' }
+        ];
+        let summary = `共布置班级作业<span class="green-txt">${totalHwNum}</span>份（应批改<span class="green-txt">${totalDtlNum}</span>人份，`
+        summary += `实批改<span class="green-txt">${checkDtlNum}</span>人份，批改率<span class="green-txt">${checkRate}%</span>）。`;
+		return (
+			<Section id={this.props.id} title="作业批改" help={`${Leke.domain.staticServerName}/pages/help-center/diag/zy-pg.html?_newtab=1`}>
+				<ReactPieChart datas={datas} summary={summary} unit="份" />
+			</Section>
+		);
+	}
+}
+
+class AttendInfo extends Component {
+	render() {
+        const {lessonNum, realNum, normalNum, belateNum, earlyNum, exceptNum, absentNum} = this.props.view.attendInfo;
+        let datas = [
+            { value : normalNum, name : '全勤' },
+            { value : belateNum, name : '迟到' },
+            { value : earlyNum, name : '早退' },
+            { value : exceptNum, name : '迟到且早退' },
+            { value : absentNum, name : '缺勤' }
+        ];
+        let color = ['#83cf0b', '#619eed', '#70cfff', '#ffd270', '#ff6d6e'];
+        let lessonRate = toRate(realNum, lessonNum);
+        let summary = `应上课<span class="green-txt">${lessonNum}</span>堂，实上<span class="green-txt">${realNum}</span>堂，上课率<span class="green-txt">${lessonRate}%</span>。`;
+		return (
+			<Section id={this.props.id} title="考勤" help={`${Leke.domain.staticServerName}/pages/help-center/diag/kq-gz.html?_newtab=1`}>
+				<ReactPieChart datas={datas} summary={summary} color={color} unit="堂" />
+			</Section>
+		);
+	}
+}

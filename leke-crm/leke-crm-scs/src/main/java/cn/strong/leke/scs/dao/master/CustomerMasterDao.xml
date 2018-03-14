@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8" ?>   
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.scs.dao.master.CustomerMasterDao">
+
+	<insert id="insertCustomer" parameterType="cn.strong.leke.scs.model.Customer">
+	<![CDATA[
+		INSERT scs_customer (
+			customerName,
+			customerType,
+			lekeId,
+			lekeLoginName,
+			phone,
+			sellerId,
+			sellerName,
+			status,
+			bindTime,
+			consumeTime,
+			remark,
+			isDeleted,
+			createdBy,
+			createdOn
+		) VALUES (
+			#{customerName},
+			#{customerType},
+			#{lekeId},
+			#{lekeLoginName},
+			#{phone},
+			#{sellerId},
+			#{sellerName},
+			#{status},
+			#{bindTime},
+			#{consumeTime},
+			#{remark},
+			0,
+			#{createdBy},
+			NOW()
+		)
+	]]>
+	</insert>
+
+	<update id="deleteCustomer" parameterType="long">
+	<![CDATA[
+		UPDATE scs_customer
+		   SET isDeleted = 1,
+		       modifiedBy = #{modifiedBy},
+		       modifiedOn = now()
+		 WHERE customerId = #{customerId}
+		   AND isDeleted = 0
+	]]>
+	</update>
+	
+	<update id="updateCustomer" parameterType="cn.strong.leke.scs.model.Customer">
+	<![CDATA[
+		UPDATE scs_customer
+		   SET customerName = #{customerName},
+		       phone = #{phone},
+		       modifiedBy = #{modifiedBy},
+		       modifiedOn = now()
+		 WHERE customerId = #{customerId}
+		   AND isDeleted = 0
+	]]>
+	</update>
+
+	<update id="updateConsumeTimeByCustomerId" parameterType="map">
+	<![CDATA[
+		UPDATE scs_customer
+		   SET consumeTime = #{consumeTime},
+		       modifiedBy = #{modifiedBy},
+		       modifiedOn = now()
+		 WHERE customerId = #{customerId}
+		   AND isDeleted = 0
+	]]>
+	</update>
+
+	<update id="updateRemarkByCustomerId" parameterType="map">
+	<![CDATA[
+		UPDATE scs_customer
+		   SET remark = #{remark},
+		       modifiedBy = #{modifiedBy},
+		       modifiedOn = now()
+		 WHERE customerId = #{customerId}
+		   AND isDeleted = 0
+	]]>
+	</update>
+
+	<select id="getCustomerByLekeIdAndCustomerType" parameterType="map" resultType="cn.strong.leke.scs.model.Customer">
+	<![CDATA[
+		SELECT customerId,
+			   customerName,
+			   customerType,
+			   lekeId,
+			   lekeLoginName,
+			   phone,
+			   sellerId,
+			   sellerName,
+			   status,
+			   consumeTime,
+			   remark,
+			   isDeleted,
+			   createdBy,
+			   createdOn,
+			   modifiedBy,
+			   modifiedOn
+		  FROM scs_customer
+		 WHERE lekeId = #{lekeId}
+		   AND customerType = #{customerType}
+		   AND status = 1
+		   AND isDeleted = 0
+	]]>
+	</select>
+	
+	<select id="getNearlyDeleteCustomer" parameterType="long" resultType="cn.strong.leke.scs.model.Customer">
+		SELECT * FROM scs_customer where lekeId = #{lekeId} and isDeleted = 1 ORDER BY customerId DESC LIMIT 1
+	</select>
+	
+	<!-- 是否有生效，且解绑的记录 -->
+	<select id="selectNearlyEffectCustomer" parameterType="long" resultType="cn.strong.leke.scs.model.Customer">
+		SELECT customerId FROM scs_customer where lekeId = #{lekeId} and status=1 and isDeleted = 1
+	</select>
+
+	<update id="updateCustomerByCustomerID" parameterType="map">
+	<![CDATA[
+		UPDATE scs_customer
+		   SET status=#{status},
+		       modifiedBy = sellerId,
+		       modifiedOn = now()
+		 WHERE customerId = #{customerId}
+		   AND isDeleted = 0
+	]]>
+	</update>
+</mapper>   

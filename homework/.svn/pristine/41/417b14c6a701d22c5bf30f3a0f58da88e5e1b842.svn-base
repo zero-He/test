@@ -1,0 +1,161 @@
+
+# \u516c\u5171
+homework.common.pagenotfound=page not found
+homework.common.back=Back
+homework.common.select=Select
+homework.common.search=Search
+homework.common.toview=View
+homework.common.statistical=Statistics
+homework.common.analysis=Analysis
+homework.common.submit=Submit
+homework.common.confirm=Confirm
+homework.common.cancel=Cancel
+homework.common.preview=Preview
+homework.common.section=chapter
+homework.common.studyskills =\u540c\u6b65\u7ec3\u4e60
+homework.common.knowledgepoint=topic
+homework.common.knowledtest =\u77e5\u8bc6\u70b9\u68c0\u6d4b
+homework.common.recorrect=\u91cd\u65b0\u6279\u6539
+
+# \u6211\u7684\u4f5c\u4e1a
+homework.homework.nochildren=You have not linked a student account yet.
+homework.homework.incomplete=Your profile is incomplete, and you have no associated class.
+homework.homework.classendtime=This is an in-class quiz and must be answered from in the classroom or after the class is over.
+homework.homework.repartsave=You homework has been submitted and can no longer be saved.
+homework.homework.repartsubmit=You homework has been submitted and cannot be submitted again.
+homework.exercise.repartsave=\u4f60\u7684\u7ec3\u4e60\u5df2\u7ecf\u63d0\u4ea4\uff0c\u8bf7\u4e0d\u8981\u518d\u4fdd\u5b58\u3002
+homework.exercise.repartsubmit=\u4f60\u7684\u7ec3\u4e60\u5df2\u7ecf\u63d0\u4ea4\uff0c\u8bf7\u4e0d\u8981\u518d\u63d0\u4ea4\u3002
+homework.homework.subjective=Please set the marking method for question ({0})
+homework.homework.homeworktitle=Title
+homework.homework.forclass=Class
+homework.homework.completion=Completion Status
+homework.homework.correcting=Marking status
+homework.homework.average=Avg Score
+homework.homework.operatingarea=Actions
+homework.homework.checkhomework=Check homework
+homework.homework.checkpaper=View paper
+homework.homework.receivenum=Received
+homework.homework.correctnum=Marked
+homework.homework.studentname=Marked
+homework.homework.score=Score
+homework.homework.homeworkcompletion=Status
+homework.homework.submittime=Submitted at
+homework.homework.closewindow=close
+homework.homework.last=Prev
+homework.homework.next=Next
+homework.homework.correct.title=Mark Homework
+homework.homework.correct.submit=Submit
+homework.homework.correct.text=Correct
+homework.homework.correct.modification=Modify
+homework.homework.correct.invalid=Invalid
+homework.homework.correct.already=Invalided
+homework.homework.controller.stmessage = \u53d1\u5e03\u65f6\u95f4\u5df2\u8fc7\uff0c\u4e0d\u80fd\u4fee\u6539\uff01
+homework.homework.controller.modifysuc = Modify the success\uff01
+homework.homework.form.search.to = To
+homework.homework.title.name = \u5f00\u59cb\u7b54\u9898
+homework.homework.form.savejob = \u4fdd\u5b58\u4f5c\u4e1a
+homework.homework.form.submitjob = \u63d0\u4ea4\u4f5c\u4e1a
+homework.dowork.success.title = \u6211\u7684\u4f5c\u4e1a
+homework.dowork.suctext.subsuccess = \u4f60\u5df2\u6210\u529f\u63d0\u4ea4\uff01
+homework.dowork.suctext.divtext = \u5f53\u524d\u5f97\u5206\u4e3a
+homework.dowork.suctext.special = \u8be5\u4efd\u4f5c\u4e1a\u5305\u542b\u4e3b\u89c2\u9898\uff0c\u8bf7\u7b49\u5f85\u8001\u5e08\u6279\u6539\uff0c\u5956\u52b1\u5728\u6279\u6539\u5b8c\u540e\u83b7\u5f97\u3002
+homework.dowork.suctext.close = \u5173\u95ed
+homework.dowork.suctext.points = \u5206
+homework.stuhomework.form.all = \u5168\u90e8\u4f5c\u4e1a
+homework.stuhomework.form.todo = \u5f85\u5b8c\u6210
+homework.stuhomework.form.tobe = \u5f85\u6279\u6539\u4f5c\u4e1a
+homework.stuhomework.form.deadline = \u4f5c\u4e1a\u622a\u6b62\u65f6\u95f4
+homework.stuhomework.form.name = \u4f5c\u4e1a\u540d\u79f0
+homework.stuhomework.form.teaname = \u5e03\u7f6e\u4f5c\u4e1a\u8001\u5e08
+homework.stuhomework.form.subtime = \u63d0\u4ea4\u4f5c\u4e1a\u65f6\u95f4
+homework.stuhomework.form.status = \u4f5c\u4e1a\u72b6\u6001
+#\u6211\u7684\u7ec3\u4e60
+homework.homework.form.search.testtime = \u6d4b\u8bd5\u65f6\u95f4
+homework.homework.form.search.starttest  = \u5f00\u59cb\u6d4b\u8bd5
+homework.homework.form.search.accuracy  = \u6b63\u786e\u7387
+homework.exercise.title.startpracticing  = \u5f00\u59cb\u7ec3\u4e60
+homework.exercise.show.topicquantity  = \u9898\u91cf
+homework.exercise.show.topic  = \u9898
+homework.exercise.show.submitpractice  = \u63d0\u4ea4\u7ec3\u4e60
+homework.exercise.show.correct  = \u6b63\u786e
+homework.exercise.show.practicetime  = \u7ec3\u4e60\u65f6\u95f4
+
+#\u6211\u7684\u63d0\u95ee
+homework.doubt.doubt.title = \u6211\u8981\u63d0\u95ee
+homework.doubt.detail.title = \u67e5\u770b\u63d0\u95ee 
+homework.doubt.list.title = \u6211\u7684\u63d0\u95ee
+homework.doubt.form.changtea = \u9009\u62e9\u8001\u5e08
+homework.doubt.form.title = \u6807\u9898
+homework.doubt.form.description = \u95ee\u9898\u63cf\u8ff0
+homework.doubt.form.spantext = \u8fd8\u53ef\u4ee5\u8f93\u5165500\u4e2a\u5b57.
+homework.doubt.form.examcontent = \u8bd5\u9898\u5185\u5bb9
+homework.doubt.form.questionscontent = \u63d0\u95ee\u5185\u5bb9
+homework.doubt.form.toask = \u6211\u8981\u8ffd\u95ee
+# \u9009\u62e9\u8bd5\u5377
+homework.homework.selectpapers=select assignment
+homework.homework.addpaper=Add Assignment
+homework.homework.sharedscope=Share
+homework.homework.subject=Subj.
+homework.homework.papertitle=Title
+homework.homework.materialnode=Chapter
+homework.homework.schoolstagesubject=Edu Level&Subject
+homework.homework.checkbox =Select
+homework.homework.grouppeople=Created by
+homework.homework.paperstype=Assignment Type
+homework.homework.paperstype.help=egular assignments are those created using knowledge points,book units, or automatic assignment creation. Answer Sheet assignments are assignments created using an assignment sheet.
+homework.homework.subjective=Free response
+homework.homework.writetopic=Handwriting Question
+homework.homework.quotenum=Times Used
+
+
+# \u5e03\u7f6e\u4f5c\u4e1a\u9875\u9762
+homework.homework.homeworktype=Type
+homework.homework.homeworktype.prepare=Preview
+homework.homework.homeworktype.class=In-class
+homework.homework.homeworktype.home=Homework
+homework.homework.homeworktype.phase=Project
+homework.homework.homeworktype.vod=Vod
+homework.homework.homeworktype.auto =\u63a8\u9001\u4f5c\u4e1a
+homework.homework.paper=paper
+homework.homework.startTime=Start Date
+homework.homework.closeTime=Due Date
+homework.homework.students=Namelist
+homework.homework.distribute.submit=Assign
+homework.homework.subjective.have=Contains free answer questions
+homework.homework.subjective.none=No free answer questions
+
+# \u81ea\u4e3b\u7ec3\u4e60
+homework.exercise.notfoundrule=Your current school has not setup self-practice question selection rules.
+homework.exercise.nosuitable=Sorry, no suitable questions found.
+
+#\u7591\u7b54 \u67e5\u770b\u95ee\u9898
+homework.doubt.viewQuestion=View
+homework.doubt.ask=Ask
+homework.doubt.askTime=Asked at
+homework.doubt.asker=Asked by
+homework.doubt.describe=Description
+homework.doubt.record=Record
+homework.doubt.content=Question
+homework.doubt.answer=Answere
+homework.doubt.askForExplanation=Ask again
+homework.doubt.answerContent=Answer
+homework.doubt.recordContent=Recording
+homework.doubt.answerDescribe=Answer
+
+#\u7b54\u7591 \u8bd5\u9898\u7b54\u7591
+homework.doubt.questionAnswer=Student Questions(Q&A)
+homework.doubt.keyWord=Keywords
+homework.doubt.unAnswer=Unanswered
+homework.doubt.doAnswer=Answered
+homework.doubt.noAsk=No questions found.
+homework.doubt.time=time
+homework.doubt.ze=
+
+#\u9884\u4e60\u4f5c\u4e1a
+homework.preview.preview=Preview
+homework.preview.title=Title
+
+# API\u63a5\u53e3
+homework.api.homeworkid=\u2018Label\u2019 must be filled in.
+homework.api.version=\u2018Version\u2019 must be filled in.
+homework.api.answerdetail=Answer\u2019must be filled in.

@@ -1,0 +1,64 @@
+<div class="detail">
+	<div class="m-search-box">
+		<div class="item">
+			<label class="title">录入日期：</label>
+			<input type="text" class="Wdate u-ipt u-ipt-nm"
+				data-bind="datepicker: {
+							value: query.startDate,
+							maxDate : query.endDate,
+							dateFmt: 'yyyy-MM-dd HH:mm:ss'
+						}"/>
+			- 
+			<input type="text" class="Wdate u-ipt u-ipt-nm" 
+				data-bind="datepicker: {
+							value: query.endDate,
+							minDate : query.startDate,
+							dateFmt: 'yyyy-MM-dd HH:mm:ss'
+						}"/>
+			<label class="title">录入人：</label>
+			<input type="text" class="u-ipt u-ipt-nm" data-bind="value: query.userName">
+			<select name="role" class="u-select u-select-mini" id="jRoleSelect">
+				<option>==请选择==</option>
+				<option value="researcher">教研员</option>
+				<option value="inputer">题库录入员</option>
+				<option value="manager">教研主管</option>
+			</select>
+			<input class="u-btn u-btn-nm u-btn-bg-turquoise" type="button"
+				data-bind="value: '查询', click: function() {doSearch();}">
+				
+			<a class="u-btn u-btn-nm u-btn-bg-orange" type="button" id="jOutPut" data-bind="click: function() {clickOutPut();}">导出</a>
+		</div>
+	</div>
+	<div class="base_view1">
+		<div class="m-table">
+			<table>
+				<thead>
+					<tr>
+						<th width="25%">录入人</th>
+						<th>单独创建习题量</th>
+						<th>试卷创建习题量</th>
+						<th>习题册创建习题量</th>
+						<th>总和</th>
+					</tr>
+				</thead>
+				<tbody>
+					<!-- ko foreach: questionTotals -->
+					<tr>
+						<td>
+							<a class="s-c-turquoise" href="javascript:void(0);"
+								data-bind="text: $data.userName"></a>
+						</td>
+						<td data-bind="text: $data.total || 0"></td>
+						<td data-bind="text: $data.totalFromPaper || 0"></td> 
+						<td data-bind="text: $data.totalFromWb || 0"></td>
+						<td data-bind="text: ($data.total || 0) + ($data.totalFromPaper || 0) + ($data.totalFromWb || 0)"></td>
+					</tr> 
+					<!-- /ko -->
+					<!-- ko if: !questionTotals().length -->
+						<tr><td colspan="5" align="center">暂无记录</td></tr>
+					<!-- /ko -->
+				</tbody>
+			</table>
+		</div>
+	</div>
+</div>

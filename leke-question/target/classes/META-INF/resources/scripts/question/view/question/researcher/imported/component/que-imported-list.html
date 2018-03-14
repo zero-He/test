@@ -1,0 +1,26 @@
+<div class="m-tab">
+<ul>
+	<li data-bind="css: {
+		'active': query.status() == 12
+	}, click: function() {
+		query.status(12);
+	}"><a class="f-csp" data-bind="i18n: 'que.question.tab.unChecked'"></a></li>
+	<li data-bind="css: {
+		'active': query.status() == 15
+	}, click: function() {
+		query.status(15);
+	}"><a class="f-csp" data-bind="i18n: 'que.question.tab.myReject'"></a></li>
+</ul>
+</div>
+<div class="m-search-box">
+	<div class="item">
+		<label class="title">学段科目：</label>
+		<select id="stageSubject" class="u-select u-select-nm"></select>
+		<button class="u-btn u-btn-nm u-btn-bg-turquoise"
+			data-bind="click: doSearch,
+				i18n: 'que.question.btn.search'"></button>
+	</div>
+</div>
+
+<div class="quesContent f-bfc j-questions s-border-nobd">
+</div>

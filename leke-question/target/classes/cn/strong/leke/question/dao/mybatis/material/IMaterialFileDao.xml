@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="cn.strong.leke.question.dao.mybatis.material.IMaterialFileDao">
+	<insert id="add" parameterType="cn.strong.leke.question.model.material.MaterialFile">
+		INSERT INTO que_material_file (
+			materialId,fileUrl,type,status,reason,taskId,cwUrl,cwSuffix,pageCount,
+			isDeleted,createdBy,createdOn
+		)
+		VALUES(
+			#{materialId},#{fileUrl},#{type},#{status},#{reason},#{taskId},#{cwUrl},#{cwSuffix},#{pageCount},
+			0,#{createdBy},NOW()
+		)
+	</insert>
+	
+	<update id="updateTransCodeTask" parameterType="cn.strong.leke.question.model.material.MaterialFile">
+		UPDATE 
+			que_material_file a
+		SET
+			a.status = #{status},
+			a.reason = #{reason},
+			a.cwSuffix = #{cwSuffix},
+			a.pageCount = #{pageCount}
+		WHERE
+			a.taskId = #{taskId}
+		AND
+			a.materialId = #{materialId}
+		AND
+			a.isDeleted = 0
+	</update>
+	
+	<update id="del" parameterType="map">
+		UPDATE 
+			que_material_file a
+		SET
+			a.isDeleted = 1,a.createdBy = #{userId}
+		WHERE
+			a.materialId = #{materialId}
+		AND	
+			a.isDeleted = 0
+	</update>
+	
+	<select id="get" parameterType="long" resultType="cn.strong.leke.question.model.material.MaterialFile">
+		SELECT 
+			a.*
+		FROM
+			que_material_file a
+		WHERE
+			a.materialFileId = #{materialFileId}
+	</select>
+	
+	<select id="getByMaterialId" parameterType="long" resultType="cn.strong.leke.question.model.material.MaterialFile">
+		SELECT 
+			a.*
+		FROM
+			que_material_file a
+		WHERE
+			a.materialId = #{materialId}
+		AND
+			a.isDeleted = 0
+		LIMIT 1
+	</select>
+	
+</mapper>

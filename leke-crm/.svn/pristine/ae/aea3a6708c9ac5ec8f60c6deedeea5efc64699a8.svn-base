@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" ?>   
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.scs.dao.master.CommissionMasterDao">
+
+	<insert id="insertCommission" parameterType="cn.strong.leke.scs.model.Commission">
+	<![CDATA[
+		INSERT scs_commission (
+			customerId,
+			commType,
+			sourceId,
+			commRate,
+			commAmount,
+			tradeAmount,
+			tradeTime,
+			isDeleted,
+			createdBy,
+			createdOn
+		) VALUES (
+			#{customerId},
+			#{commType},
+			#{sourceId},
+			#{commRate},
+			#{commAmount},
+			#{tradeAmount},
+			#{tradeTime},
+			0,
+			#{createdBy},
+			NOW()
+		)
+	]]>
+	</insert>
+
+</mapper>   

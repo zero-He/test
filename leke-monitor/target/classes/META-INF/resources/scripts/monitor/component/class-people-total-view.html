@@ -1,0 +1,44 @@
+<div class="m-search-box f-clearfix">
+	<p class="f-fl"><label class="f-mr20" style="color:red;">学校：<em data-bind="text: schoolName"></em></label>
+	<p class="f-fl"><label class="f-mr20" style="color:red;">时间：<em data-bind="text: nowDate"></em></label>
+	<label class="f-mr20">总实到人次：<em data-bind="text: actual"></em></label>
+	<label class="f-mr20">总应到人次：<em data-bind="text: expect"></em></label>
+	<label class="f-mr20">总到课率：<em data-bind="text: ratioTotalStr"></em></label></p>
+	<div class="operation f-fr">
+			<input type="button" id="exportBut" value="导出" data-bind="click: exportExcel" class="f-fl f-mr15 u-btn u-btn-nm u-btn-bg-orange" />
+  			<input type="button" id="dayBefore" value="前一天" data-bind="click: toPrevDay" class="f-fl  u-btn u-btn-nm u-btn-bg-orange" />
+        	<input type="button" id="dayAfter" value="后一天" data-bind="click: toNextDay" class="f-fr f-ml15 u-btn u-btn-nm u-btn-bg-orange" />
+        	
+  	</div>
+</div>
+<div class="m-table m-table-center">
+	<table>
+		<tr>
+			<th>课程名称</th>
+			<th>学科</th>
+			<th>课堂名称</th>
+			<th>上课时间</th>
+        	<th>授课老师</th>
+        	<th>实到人次</th>
+        	<th>应到人次</th>
+        	<th>到课率</th>
+        </tr>
+        <tbody id="jSuListTbody">
+        <!-- ko foreach:list -->
+        	<tr>
+        		<td width="15%" class="done" data-bind="text: $data.clazzName"></td>
+        		<td width="5%" class="done" data-bind="text: $data.subjectName"></td>
+        		<td width="10%" class="done" data-bind="text: $data.csName() || '--'"></td>
+        		<td width="25%"><em data-bind="text: startTimeStr"></em>~<em data-bind="text: endTimeStr"></em></td>
+				<td width="15%" data-bind="text: teacherName"></td>
+				<td width="10%" data-bind="text: actualStuCount"></td>
+				<td width="10%" data-bind="text: expectStuCount"></td>
+				<td width="10%" data-bind="text: ratioCounts"></td>
+			</tr>
+		<!-- /ko -->
+		<!-- ko if: list().length==0 -->
+		<tr><td colspan="7">查询暂无记录</td></tr>
+		<!-- /ko -->
+        </tbody>
+	</table>
+</div>

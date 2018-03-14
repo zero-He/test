@@ -1,0 +1,164 @@
+package cn.strong.leke.homework.util;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.List;
+
+import org.springframework.beans.BeanUtils;
+
+import cn.strong.leke.common.utils.DateUtils;
+import cn.strong.leke.common.utils.ReflectionUtils;
+import cn.strong.leke.common.utils.StringUtils;
+import cn.strong.leke.framework.spring.MessageSource;
+import cn.strong.leke.framework.spring.SpringContextHolder;
+import cn.strong.leke.homework.model.HomeworkPaper;
+import cn.strong.leke.homework.model.HomeworkType;
+import cn.strong.leke.homework.service.HomeworkDtlService;
+import cn.strong.leke.model.paper.Paper;
+import cn.strong.leke.model.paper.PaperDTO;
+
+/**
+ * @author Zhang Fujun
+ * @date 2016年5月18日
+ */
+public class HomeworkUtils {
+
+	/**
+	 * 拷贝列表数据。
+	 * @param destClass 目标类型
+	 * @param orig 源对象
+	 * @return
+	 */
+	public static <T, S> T copy(Class<T> destClass, S orig) {
+		T dest = null;
+		try {
+			dest = destClass.newInstance();
+			BeanUtils.copyProperties(orig, dest);
+		} catch (Exception e) {
+			ReflectionUtils.handleReflectionException(e);
+		}
+		return dest;
+	}
+
+	/**
+	 * 拷贝列表数据。
+	 * @param destClass 目标类型
+	 * @param origList 源列表对象
+	 * @return
+	 */
+	public static <T, S> List<T> copy(Class<T> destClass, List<S> origList) {
+		List<T> rlist = new ArrayList<T>();
+		try {
+			for (S item : origList) {
+				T dest = destClass.newInstance();
+				BeanUtils.copyProperties(item, dest);
+				rlist.add(dest);
+			}
+		} catch (Exception e) {
+			ReflectionUtils.handleReflectionException(e);
+		}
+		return rlist;
+	}
+	
+	/**
+	 * 格式化作业类型显示
+	 * @param homeworkType
+	 * @return
+	 */
+	public static String fmtHomeworkTypeStr(Integer homeworkType) {
+		if (homeworkType == null) {
+			return "";
+		} else if (homeworkType.equals(HomeworkType.PREPARE.value)) {
+			return MessageSource.getMessage("homework.homework.homeworktype.prepare");
+		} else if (homeworkType.equals(HomeworkType.CLASS.value)) {
+			return MessageSource.getMessage("homework.homework.homeworktype.class");
+		} else if (homeworkType.equals(HomeworkType.HOME.value)) {
+			return MessageSource.getMessage("homework.homework.homeworktype.home");
+		}  else if (homeworkType.equals(HomeworkType.PHASE.value)) {
+			return MessageSource.getMessage("homework.homework.homeworktype.phase");
+		} else if (homeworkType.equals(HomeworkType.VOD.value)) {
+			return MessageSource.getMessage("homework.homework.homeworktype.vod");
+		} else if(homeworkType.equals(HomeworkType.AUTO.value)){
+			return MessageSource.getMessage("homework.homework.homeworktype.auto");
+		}
+		return "";
+	}
+	
+	/**
+	 * 将 秒数 转化为 分钟数
+	 * 不到1分钟，显示1分钟
+	 * 大于1分钟的，取整数部分 
+	 * @param second
+	 * @return
+	 */
+	public static Integer convertUsedTime(Integer second) {
+		if (second != null && second.intValue() > 0) {
+			double times = new BigDecimal(second).divide(new BigDecimal(60),BigDecimal.ROUND_FLOOR).doubleValue();
+			if (times <= 1) {
+				return 1;
+			} else {
+				Math.floor(times);
+				return (int) times;
+			}
+		}
+		return null;
+	}
+	public static PaperDTO buildPaperDTO(String paperId){
+		return buildPaperDTO(paperId, null, null, null);
+	}
+	
+	public static PaperDTO buildPaperDTO(String paperId,String title,String subjectName,Long subjectId) {
+		if (StringUtils.isEmpty(paperId)){
+			return null;
+		}
+		HomeworkDtlService	homeworkDtlService =SpringContextHolder.getBean(HomeworkDtlService.class);
+		HomeworkPaper hwPaper = homeworkDtlService.getHomeworkPaper(paperId);
+		PaperDTO paperDto = new PaperDTO();
+		paperDto.setIsDraft(false);
+		paperDto.setPaperType(Paper.PAPER_TYPE_NORMAL);
+		paperDto.setDetail(hwPaper.getPaperDetail());
+		paperDto.setTitle(title);
+		paperDto.setSubjectId(subjectId);
+		paperDto.setSubjectName(subjectName);
+		paperDto.setSubjective(false);
+		paperDto.setSchoolStageId(1L);
+		return paperDto;
+	}
+	
+	/**
+	 * 计算距离当前时间差
+	 *  {}天{}小时{}分钟
+	 * @param timeMillis
+	 * @return
+	 */
+	public static String fmtDiffTime(Long timeMillis){ 
+		long timeGap = Math.abs((System.currentTimeMillis() - timeMillis) / 1000);//与现在时间相差秒数
+		String timeStr = "";
+		if(timeGap >= 86400L){//天
+			timeStr = timeGap/86400L + "天";
+			timeGap = timeGap%86400L;
+		}
+		if(timeGap >=3600L){ //小时
+			timeStr += timeGap/3600L + "小时";
+			timeGap = timeGap%3600L;
+		}
+		if(timeGap > 0){
+			Long minute = BigDecimal.valueOf((timeGap)).divide(BigDecimal.valueOf(60),2,RoundingMode.CEILING).longValue();
+			if(minute > 0){
+				timeStr += minute + "分钟";
+			}
+		}
+		if(timeStr == ""){
+			timeStr = "0分钟";
+		}
+		return timeStr;
+	}
+	
+	public static void main(String[] args) {
+		Calendar calendar = Calendar.getInstance();
+		calendar.setTime(DateUtils.parseTime(DateUtils.format("yyyy-MM-10 HH:mm:ss")));
+		System.out.println(fmtDiffTime(calendar.getTimeInMillis()));
+	}
+}

@@ -1,0 +1,42 @@
+
+# jdbc
+jdbc.driverClassName=${ci.jdbc.driverClassName}
+jdbc.dialectClass=${ci.jdbc.dialectClass}
+#### jdbc crm master ####
+jdbc.url=${ci.jdbc.url.crm.master}
+jdbc.username=${ci.jdbc.username.crm.master}
+jdbc.password=${ci.jdbc.password.crm.master}
+#### jdbc crm slave ####
+jdbc.url.slave=${ci.jdbc.url.crm.slave}
+jdbc.username.slave=${ci.jdbc.username.crm.slave}
+jdbc.password.slave=${ci.jdbc.password.crm.slave}
+#### jdbc tutor slave ####
+jdbc.url.tutor=${ci.jdbc.url.crm.tutor.slave}
+jdbc.username.tutor=${ci.jdbc.username.crm.tutor.slave}
+jdbc.password.tutor=${ci.jdbc.password.crm.tutor.slave}
+
+####cache####
+redis.host1=${ci.redis.host1}
+redis.port1=${ci.redis.port1}
+redis.pool.maxActive=${ci.redis.pool.maxActive}
+redis.pool.maxIdle=${ci.redis.pool.maxIdle}
+redis.pool.maxWait=${ci.redis.pool.maxWait}
+
+####mongodb####
+mongodb.host=${ci.mongodb.host}
+mongodb.port=${ci.mongodb.port}
+mongodb.db=${ci.mongodb.db}
+mongodb.username=${ci.mongodb.username}
+mongodb.password=${ci.mongodb.password}
+
+####webservice####
+domain.cas=${ci.domain.cas}
+domain.user=${ci.domain.user}
+domain.tutor=${ci.domain.tutor}
+
+####mq####
+mq.host=${ci.mq.host}
+mq.port=${ci.mq.port}
+mq.username=${ci.mq.username}
+mq.password=${ci.mq.password}
+

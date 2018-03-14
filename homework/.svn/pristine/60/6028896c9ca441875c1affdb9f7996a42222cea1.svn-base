@@ -1,0 +1,262 @@
+/* 
+ * 包名: cn.strong.leke.homework.model
+ *
+ * 文件名：Doubt.java
+ *
+ * 版权所有：Copyright www.leke.cn Corporation 2014 
+ * 
+ * 创建者: luf
+ *
+ * 日期：2014-6-18
+ */
+package cn.strong.leke.homework.model;
+
+import java.io.Serializable;
+import java.util.Date;
+import java.util.List;
+
+
+
+/**
+ * 〈一句话功能简述〉
+ * 〈功能详细描述〉
+ * @author    luf
+ * @version   Avatar 
+ */
+public class Doubt implements Serializable{
+	
+	/**
+	 * serialVersionUID:
+	 */
+	private static final long serialVersionUID = 1L;
+
+	//提问id
+	private long doubtId;
+	
+	//学科id
+	private Long subjectId;
+	
+	// 提问类型
+	private Integer doubtType;
+	
+	//提问标题id
+	private String doubtTitle;
+	
+	//提问内容
+	private String doubtContent;
+
+	// 作业ID
+	private Long homeworkDtlId;
+	
+	//题目id
+	private long questionId;
+	
+	//提问类型  1 - 任课教师 2 - 乐课网老师
+	private long targetType;
+	
+	//学校id
+	private long schoolId;
+	
+	//学校名称
+	private String schoolName;
+	
+	//学生名称
+	private String userName;
+	
+	//最佳回答
+	private long bestExpainId;
+	
+	//提问录音
+	private String doubtAudio;
+	
+	//录音时长字符串
+	private String duration;
+	
+	//是否被删除
+	private boolean isDeleted;
+	
+	//创建人
+	private long createdBy;
+	
+	//创建时间
+	private Date createdOn;
+	
+	//提问教师id
+	private long teacherId;
+	
+	//是否已解决
+	private Boolean resolved;
+
+	//教师解析列表
+	private List<Explain> explains;
+	
+	private Date explainTime;
+	
+	public long getDoubtId() {
+		return doubtId;
+	}
+
+	public void setDoubtId(long doubtId) {
+		this.doubtId = doubtId;
+	}
+
+	public Long getSubjectId() {
+		return subjectId;
+	}
+
+	public void setSubjectId(Long subjectId) {
+		this.subjectId = subjectId;
+	}
+
+	public Integer getDoubtType() {
+		return doubtType;
+	}
+
+	public void setDoubtType(Integer doubtType) {
+		this.doubtType = doubtType;
+	}
+
+	public String getDoubtTitle() {
+		return doubtTitle;
+	}
+
+	public void setDoubtTitle(String doubtTitle) {
+		this.doubtTitle = doubtTitle;
+	}
+
+	public String getDoubtContent() {
+		return doubtContent;
+	}
+
+	public void setDoubtContent(String doubtContent) {
+		this.doubtContent = doubtContent;
+	}
+
+	public Long getHomeworkDtlId() {
+		return homeworkDtlId;
+	}
+
+	public void setHomeworkDtlId(Long homeworkDtlId) {
+		this.homeworkDtlId = homeworkDtlId;
+	}
+
+	public long getQuestionId() {
+		return questionId;
+	}
+
+	public void setQuestionId(long questionId) {
+		this.questionId = questionId;
+	}
+
+	public long getTargetType() {
+		return targetType;
+	}
+
+	public void setTargetType(long targetType) {
+		this.targetType = targetType;
+	}
+
+	public long getSchoolId() {
+		return schoolId;
+	}
+
+	public void setSchoolId(long schoolId) {
+		this.schoolId = schoolId;
+	}
+
+	public String getSchoolName() {
+		return schoolName;
+	}
+
+	public void setSchoolName(String schoolName) {
+		this.schoolName = schoolName;
+	}
+
+	public String getUserName() {
+		return userName;
+	}
+
+	public void setUserName(String userName) {
+		this.userName = userName;
+	}
+
+	public long getBestExpainId() {
+		return bestExpainId;
+	}
+
+	public void setBestExpainId(long bestExpainId) {
+		this.bestExpainId = bestExpainId;
+	}
+
+	public String getDoubtAudio() {
+		return doubtAudio;
+	}
+
+	public void setDoubtAudio(String doubtAudio) {
+		this.doubtAudio = doubtAudio;
+	}
+
+	public boolean isDeleted() {
+		return isDeleted;
+	}
+
+	public void setDeleted(boolean isDeleted) {
+		this.isDeleted = isDeleted;
+	}
+
+	public long getCreatedBy() {
+		return createdBy;
+	}
+
+	public void setCreatedBy(long createdBy) {
+		this.createdBy = createdBy;
+	}
+
+	public Date getCreatedOn() {
+		return createdOn;
+	}
+
+	public void setCreatedOn(Date createdOn) {
+		this.createdOn = createdOn;
+	}
+
+	public long getTeacherId() {
+		return teacherId;
+	}
+
+	public void setTeacherId(long teacherId) {
+		this.teacherId = teacherId;
+	}
+
+	public Boolean getResolved() {
+		return resolved;
+	}
+
+	public void setResolved(Boolean resolved) {
+		this.resolved = resolved;
+	}
+
+	public List<Explain> getExplains() {
+		return explains;
+	}
+
+	public void setExplains(List<Explain> explains) {
+		this.explains = explains;
+	}
+
+	public Date getExplainTime() {
+		return explainTime;
+	}
+
+	public void setExplainTime(Date explainTime) {
+		this.explainTime = explainTime;
+	}
+
+	public String getDuration() {
+		return duration;
+	}
+
+	public void setDuration(String duration) {
+		this.duration = duration;
+	}
+}

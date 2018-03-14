@@ -1,0 +1,21 @@
+<div class="detail addGrSub">
+	<div data-bind="foreach: schoolStages">
+		学段：
+		<label>
+			<span data-bind="text: schoolStageName">&nbsp;</span>
+		</label>
+		<br/>
+		科目：
+		<!-- ko foreach: subjects -->
+		<label>
+			<input type="checkbox" data-bind="checked: checked"/> 
+			<span data-bind="text: subjectName">&nbsp;</span>
+		</label>
+		<!-- /ko -->
+		<br/>
+		<hr>
+	</div>
+</div>
+<div class="bSave">
+	<input type="button" class="u-btn u-btn-nm u-btn-bg-turquoise" value="保存" data-bind="click: function() {saveSS();}"/>
+</div>

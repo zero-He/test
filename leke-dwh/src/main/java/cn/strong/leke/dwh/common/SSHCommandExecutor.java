@@ -1,0 +1,93 @@
+package cn.strong.leke.dwh.common;
+
+import java.io.BufferedReader;  
+import java.io.InputStreamReader;  
+import java.util.Vector;  
+import com.jcraft.jsch.Channel;  
+import com.jcraft.jsch.ChannelExec;  
+import com.jcraft.jsch.JSch;  
+import com.jcraft.jsch.Session;
+
+import cn.strong.leke.dwh.model.MyUserInfo;  
+  
+/**
+ * 远程执行linux主机上shell脚本的工具类 
+ * Created by hedan on 2017/3/28. 
+ */  
+  
+public class SSHCommandExecutor {  
+    private String ipAddress;  
+  
+    private String username;  
+  
+    private String password;  
+  
+    public static final int DEFAULT_SSH_PORT = 22;  
+  
+    private Vector<String> stdout;  
+  
+    public SSHCommandExecutor(final String ipAddress, final String username, final String password) {  
+        this.ipAddress = ipAddress;  
+        this.username = username;  
+        this.password = password;  
+        stdout = new Vector<String>();  
+    }  
+  
+    public int execute(final String command) {  
+        int returnCode = 0;  
+        JSch jsch = new JSch();  
+        MyUserInfo userInfo = new MyUserInfo();  
+  
+        try {  
+            // Create and connect session.  
+            Session session = jsch.getSession(username, ipAddress, DEFAULT_SSH_PORT);  
+            session.setPassword(password);  
+            session.setUserInfo(userInfo);  
+            session.connect();  
+  
+            // Create and connect channel.  
+            Channel channel = session.openChannel("exec");  
+            ((ChannelExec) channel).setCommand(command);  
+  
+            channel.setInputStream(null);  
+            BufferedReader input = new BufferedReader(new InputStreamReader(channel  
+                    .getInputStream()));  
+  
+            channel.connect();  
+            System.out.println("The remote command is: " + command);  
+  
+            // Get the output of remote command.  
+            String line;  
+            while ((line = input.readLine()) != null) {  
+                stdout.add(line);  
+            }  
+            input.close();  
+  
+            // Get the return code only after the channel is closed.  
+            if (channel.isClosed()) {  
+                returnCode = channel.getExitStatus();  
+            }  
+  
+            // Disconnect the channel and session.  
+            channel.disconnect();  
+            session.disconnect();  
+        } catch (Exception e) {  
+            e.printStackTrace();  
+        }  
+        return returnCode;  
+    }  
+  
+    public Vector<String> getStandardOutput() {  
+        return stdout;  
+    }  
+  
+    public static void main(final String [] args) {  
+        SSHCommandExecutor sshExecutor = new SSHCommandExecutor("192.168.20.81", "root", "16888$Strong#AdminRoot@sqrj");  
+        int execute = sshExecutor.execute("./test.sh 110");  
+          System.out.println(execute);
+        Vector<String> stdout = sshExecutor.getStandardOutput();  
+        for (String str : stdout) {  
+            System.out.println(str);  
+        }  
+    }  
+}  

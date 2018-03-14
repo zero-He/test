@@ -1,0 +1,16 @@
+define(function(require, exports, module) {
+	var $ = require('jquery');
+
+	var Pages = {
+		init : function() {
+			$('.m-tab li').click(function() {
+				$(this).addClass('active').siblings().each(function() {
+					$($(this).removeClass('active').data('tabid')).hide();
+				});
+				$($(this).data('tabid')).show();
+			});
+		}
+	};
+
+	Pages.init();
+});

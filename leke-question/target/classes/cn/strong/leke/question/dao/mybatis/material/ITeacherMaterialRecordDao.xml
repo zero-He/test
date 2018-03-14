@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="cn.strong.leke.question.dao.mybatis.material.ITeacherMaterialRecordDao">
+	<insert id="add" parameterType="cn.strong.leke.question.model.material.TeacherMaterialRecord">
+		INSERT INTO que_teacher_material_record (
+			materialFileId,teacherId,curPage,
+			isDeleted,createdBy,createdOn,modifiedBy,modifiedOn
+		)
+		VALUES(
+			#{materialFileId},#{teacherId},#{curPage},
+			0,#{createdBy},NOW(),#{modifiedBy},NOW()
+		)
+	</insert>
+	
+	<update id="update"  parameterType="cn.strong.leke.question.model.material.TeacherMaterialRecord">
+		UPDATE 
+			que_teacher_material_record
+		SET
+			curPage = #{curPage},
+			modifiedBy = #{modifiedBy},
+			modifiedOn = NOW()
+		WHERE
+			isDeleted = 0
+		AND
+			materialFileId = #{materialFileId}
+		AND
+			teacherId = #{teacherId}
+	</update>
+	
+	<update id="updateCurPage"  parameterType="cn.strong.leke.question.model.material.TeacherMaterialRecord">
+		UPDATE 
+			que_teacher_material_record
+		SET
+			curPage = #{curPage},
+			modifiedBy = #{modifiedBy}
+		WHERE
+			isDeleted = 0
+		AND
+			materialFileId = #{materialFileId}
+		AND
+			teacherId = #{teacherId}
+	</update>
+	
+	<select id="get" parameterType="map" 
+		resultType="cn.strong.leke.question.model.material.TeacherMaterialRecord">
+		SELECT 
+			a.*
+		FROM
+			que_teacher_material_record a
+		WHERE
+			a.isDeleted = 0
+		AND
+			a.materialFileId = #{materialFileId}
+		AND 
+			a.teacherId = #{teacherId}
+	</select>
+	
+	<select id="getNewest" parameterType="map" 
+		resultType="cn.strong.leke.question.model.material.TeacherMaterialRecord">
+		SELECT 
+			a.*
+		FROM
+			que_teacher_material_record a
+		WHERE
+			a.teacherId = #{teacherId}
+		AND
+			a.isDeleted = 0
+		ORDER BY a.modifiedOn DESC
+		LIMIT 1
+	</select>
+	
+</mapper>

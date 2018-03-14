@@ -1,0 +1,47 @@
+####jdbc####
+jdbc.driverClassName=${ci.jdbc.driverClassName}
+jdbc.dialectClass=${ci.jdbc.dialectClass}
+jdbc.url=${ci.jdbc.url.question}
+jdbc.username=${ci.jdbc.username.question}
+jdbc.password=${ci.jdbc.password.question}
+
+####cache####
+redis.host1=${ci.redis.host1}
+redis.port1=${ci.redis.port1}
+redis.pool.maxActive=${ci.redis.pool.maxActive}
+redis.pool.maxIdle=${ci.redis.pool.maxIdle}
+redis.pool.maxWait=${ci.redis.pool.maxWait}
+
+####samba####
+samba.storage.root=${ci.samba.storage.root}
+samba.trans.remoteUrl=${ci.samba.trans.remoteUrl}
+samba.trans.endUrl=${ci.samba.trans.question.endUrl}
+
+####mongodb####
+mongo.question.replicaset=${ci.mongo.question.replicaset}
+mongo.question.credentials=${ci.mongo.question.credentials}
+mongo.question.db=${ci.mongo.question.db}
+
+#### cron ####
+cron.question.duplication=${ci.cron.question.duplication}
+
+####mq####
+mq.host=${ci.mq.host}
+mq.port=${ci.mq.port}
+mq.username=${ci.mq.username}
+mq.password=${ci.mq.password}
+
+mq.e.question.papercount=${ci.mq.e.question.papercount}
+mq.q.question.papercount=${ci.mq.q.question.papercount}
+
+mq.e.incentive.userdynamic=${ci.mq.e.incentive.userdynamic}
+mq.q.incentive.userdynamic=${ci.mq.q.incentive.userdynamic}
+
+mq.e.repository.diffs=${ci.mq.e.repository.diffs}
+mq.q.repository.diffs=${ci.mq.q.repository.diffs}
+
+mq.e.repository.index.question=${ci.mq.e.repository.index.question}
+mq.q.repository.index.question=${ci.mq.q.repository.index.question}
+
+mq.e.question.wrongquestion = ${ci.mq.e.question.wrongquestion}
+mq.q.question.wrongquestion = ${ci.mq.q.question.wrongquestion}

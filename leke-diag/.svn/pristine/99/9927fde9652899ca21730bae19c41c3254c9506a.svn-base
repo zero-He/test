@@ -1,0 +1,95 @@
+
+var Statistics = {
+
+	init : function() {
+		if(this.getRoleName() == "parent"){
+			this.loadChildren();
+		}else{
+			this.page();
+			$("#childrenHeader").hide();
+		}
+		this.bindEvent();
+	},
+	
+	getRoleName : function(){
+		var roleName = "common";
+		if(Leke.user.currentRoleId == 100){
+			roleName = "student";
+		}else if(Leke.user.currentRoleId == 101){
+			roleName = "teacher";
+		}else if(Leke.user.currentRoleId == 102){
+			roleName = "parent";
+		}else if(Leke.user.currentRoleId == 103){
+			roleName = "classTeacher";
+		}else if(Leke.user.currentRoleId == 104){
+			roleName = "provost";
+		}
+		return roleName;
+	},
+	
+	bindEvent : function(){
+		var examReportId;
+		var studentId;
+		
+		$("#jtbodyData").on("click","#viewDtl",function(){
+			examReportId = $(this).data('id');
+			studentId = $(this).next().html();
+			window.location.href = "/auth/m/"+Statistics.getRoleName()+"/examReport/toShowStuExamReportPhone.htm?examReportId="+examReportId+"&studentId="+studentId;
+		});
+		
+		$("#ulbodyData").on("click","li",function(){
+			studentId = $(this).data('id');
+			$("li").removeClass();
+			$(this).addClass("active");
+			Statistics.page(studentId);
+		});
+	},
+	
+	loadChildren : function(){
+		$.post("/auth/m/"+Statistics.getRoleName()+"/examReport/findChildrenByParentId.htm", {}, function(json){
+			var data = json.datas;
+			if (data) {
+				var output = Mustache.render($("#chidrenTpl").html(), data);
+				if(data.childrenList.length > 1){
+					$("#childrenHeader").show();
+				}else{
+					$("#childrenHeader").hide();
+				}
+				$("#ulbodyData").html(output);
+				
+				var studentId = data.childrenList[0].studentId;
+				$("li").first().addClass("active");
+				Statistics.page(studentId);
+			} else {
+				$("#ulbodyData").html('');
+			}
+		});
+	},
+	
+	page : function(studentId){
+		$(window).page({
+		    url: "/auth/m/"+Statistics.getRoleName()+"/examReport/findExamReport.htm",
+		    queryData: {studentId : studentId},
+		    curPage: 1,
+		    loadTips: {                     
+		    	loading: '<i></i>数据加载中',
+		    	loaded: '没有更多数据',
+		    	noData: '暂无成绩单数据'
+		    	},
+		    scrollCont: $('#jtbodyData'),
+		    callbackPullDown: function(page) {
+				var data = page;
+				if (data) {
+					var output = Mustache.render($("#examReportListPhoneTpl").html(), data);
+					$('#jtbodyData').append(output);
+				} else {
+					$('#jtbodyData').html('');
+				}
+		    }
+		});
+	
+	}
+
+};
+
+Statistics.init();

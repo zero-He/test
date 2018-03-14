@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.question.dao.mybatis.WordImportRecordDao">
+
+	<insert id="addWordImportRecord"
+		parameterType="cn.strong.leke.question.model.WordImportRecord">
+		INSERT INTO que_word_import_record(
+			recordId, schoolStageId, schoolStageName, subjectId, subjectName, 
+			fileId, fileName, userId, userName, 
+			total, successed, failed, remainFailed, status,
+			isDeleted, createdOn, modifiedOn
+		) VALUES (
+			#{recordId}, #{schoolStageId}, #{schoolStageName}, #{subjectId}, #{subjectName}, 
+			#{fileId}, #{fileName},	#{userId}, #{userName}, 
+			#{total}, 0, 0, 0, #{status},
+			0, now(), now()
+		)
+	</insert>
+	
+	<update id="incSuccessedCount" parameterType="string">
+		UPDATE que_word_import_record
+		<set>
+			successed = successed + 1,
+			modifiedOn = now()
+		</set>
+		<where>
+			recordId = #{recordId}
+		</where>
+	</update>
+	
+	<update id="incFailedCount" parameterType="string">
+		UPDATE que_word_import_record
+		<set>
+			failed = failed + 1,
+			remainFailed = remainFailed + 1,
+			modifiedOn = now()
+		</set>
+		<where>
+			recordId = #{recordId}
+		</where>
+	</update>
+	
+	<update id="updateProcessStatus" parameterType="cn.strong.leke.question.model.WordImportRecord">
+		UPDATE que_word_import_record
+		<set>
+			status = #{status},
+			modifiedOn = now()
+		</set>
+		<where>
+			recordId = #{recordId}
+		</where>
+	</update>
+	
+	<select id="getWordImportRecord" resultType="cn.strong.leke.question.model.WordImportRecordDTO"
+		 parameterType="string">
+		SELECT *
+		FROM que_word_import_record
+		<where>
+			recordId = #{recordId}
+			AND isDeleted = 0
+		</where>
+	</select>
+	
+	<update id="updateRemainFailedCount" parameterType="cn.strong.leke.question.model.WordImportRecord">
+		UPDATE que_word_import_record
+		<set>
+			remainFailed = #{remainFailed},
+			modifiedOn = now()
+		</set>
+		<where>
+			recordId = #{recordId}
+		</where>
+	</update>
+	
+	<select id="queryMyWordImportRecord" resultType="cn.strong.leke.question.model.WordImportRecordDTO"
+		 parameterType="long">
+		SELECT *
+		FROM que_word_import_record t
+		<where>
+			t.userId = #{userId}
+			AND (
+				<![CDATA[
+					t.remainFailed > 0
+				]]>
+				OR
+				<![CDATA[
+					t.createdOn > DATE_SUB(now(), INTERVAL 7 DAY)
+				]]>
+			) 
+			AND t.isDeleted = 0
+		</where>
+		ORDER BY createdOn DESC
+	</select>
+	
+</mapper>

@@ -1,0 +1,72 @@
+package cn.strong.leke.homework.dao.mongo;
+
+import static com.mongodb.client.model.Filters.eq;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.bson.conversions.Bson;
+import org.bson.types.ObjectId;
+import org.springframework.beans.factory.InitializingBean;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Repository;
+
+import cn.strong.leke.homework.model.HomeworkPaper;
+
+import com.mongodb.BasicDBObject;
+import com.mongodb.client.FindIterable;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoCursor;
+import com.mongodb.client.MongoDatabase;
+
+@Repository
+public class HomeworkPaperDao implements InitializingBean {
+
+	private static final String COLL_NAME = "homework.paper";
+
+	@Autowired
+	private MongoDatabase db;
+	private MongoCollection<HomeworkPaper> coll;
+
+	@Override
+	public void afterPropertiesSet() throws Exception {
+		this.coll = db.getCollection(COLL_NAME, HomeworkPaper.class);
+	}
+
+	public HomeworkPaper getByPaperId(String paperId) {
+		return this.coll.find(eq("_id", new ObjectId(paperId))).first();
+	}
+	
+	public String insertOne (HomeworkPaper homeworkPaper) {
+		ObjectId objectId = new ObjectId();
+		homeworkPaper.setPaperId(objectId.toString());
+		this.coll.insertOne(homeworkPaper);
+		return objectId.toString();
+	}
+	
+	public List<HomeworkPaper> findHwPaperList(List<String> paperIds){
+		Bson filter = new BasicDBObject("_id", new BasicDBObject("$in", paperIds.stream().map(v->new ObjectId(v)).collect(Collectors.toList())));
+		FindIterable<HomeworkPaper>  result = this.coll.find(filter);
+		List<HomeworkPaper> datas = new ArrayList<HomeworkPaper>();
+		if(result != null){
+			result.map(v->v).into(datas);
+		}
+		return datas;
+	}
+	public List<Long> findQuestionId(List<String> paperIds){
+		Bson filter = new BasicDBObject("_id", new BasicDBObject("$in", paperIds.stream().map(v->new ObjectId(v)).collect(Collectors.toList())));
+		FindIterable<HomeworkPaper>  result = this.coll.find(filter);
+		List<Long> questionIds = new ArrayList<Long>();
+		if(result != null){
+			MongoCursor<HomeworkPaper> datas = result.iterator();
+			datas.forEachRemaining(v->{
+				v.getPaperDetail().getGroups().forEach(q->{
+					questionIds.addAll(q.getQuestions().stream().map(item->item.getQuestionId()).collect(Collectors.toList()));
+				});
+			});
+		}
+		return questionIds;
+	}
+	
+}

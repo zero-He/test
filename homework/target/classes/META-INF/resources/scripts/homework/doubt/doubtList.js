@@ -1,0 +1,80 @@
+define(function(require, exports, module) {
+	var $ = require('jquery');
+	var WdatePicker = require('date');
+	var utils = require('utils');
+	var Mustache = require('mustache');
+	var Page = require('page');
+	require('core-business/widget/jquery.leke.stgGrdSbjSelect');
+	var I18n = require('homework/common/i18n');
+	var deleteAndMark = require("homework/doubt/deleteAndMark");
+	var s_alert = $.i18n.prop('homework.exercise.knowledge.alert');
+	var LoadDoubtList = {
+		finit : function() {
+			this.page = Page.create({
+				id : 'page',
+				url : window.ctx + '/auth/student/doubt/doubtList_tpl.htm',
+				pageSize : 20,
+				buttonId : 'bSeachDoubt',
+				formId : 'doubtListForm',
+				callback : function(datas) {
+					var page = datas.page;
+					var output = Mustache.render($('#jDoubtListTpl').html(), page);
+					$('#jDoubtBody').html(output);
+				}
+			});
+			deleteAndMark.init(this.page);
+			$('#jSubject').stgGrdSbjSelect({
+				type : 'sbj',
+				caption : $.i18n.prop('homework.doubt.editor.all'),
+				onChange : function(selection) {
+					$('#jSubjectId').val(selection.subjectId);
+				}
+			});
+			this.bindSeach();
+			this.timeClick();
+			this.bindGetDetail();
+			this.bindTabs();
+		},
+		bindTabs : function() {
+			$('#jResolvedTab li').click(function() {
+				$(this).addClass('active').siblings().removeClass('active');
+				$('#jResolved').val($(this).data('resolved'));
+				$('#bSeachDoubt').trigger('click');
+			});
+		},
+		bindSeach : function() {
+			var _this = this;
+			$("#jButDoubt").on('click', function() {
+				window.open(ctx + "/auth/student/myDoubt/ask/doubt.htm");
+			});
+		},
+		bindGetDetail : function() {
+			$(".doubtDetail").each(function() {
+				$(this).on("click", function() {
+					window.location.href = ctx + "/auth/student/myDoubt/doubtList/getDoubtDetail.htm?doubtId="
+							+ $(this).data("id");
+				});
+			});
+		},
+		timeClick : function() {
+			$('#tStartTime').click(function() {
+				WdatePicker({
+					dateFmt : 'yyyy-MM-dd',
+					maxDate : $('#tEndtTime').val(),
+					readOnly : true
+				});
+			});
+			$('#tEndTime').click(function() {
+				WdatePicker({
+					dateFmt : 'yyyy-MM-dd',
+					minDate : $('#tStartTime').val(),
+					readOnly : true
+				});
+			});
+		}
+
+	}
+
+	LoadDoubtList.finit();
+
+})

@@ -1,0 +1,29 @@
+package cn.strong.leke.monitor.mongo.online.service;
+
+import java.util.Set;
+
+import cn.strong.leke.monitor.mongo.online.model.query.ActiveUserQuery;
+
+public interface IPlatformActiveUserDao {
+	
+	/**
+	 * 获取累计有效用户
+	 * @param query
+	 * @return
+	 */
+	int countActiveUsersSince(ActiveUserQuery query);
+	
+	/**
+	 * 获取活跃用户
+	 * @param query
+	 * @return
+	 */
+	int getActiveUsersCount(ActiveUserQuery query);
+	
+	Set<Integer> getStaDay(int endDate,int fromDate);
+	
+	Set<Integer> getStaWeek(int endWeek, int startWeek);
+	
+	Set<Integer> getStaMonth(int endMonth, int startMonth);
+	
+}

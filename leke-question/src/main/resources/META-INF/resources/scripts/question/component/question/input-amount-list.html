@@ -1,0 +1,43 @@
+<div class="detail">
+	<div class="m-search-box">
+		<div class="item">
+			<label class="title">录入日期：</label>
+			<input type="text" class="Wdate u-ipt u-ipt-nm"
+				data-bind="datepicker: {
+							value: query.minCreatedOn,
+							maxDate : query.maxCreatedOn,
+							dateFmt: 'yyyy-MM-dd'
+						}"/>
+			- 
+			<input type="text" class="Wdate u-ipt u-ipt-nm" 
+				data-bind="datepicker: {
+							value: query.maxCreatedOn,
+							minDate : query.minCreatedOn,
+							dateFmt: 'yyyy-MM-dd'
+						}"/>
+			<input class="u-btn u-btn-nm u-btn-bg-turquoise" type="button" id="bSearch" data-bind="value: '查询', click: function() {doSearch();}" value="查询">
+		</div>
+	</div>
+	<div class="base_view1">
+		<div class="m-table">
+			<table>
+				<thead>
+					<tr>
+						<th>单独创建习题量</th>
+						<th>试卷创建习题量</th>
+						<th>习题册创建习题量</th>
+						<th>总和</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr data-bind="with: total">
+						<td data-bind="text: total"></td>
+						<td data-bind="text: totalFromPaper"></td>
+						<td data-bind="text: totalFromWb"></td>
+						<td data-bind="text: total + totalFromPaper + totalFromWb"></td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+	</div>
+</div>

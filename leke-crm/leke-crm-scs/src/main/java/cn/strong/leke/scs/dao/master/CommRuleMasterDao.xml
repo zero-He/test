@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8" ?>   
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.scs.dao.master.CommRuleMasterDao">
+
+	<insert id="insertCommRule" parameterType="cn.strong.leke.scs.model.CommRule">
+	<![CDATA[
+		INSERT INTO scs_comm_rule (
+			commType,
+			validTime,
+			expireTime,
+			detail,
+			isDeleted,
+			createdBy,
+			createdOn
+		) VALUES (
+			#{commType},
+			#{validTime},
+			#{expireTime},
+			#{detail},
+			0,
+			#{createdBy},
+			NOW()
+		)
+	]]>
+	</insert>
+
+	<update id="updateCommRule" parameterType="cn.strong.leke.scs.model.CommRule">
+	<![CDATA[
+		UPDATE scs_comm_rule
+		   SET validTime = #{validTime},
+		       detail = #{detail},
+		       modifiedBy = #{modifiedBy},
+		       modifiedOn = NOW()
+		 WHERE ruleId = #{ruleId}
+		   AND isDeleted = 0
+	]]>
+	</update>
+
+	<update id="updateExpireTimeByRuleId" parameterType="map">
+	<![CDATA[
+		UPDATE scs_comm_rule
+		   SET expireTime = #{expireTime},
+		       modifiedBy = #{modifiedBy},
+		       modifiedOn = NOW()
+		 WHERE ruleId = #{ruleId}
+		   AND isDeleted = 0
+	]]>
+	</update>
+
+	<select id="getValidCommRuleByCommType" parameterType="integer" resultType="cn.strong.leke.scs.model.CommRule">
+	<![CDATA[
+		SELECT ruleId,
+			   commType,
+			   validTime,
+			   expireTime,
+			   detail,
+			   isDeleted,
+			   createdBy,
+			   createdOn,
+			   modifiedBy,
+			   modifiedOn
+		  FROM scs_comm_rule
+		 WHERE commType = #{commType}
+		   AND validTime < NOW()
+		   AND NOW() < IFNULL(expireTime, '2050-01-01')
+		   AND isDeleted = 0
+		 ORDER BY validTime
+		 LIMIT 1
+	]]>
+	</select>
+
+	<select id="findNearestTwoCommRules" parameterType="integer" resultType="cn.strong.leke.scs.model.CommRule">
+	<![CDATA[
+		SELECT ruleId,
+			   commType,
+			   validTime,
+			   expireTime,
+			   detail,
+			   isDeleted,
+			   createdBy,
+			   createdOn,
+			   modifiedBy,
+			   modifiedOn
+		  FROM scs_comm_rule
+		 WHERE commType = #{commType}
+		   AND isDeleted = 0
+		 ORDER BY validTime DESC
+		 LIMIT 2
+	]]>
+	</select>
+
+</mapper>   

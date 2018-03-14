@@ -1,0 +1,57 @@
+<div class="z-resource-share">
+	<div class="m-form">
+	    <form action="">
+	        <ul>
+	            <li class="form-item">
+	                <label class="title">分享资源：</label>
+	                <div class="con">题号[<span data-bind="text: backend.questionId"></span>]</div>
+	            </li>
+	            <li class="form-item">
+	                <label class="title">分享范围：</label>
+	                <div class="con">
+	                	<!-- ko if: showShareSchool -->
+	                    <input type="checkbox" id="cb_shareSchool" name="shareSchool" 
+	                    	data-bind="checked: shareSchool,
+	                    		disable: backend.shareSchool"/>
+	                    <label for="cb_shareSchool">我的学校 </label>
+	                    <!-- /ko -->
+	                    <input type="checkbox" id="cb_sharePlatform" name="sharePlatform"
+	                    	data-bind="checked: sharePlatform,
+	                    		disable: backend.sharePlatform"/>
+	                    <label for="cb_sharePlatform">乐课网 </label>
+	                </div>
+	            </li>
+	            <li class="form-item">
+	                <label for="" class="title">教材：</label>
+	                <div class="con">
+	                    <input type="text" placeholder="请选择"
+	                    	data-bind="value: sectionPath, click: openSectionSelect" readonly="readonly"/>
+	                    <i class="icon iconfont s-c-r f-csp f-fs12" title="移除教材章节"
+	                    	 data-bind="click: doRemoveSection">&#xf00b3;</i>
+	                </div>
+	            </li>
+	            <li class="form-item">
+	                <label for="" class="title">知识点：</label>
+	                <div class="con">
+	                    <input type="text" placeholder="请选择"
+	                    	data-bind="value: knowledgePath, click: openKnowledgeSelect" readonly="readonly"/>
+	                    <i class="icon iconfont s-c-r f-csp f-fs12" title="移除知识点"
+	                    	 data-bind="click: doRemoveKnowledge">&#xf00b3;</i>
+	                </div>
+	            </li>
+	        </ul>
+	        <div class="submit">
+	            <input type="submit" value="确定" class="u-btn u-btn-nm u-btn-bg-turquoise"
+	            	data-bind="click: doSubmit"/>
+	            <input type="button" value="取消" class="u-btn u-btn-nm u-btn-bg-gray"
+	            	data-bind="click: doCancel"/>
+	        </div>
+	    </form>
+	</div>  
+	
+	<div class="warning">
+	    <h6><i class="iconfont icon" style="color: #ffce55">&#xf0142;</i> 温馨提示：</h6>
+	    <p>1. 分享涉及侵权内容的文档将会被移除。</p>
+	    <p>2. 严禁分享含有淫秽色情及低俗信息等文档，让我们一起携手共同打造健康乐课库。</p>
+	</div>
+</div>

@@ -1,0 +1,143 @@
+package cn.strong.leke.homework.dao.mongo;
+
+import static com.mongodb.client.model.Filters.and;
+import static com.mongodb.client.model.Filters.eq;
+
+import java.math.BigDecimal;
+import java.util.Date;
+import java.util.List;
+
+import org.bson.Document;
+import org.bson.conversions.Bson;
+import org.bson.types.ObjectId;
+import org.springframework.beans.factory.InitializingBean;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Repository;
+
+import cn.strong.leke.data.mongo.MongoPageUtils;
+import cn.strong.leke.framework.page.jdbc.Page;
+import cn.strong.leke.homework.model.mongo.HolidayHwMicro;
+import cn.strong.leke.homework.model.query.HolidayHwQuery;
+
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.Sorts;
+
+@Repository
+public class HolidayHwDao implements InitializingBean {
+
+	private static final String COLL_NAME = "holiday.homework";
+
+	@Autowired
+	private MongoDatabase db;
+
+	private MongoCollection<HolidayHwMicro> coll;
+
+	@Override
+	public void afterPropertiesSet() throws Exception {
+		this.coll = db.getCollection(COLL_NAME, HolidayHwMicro.class);
+	}
+
+	/**
+	 * 获取微课或作业列表
+	 * @param query
+	 * @return
+	 */
+	public List<HolidayHwMicro> findHolidayHomeworks(HolidayHwQuery query, Page page) {
+		Bson filter = eq("isDeleted", false);
+		Bson sort = and(Sorts.descending("createdOn"),Sorts.ascending("userId","type"));
+		if (query.getClassId() != null) {
+			filter = and(filter, eq("classId", query.getClassId()));
+		}
+		if (query.getSubjectId() != null) {
+			filter = and(filter, eq("subjectId", query.getSubjectId()));
+		}
+		if (query.getType() != null) {
+			filter = and(filter, eq("type", query.getType()));
+		}
+		if (query.getStudentId() != null) {
+			filter = and(filter, eq("userId", query.getStudentId()));
+			sort= and(Sorts.descending("createdOn"),Sorts.ascending("subjectId", "matVersion", "bookId"));
+		}
+		Bson projection = and(eq("microcourses", 0), eq("matNodes", 0));
+		return MongoPageUtils.find(coll, filter, projection, sort, page);
+	}
+
+	/**
+	 * 获取微课和学科作业
+	 * @param id
+	 * @return
+	 */
+	public HolidayHwMicro getById(String id) {
+		Bson filter = eq("_id", new ObjectId(id));
+		return this.coll.find(filter).first();
+	}
+
+	/**
+	 * 更新作业的状态信息
+	 * @param homeworkDtlId
+	 */
+	public void updateHwState(Long homeworkDtlId) {
+		Bson filter = eq("homeworkDtlIds", homeworkDtlId);
+		HolidayHwMicro holidayHomework = this.coll.find(filter).first();
+		Date curDate = new Date();
+		Document set = new Document().append("lastTime", curDate).append("finish", holidayHomework.getFinish() + 1);
+		if (holidayHomework.getFirstTime() == null) {
+			set.append("firstTime", curDate);
+		}
+		Document update = new Document().append("$set", set);
+		this.coll.updateOne(filter, update);
+	}
+
+	/**
+	 * 更新微课的状态信息
+	 * @param homeworkDtlId
+	 */
+	public void updateMicroState(String id, Long microId,Boolean isFirst) {
+		Bson filter = and(eq("_id", new ObjectId(id)), eq("microcourses.microId", microId));
+		HolidayHwMicro holidayHomework = this.coll.find(filter).first();
+	
+		Date curDate = new Date();
+
+		Document set = new Document().append("lastTime", curDate);
+		if(isFirst){
+			set.append("finish", holidayHomework.getFinish() + 1)
+				.append("microcourses.$.microState", 1);
+		}
+		if (holidayHomework.getFirstTime() == null) {
+			set.append("firstTime", curDate);
+		}
+		Document update = new Document().append("$set", set);
+		this.coll.updateOne(filter, update);
+	}
+
+	/**
+	 * 更新微课练习作业的状态信息
+	 * @param homeworkDtlId
+	 */
+	public void updateMicroHwRate(Long userId, String exerciseId, BigDecimal accuracy) {
+		Bson filter = Filters.and(eq("userId", userId) ,eq("microcourses.exerciseId", exerciseId));
+		HolidayHwMicro holidayHomework = this.coll.find(filter).first();
+		Date curDate = new Date();
+		
+		Document set = new Document().append("lastTime", curDate);
+		if (holidayHomework.getFirstTime() == null) {
+			set.append("firstTime", curDate);
+		}
+		if(accuracy != null){
+			set.append("microcourses.$.accuracy", accuracy.doubleValue());
+		}
+		Document update = new Document().append("$set", set);
+		this.coll.updateOne(filter, update);
+	}
+
+	/**
+	 * 新增一条记录
+	 * @param holidayHomework
+	 */
+	public void insertOne(HolidayHwMicro holidayHomework) {
+		this.coll.insertOne(holidayHomework);
+	}
+
+}

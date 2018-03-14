@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.1//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.question.dao.mybatis.IQuestionTypeSubDao">
+
+	<insert id="insertQueTypeSubs">
+		INSERT INTO 
+			que_question_type_sub(questionTypeSubId,questionTypeId,subTypeId,ord)
+		VALUES
+			<foreach collection="subs" item="sub" separator=",">
+			(NULL,#{sub.questionTypeId},#{sub.subTypeId},#{sub.ord})
+			</foreach>
+	</insert>
+
+	<delete id="deleteQueTypeSubsByQueTypeId">
+		DELETE FROM
+			que_question_type_sub 
+		WHERE  
+			questionTypeId =#{questionTypeId}
+	</delete>
+</mapper>

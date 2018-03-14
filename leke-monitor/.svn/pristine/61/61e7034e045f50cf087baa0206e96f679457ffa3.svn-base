@@ -1,0 +1,44 @@
+<div class="c-details">
+    <table>
+        <thead>
+            <tr data-bind="foreach: {data: columns, as: 'col'}">
+                <th data-bind="attr: {
+                	width: col.width
+                }, text: col.name"></th>
+            </tr>
+        </thead>
+        <!-- ko foreach: {data: itemPages, as: 'ipage'} -->
+        <tbody data-bind="visible: $index() == $component.curPage(),
+        	foreach: {data: ipage, as: 'item'}">
+            <tr data-bind="foreach: {data: $component.columns, as: 'col'}">
+                <td>
+                	<!-- ko if: col.url -->
+                	<a data-bind="attr: {
+                		href: col.url(item)
+                	}, text: item[col.id]"></a>
+                	<!-- /ko -->
+                	<!-- ko if: !col.url -->
+                	<span data-bind="text: item[col.id]">&nbsp;</span>
+                	<!-- /ko -->
+                </td>
+            </tr>
+        </tbody>
+        <!-- /ko -->
+    </table>
+    
+    <div class="nav-wrap" data-bind="if: totalPage() > 1">
+	    <div class="nav-num">
+	        <button class="lb" data-bind="click: toPrev"></button>
+	        <div class="num">
+	            <ol data-bind="foreach: midPages">
+	                <li data-bind="text: $data + 1, css: {
+	                	cur: $data == $parent.curPage()
+	                }, click: function() {
+	                	$parent.curPage($data);
+	                }">0</li>
+	            </ol>
+	        </div>
+	        <button class="rb" data-bind="click: toNext"></button>
+	    </div>
+    </div>
+</div>

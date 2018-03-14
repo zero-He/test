@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8" ?>   
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.question.dao.mybatis.question.IQuestionSectionDao">
+
+	<insert id="insertQuestionSection" useGeneratedKeys="true" keyProperty="relationId"
+		parameterType="cn.strong.leke.model.question.QuestionSection">
+		INSERT INTO que_question_section (
+			questionId, pressId,materialId, materialNodeId, path,
+			isDeleted, createdBy, createdOn, modifiedBy, modifiedOn
+		) VALUES (
+			#{questionId},#{pressId}, #{materialId}, #{materialNodeId}, #{path},
+			0, #{createdBy}, now(), #{modifiedBy}, now()
+		)
+	</insert>
+	
+	<update id="deleteQuestionSections" parameterType="map">
+		UPDATE que_question_section
+		<set>
+			isDeleted = 1,
+			modifiedBy = #{modifiedBy},
+			modifiedOn = now()
+		</set>
+		<where>
+			questionId = #{questionId}
+			AND isDeleted = 0
+		</where>
+	</update>
+	
+	<update id="deleteQuestionSection" parameterType="map">
+		UPDATE que_question_section
+		<set>
+			isDeleted = 1,
+			modifiedBy = #{modifiedBy},
+			modifiedOn = now()
+		</set>
+		<where>
+			quesSectionId = #{quesSectionId}
+			AND isDeleted = 0
+		</where>
+	</update>
+	
+	<select id="getQuestionSection" parameterType="long" resultType="cn.strong.leke.model.question.QuestionSection">
+		SELECT a.*
+		FROM que_question_section a
+		WHERE a.isDeleted = 0 AND a.quesSectionId = #{quesSectionId}
+	</select>
+	
+	<select id="findByQuestionId" parameterType="long"
+		resultType="cn.strong.leke.model.question.QuestionSection">
+		SELECT * 
+		FROM que_question_section a
+		WHERE isDeleted = 0
+		AND a.questionId = #{questionId}
+	</select>
+	
+	<select id="findByQuestionIds" parameterType="map"
+		resultType="cn.strong.leke.model.question.QuestionSection">
+		SELECT * 
+		FROM que_question_section a
+		WHERE isDeleted = 0
+		AND a.questionId IN
+		<foreach collection="questionIds" item="item" open="(" close=")" separator=",">
+			#{item}
+		</foreach>
+	</select>
+
+</mapper>

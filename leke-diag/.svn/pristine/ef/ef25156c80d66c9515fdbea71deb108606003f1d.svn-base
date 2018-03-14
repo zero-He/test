@@ -1,0 +1,97 @@
+package cn.strong.leke.diag.dao.beike.mybatis;
+
+import java.util.Date;
+import java.util.List;
+import java.util.Set;
+
+import org.apache.ibatis.annotations.Param;
+
+import cn.strong.leke.diag.dao.beike.model.BeikeTypeStat;
+import cn.strong.leke.diag.dao.beike.model.ResourceInfo;
+import cn.strong.leke.diag.model.ReviewCount;
+import cn.strong.leke.diag.model.report.ResReviewState;
+
+public interface BeikeResourceDao {
+
+	/**
+	 * 获取单课相关资源信息
+	 * @param courseSingleId 单课ID
+	 * @param resourceType 资源类型
+	 * @param beikePhase 备课阶段
+	 * @return
+	 */
+	public List<ResourceInfo> findResourceInfoByCourseSingleId(@Param("courseSingleId") Long courseSingleId,
+			@Param("resourceType") Long resourceType, @Param("beikePhase") Long beikePhase);
+
+	/**
+	 * 获取课件预复习完成学生ID
+	 * @param resourceId
+	 * @param closeTime
+	 * @return
+	 */
+	public Set<Long> findCoursewareReviewStuIdByResourceId(@Param("resourceIds") List<Long> resourceIds,
+			@Param("resourceNum") Integer resourceNum, @Param("closeTime") Date closeTime);
+
+	/**
+	 * 获取微课预复习完成学生ID
+	 * @param resourceId
+	 * @param closeTime
+	 * @return
+	 */
+	public Set<Long> findMicrocourseReviewStuIdByResourceId(@Param("resourceIds") List<Long> resourceIds,
+			@Param("resourceNum") Integer resourceNum, @Param("closeTime") Date closeTime);
+
+	/**
+	 * 获取作业预复习完成学生ID
+	 * @param resourceId
+	 * @param closeTime
+	 * @return
+	 */
+	public Set<Long> findHomeworkReviewStuIdByResourceId(@Param("resourceIds") List<Long> resourceIds,
+			@Param("resourceNum") Integer resourceNum, @Param("closeTime") Date closeTime);
+
+	/**
+	 * 获取学生的单预复习完成情况
+	 * @param studentId
+	 * @param courseSingleIds
+	 * @param resourceType
+	 * @param beikePhase
+	 * @return
+	 */
+	public List<ResReviewState> findResReviewStateByStudentId(@Param("studentId") Long studentId,
+			@Param("courseSingleIds") List<Long> courseSingleIds, @Param("resourceType") Long resourceType,
+			@Param("beikePhase") Long beikePhase);
+
+	/**
+	 * 查询有备课的课堂数量
+	 * @param courseSingleIds
+	 * @return
+	 */
+	public int getBeikeNumByCourseSingleIds(@Param("courseSingleIds") List<Long> courseSingleIds);
+	
+	/**
+	 * 获取按类型的备课统计信息
+	 * @param courseSingleIds
+	 * @return
+	 */
+	public List<BeikeTypeStat> findBeikeTypeStatByCourseSingleIds(@Param("courseSingleIds") List<Long> courseSingleIds);
+
+	/**
+	 * 查询老师备课数量统计
+	 * @param phase
+	 * @param courseSingleIds
+	 * @return
+	 */
+	public List<ReviewCount> findTeacherReviewCountByCourseSingleId(@Param("phase") Long phase,
+			@Param("courseSingleIds") List<Long> courseSingleIds);
+
+	/**
+	 * 查询学生预复习数量统计
+	 * @param phase
+	 * @param resType
+	 * @param courseSingleIds
+	 * @return
+	 */
+	public List<ReviewCount> findStudentReviewCountByCourseSingleId(@Param("phase") Long phase,
+			@Param("resType") Long resType, @Param("courseSingleIds") List<Long> courseSingleIds);
+}

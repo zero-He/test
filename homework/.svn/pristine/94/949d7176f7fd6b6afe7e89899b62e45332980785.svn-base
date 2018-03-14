@@ -1,0 +1,123 @@
+package cn.strong.leke.homework.model;
+
+import java.util.Date;
+
+/**
+ * 作业查询Query 对象
+ * @author Zhang Fujun
+ * @date 2015年10月13日
+ */
+public class HomeworkQuery {
+
+	private Integer homeworkType ;
+	private String homeworkName ;
+	private String homeworkFinishFlag;
+	private Long teacherId;
+	private Long schoolId;
+	private Long classId;
+	private String className;
+	private Boolean isClose;
+	private Date closeTime;
+	
+	/**
+	 * 作业类型
+	 */
+	public Integer getHomeworkType() {
+		return homeworkType;
+	}
+	/**
+	 * 作业类型
+	 */
+	public void setHomeworkType(Integer homeworkType) {
+		this.homeworkType = homeworkType;
+	}
+	/**
+	 * 作业名称
+	 */
+	public String getHomeworkName() {
+		return homeworkName;
+	}
+	/**
+	 * 作业名称
+	 */
+	public void setHomeworkName(String homeworkName) {
+		this.homeworkName = homeworkName;
+	}
+	/**
+	 * 作业批改完成情况 
+	 */
+	public String getHomeworkFinishFlag() {
+		return homeworkFinishFlag;
+	}
+	/**
+	 * 作业批改完成情况 
+	 */
+	public void setHomeworkFinishFlag(String homeworkFinishFlag) {
+		this.homeworkFinishFlag = homeworkFinishFlag;
+	}
+	/**
+	 * 老师Id
+	 * @return the teacherId
+	 */
+	public Long getTeacherId() {
+		return teacherId;
+	}
+	/**
+	 * 老师Id
+	 * @param teacherId the teacherId to set
+	 */
+	public void setTeacherId(Long teacherId) {
+		this.teacherId = teacherId;
+	}
+	/**
+	 * 学校Id
+	 * @return the schoolId
+	 */
+	public Long getSchoolId() {
+		return schoolId;
+	}
+	/**
+	 * 学校Id
+	 * @param schoolId the schoolId to set
+	 */
+	public void setSchoolId(Long schoolId) {
+		this.schoolId = schoolId;
+	}
+	/**
+	 * @return the classId
+	 */
+	public Long getClassId() {
+		return classId;
+	}
+	/**
+	 * @param classId the classId to set
+	 */
+	public void setClassId(Long classId) {
+		this.classId = classId;
+	}
+	/**
+	 * @return the className
+	 */
+	public String getClassName() {
+		return className;
+	}
+	/**
+	 * @param className the className to set
+	 */
+	public void setClassName(String className) {
+		this.className = className;
+	}
+	public Boolean getIsClose() {
+		return isClose;
+	}
+	public void setIsClose(Boolean isClose) {
+		this.isClose = isClose;
+	}
+	public Date getCloseTime() {
+		return closeTime;
+	}
+	public void setCloseTime(Date closeTime) {
+		this.closeTime = closeTime;
+	}
+	
+}

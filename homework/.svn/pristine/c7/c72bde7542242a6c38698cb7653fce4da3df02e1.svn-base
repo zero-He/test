@@ -1,0 +1,198 @@
+package cn.strong.leke.homework.controller.work;
+
+import java.net.URLDecoder;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import javax.annotation.Resource;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
+
+import cn.strong.leke.common.serialize.support.json.JsonUtils;
+import cn.strong.leke.context.user.UserContext;
+import cn.strong.leke.context.user.cst.RoleCst;
+import cn.strong.leke.core.business.incentive.DynamicHelper;
+import cn.strong.leke.framework.exceptions.LekeRuntimeException;
+import cn.strong.leke.framework.exceptions.Validation;
+import cn.strong.leke.framework.web.JsonResult;
+import cn.strong.leke.homework.manage.HwQueCommentaryService;
+import cn.strong.leke.homework.manage.WorkDetailService;
+import cn.strong.leke.homework.model.Homework;
+import cn.strong.leke.homework.model.HomeworkDtl;
+import cn.strong.leke.homework.model.HomeworkDtlInfo;
+import cn.strong.leke.homework.model.WebWorkModel;
+import cn.strong.leke.homework.model.WorkDetail;
+import cn.strong.leke.homework.model.WorkRequest;
+import cn.strong.leke.homework.service.HomeworkDtlService;
+import cn.strong.leke.homework.service.HomeworkMainService;
+import cn.strong.leke.homework.service.HomeworkService;
+import cn.strong.leke.homework.util.HomeworkUtils;
+import cn.strong.leke.model.incentive.Award;
+import cn.strong.leke.model.incentive.DynamicInfo;
+import cn.strong.leke.model.incentive.DynamicTypes;
+import cn.strong.leke.model.paper.PaperAttachment;
+import cn.strong.leke.model.question.QuestionResult;
+import cn.strong.leke.model.user.User;
+import cn.strong.leke.tags.answer.ResDataModel;
+import cn.strong.leke.tags.question.prepare.PrepareHandler;
+import cn.strong.leke.tags.question.prepare.PrepareHandlerAdapter;
+
+/**
+ * 批改作业
+ * @author  andy
+ * @created 2017年6月15日 下午4:41:15
+ * @since   v1.0.0
+ */
+@Controller
+@RequestMapping({ "/auth/*" })
+public class CorrectController {
+
+	@Resource
+	private HomeworkService homeworkService;
+	@Resource
+	private HomeworkDtlService homeworkDtlService;
+	@Resource
+	private HomeworkMainService homeworkMainService;
+	@Resource
+	private WorkDetailService workDetailService;
+	@Resource
+	private HwQueCommentaryService hwQueCommentaryService;
+
+	/**
+	 * 批改试卷信息。<br>
+	 * @param homeworkDtlId 学生试卷标识
+	 * @param model
+	 */
+	@RequestMapping({ "teacher/homework/correctWork", "student/homework/correctWork" })
+	public String correctWork(@RequestParam("homeworkDtlId") Long homeworkDtlId,
+			@RequestParam(value = "isAgain", defaultValue = "false") boolean isAgain, Model model) {
+		User user = UserContext.user.get();
+		// 作业信息
+		HomeworkDtl homeworkDtl = this.homeworkDtlService.getHomeworkDtlById(homeworkDtlId);
+		Validation.isPageNotFound(homeworkDtl == null);
+		if (homeworkDtl.getCorrectTime() != null && isAgain == false && homeworkDtl.getCorrectUserId() == null) {
+			return "redirect:/auth/teacher/homework/viewWork.htm?homeworkDtlId=" + homeworkDtlId;
+		}
+		if (homeworkDtl.getCorrectTime() == null) {
+			isAgain = false;
+		}
+		Homework homework = this.homeworkService.getHomeworkById(homeworkDtl.getHomeworkId());
+		// 查看权限验证
+		HomeworkDtlInfo homeworkDtlInfo = homeworkDtlService.getHomeworkDtlInfoById(homeworkDtlId);
+		HomeworkUtils.validateCorrectAccess(user.getId(), homeworkDtlInfo);
+
+		model.addAttribute("isAgain", isAgain);
+		// 答题信息
+		WorkDetail workDetail = this.workDetailService.getWorkDetailByHomeworkDtlId(homeworkDtlId);
+		//显示微课合并新存储的微课批注
+		hwQueCommentaryService.mergeWorkDetailForVodMic(workDetail);
+		PrepareHandlerAdapter.doPrepare(PrepareHandler.Mode.Correct, workDetail.getQuestions());
+		Map<Long, QuestionResult> questionResultMap = workDetail.getQuestions().stream()
+				.collect(Collectors.toMap(v -> v.getQuestionId(), v -> v));
+
+		ResDataModel respond = WorkSupport.buildResDataModel(user, ResDataModel.DO_CORRECT, homework, homeworkDtl);
+		if (user.getCurrentRole().getId().equals(RoleCst.STUDENT)) {
+			respond.setUserName("***");
+		}
+		WebWorkModel webWorkModel = WorkSupport.buildWebWorkModel(respond, homework, homeworkDtl);
+		webWorkModel.setIsAgain(isAgain);
+		respond.setQuestionResultMap(questionResultMap);
+		model.addAttribute("respond", respond);
+		model.addAttribute("workModel", JsonUtils.toJSON(webWorkModel));
+		model.addAttribute("paper", WorkSupport.getOrBuildPaperDTO(homework, homeworkDtl));
+		PaperAttachment attachement = WorkSupport.getOrBuildPaperDTO(homework, homeworkDtl).getAttachment();
+		if (attachement != null) {
+			model.addAttribute("fileId", attachement.getFileId());
+		}
+		return "/auth/work/doCorrectWork";
+	}
+
+	/**
+	 * 批改作业
+	 * @param homeworkId 老师作业ID
+	 * @param homeworkDtlId 学生作业标识
+	 * @param correctJson 学生答题信息JSON
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping({ "teacher/homework/saveCorrectWork", "student/homework/saveCorrectWork" })
+	public Object saveCorrectWork(Long homeworkId, Long homeworkDtlId, String correctJson, String commentary,
+			Boolean isAgain) {
+		JsonResult json = new JsonResult();
+		WorkRequest request = new WorkRequest();
+		request.setHomeworkDtlId(homeworkDtlId);
+		request.setCommentary(commentary);
+		request.setAgainCorrect(isAgain);
+		request.setQuestionResultList(JsonUtils.readList(correctJson, QuestionResult.class));
+		request.setUserId(UserContext.user.getUserId());
+		HomeworkDtlInfo homeworkDtlInfo = this.homeworkMainService.saveCorrectSubmit(request);
+		Long nextId = this.homeworkDtlService.getNextCorrectHomeworkId(homeworkId, homeworkDtlId);
+		if (!isAgain && homeworkDtlInfo.getCorrectUserId() == null) {
+			// 激励发送，重批不发送
+			User user = UserContext.user.get();
+			DynamicInfo dynamicInfo = new DynamicInfo();
+			dynamicInfo.setDynamicType(DynamicTypes.HW_CORRECT_WORK);
+			dynamicInfo.setTitle(homeworkDtlInfo.getHomeworkName());
+			dynamicInfo.setUserId(user.getId());
+			dynamicInfo.setUserName(user.getUserName());
+			dynamicInfo.setRoleId(RoleCst.TEACHER);
+			dynamicInfo.setSchoolId(user.getCurrentSchool().getId());
+			Award award = DynamicHelper.publish(dynamicInfo);
+			if (award.getSucc() && award.getHave()) {
+				Map<String, Object> map = new HashMap<String, Object>();
+				map.put("type", dynamicInfo.getTypeId());
+				map.put("leke", award.getLekeVal());
+				map.put("exp", award.getExpVal());
+				json.addDatas("tips", map);
+			}
+		}
+		json.addDatas("nextId", nextId);
+		return json;
+	}
+
+	/**
+	 * 文字批注
+	 * @param model
+	 */
+	@RequestMapping("teacher/homework/commentText")
+	public void commentText(String text, Model model) throws Exception {
+		model.addAttribute("text", URLDecoder.decode(text, "utf-8"));
+		model.addAttribute("text1", text);
+	}
+
+	/**
+	 * 语音批注
+	 * @param model
+	 */
+	@RequestMapping("teacher/homework/commentAudio")
+	public void commentAudio(String text, Model model) throws Exception {
+		model.addAttribute("text1", text);
+	}
+
+	/**
+	 * 微课批注
+	 * @param model
+	 */
+	@RequestMapping("teacher/homework/commentMicro")
+	public void commentMicro(String text, Model model) throws Exception {
+		model.addAttribute("text1", text);
+	}
+
+	@ResponseBody
+	@RequestMapping({ "teacher/validateBeforeCorrect", "student/validateBeforeCorrect" })
+	public JsonResult validateBeforeCorrect(Long homeworkDtlId) {
+		HomeworkDtlInfo homeworkDtlInfo = this.homeworkDtlService.getHomeworkDtlInfoById(homeworkDtlId);
+		JsonResult jsonResult = new JsonResult();
+		try {
+			HomeworkUtils.validateCorrectAccess(UserContext.user.getUserId(), homeworkDtlInfo);
+		} catch (LekeRuntimeException ex) {
+			jsonResult.setMessage(ex.getMessage());
+		}
+		return jsonResult;
+	}
+}

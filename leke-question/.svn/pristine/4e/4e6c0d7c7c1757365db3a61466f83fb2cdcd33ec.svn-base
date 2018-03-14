@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8" ?>   
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.question.dao.mybatis.question.IQuestionUserResGroupDao">
+	
+	<insert id="addBatchQuestionUserResGroup" parameterType="cn.strong.leke.question.model.question.QuestionUserResGroup">
+		INSERT INTO que_question_user_res_group (
+			questionId, userResGroupId,
+			isDeleted,createdBy,createdOn,modifiedBy,modifiedOn
+		) VALUES
+		<foreach collection="questionIds" separator=","  item="questionId">
+		(
+			#{questionId}, #{userResGroupId},
+			0, #{modifiedBy}, NOW(), #{modifiedBy}, NOW()
+		)
+		</foreach>
+	</insert>
+	
+	<update id="moveBatchQuestionUserResGroup"  parameterType="map">
+		UPDATE 
+			que_question_user_res_group
+		SET 
+			userResGroupId = #{newUserResGroupId},
+			modifiedBy = #{modifiedBy},
+			modifiedOn = NOW()
+		WHERE
+			isDeleted = 0
+		AND
+			userResGroupId = #{oldUserResGroupId}
+		AND
+			questionId 
+		IN
+		<foreach collection="questionIds" open="(" separator="," close=")" item="questionId">
+			#{questionId}
+		</foreach>
+	</update>
+	
+	<update id="deleteBatchQuestionUserResGroup" parameterType="map" >
+		UPDATE 
+			que_question_user_res_group
+		SET 
+			isDeleted = 1,
+			modifiedBy = #{modifiedBy},
+			modifiedOn = NOW()
+		WHERE
+			userResGroupId = #{userResGroupId}
+		AND
+			isDeleted = 0
+		AND 
+			questionId
+		IN 
+		<foreach collection="questionIds" open="(" separator="," close=")" item="questionId">
+			#{questionId}
+		</foreach>
+	</update>
+	
+	<update id="deleteQURGroupByUserResGroupId" parameterType="cn.strong.leke.question.model.question.QuestionUserResGroup">
+		UPDATE 
+			que_question_user_res_group
+		SET 
+			isDeleted = 1,
+			modifiedBy = #{modifiedBy},
+			modifiedOn = NOW()
+		WHERE
+			userResGroupId = #{userResGroupId}
+		AND
+			isDeleted = 0
+	</update>
+	
+	<select id="queryCount" parameterType="map" resultType="int">
+		SELECT	count(*)
+		FROM	que_question_user_res_group
+		WHERE	userResGroupId = #{userResGroupId}
+		AND	questionId = #{questionId}
+		AND	isDeleted = 0 
+	</select>
+	
+	<select id="queryQURGroupByUserResGroupId" parameterType="long" 
+		resultType="cn.strong.leke.question.model.question.QuestionUserResGroup">
+		SELECT *
+		FROM que_question_user_res_group
+		WHERE userResGroupId = #{userResGroupId}
+		AND isDeleted = 0 
+	</select>
+	
+	<select id="findByQuestionAndUser" parameterType="map"
+		resultType="cn.strong.leke.question.model.question.QuestionUserResGroup">
+		SELECT *
+		FROM que_question_user_res_group a
+		WHERE a.questionId = #{questionId}
+		AND	a.createdBy = #{userId}
+		AND	a.isDeleted = 0
+	</select>
+	
+</mapper>

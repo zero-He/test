@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.question.dao.mybatis.IQuestionFeedbackDao">
+    
+    <insert id="saveQuestionFeedback" parameterType="cn.strong.leke.model.question.QuestionFeedback" useGeneratedKeys="true" keyProperty="questionFeedbackId">
+		INSERT INTO que_question_feedback(
+			questionId, feedbackContent, userId, userName, schoolId, schoolName, isProcessed, isDeleted, createdBy, createdOn, modifiedBy, modifiedOn
+		) VALUES (
+			#{questionId}, #{feedbackContent},#{userId},#{userName},#{schoolId},#{schoolName},0,0,#{createdBy}, now(),#{modifiedBy}, now()
+		)
+	</insert>
+	
+	<update id="processQuestionFeedback" parameterType="cn.strong.leke.model.question.QuestionFeedback">
+		UPDATE que_question_feedback SET isProcessed = 1, modifiedBy = #{modifiedBy}, modifiedOn =  now() WHERE questionId = #{questionId} 
+		AND	isDeleted = 0
+		<if test="questionFeedbackId != null and questionFeedbackId > 0">
+			AND questionFeedbackId = #{questionFeedbackId}
+		</if>
+	</update>
+	
+	<update id="doCorrect" parameterType="map">
+		UPDATE que_question_feedback SET isProcessed = 2, modifiedBy = #{userId}, modifiedOn =  now() WHERE questionId = #{questionId}
+	</update>
+	
+	<select id="findCorrectUserIds" parameterType="long" resultType="long">
+		SELECT DISTINCT createdBy FROM que_question_feedback WHERE isDeleted = 0 AND questionId=#{questionId} AND isProcessed = 2
+	</select>
+	
+	<select id="findCorrectUserIdsFeedback" parameterType="long" resultType="long">
+		SELECT DISTINCT createdBy FROM que_question_feedback WHERE isDeleted = 0 AND questionId=#{questionId} AND isProcessed = 0
+	</select>
+	
+	<select id="queryQueFeedback" parameterType="long" resultType="cn.strong.leke.model.question.QuestionFeedbackDTO">
+		SELECT * FROM que_question_feedback WHERE isDeleted = 0 AND questionId=#{questionId} AND isProcessed = 0
+	</select>
+	
+	<select id="queryAllQueFeedback" parameterType="long" resultType="cn.strong.leke.model.question.QuestionFeedbackDTO">
+		SELECT * FROM que_question_feedback WHERE isDeleted = 0 AND questionId=#{questionId} 
+	</select>
+	
+</mapper>

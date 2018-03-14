@@ -1,0 +1,193 @@
+package cn.strong.leke.homework.service.impl;
+
+import static java.util.stream.Collectors.toMap;
+
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+
+import javax.annotation.Resource;
+
+import org.springframework.stereotype.Service;
+
+import cn.strong.leke.common.utils.CollectionUtils;
+import cn.strong.leke.common.utils.DateUtils;
+import cn.strong.leke.core.business.notice.NoticeHelper;
+import cn.strong.leke.homework.dao.mongo.WorkDetailDao;
+import cn.strong.leke.homework.dao.mybatis.HomeworkDao;
+import cn.strong.leke.homework.dao.mybatis.HomeworkDtlDao;
+import cn.strong.leke.homework.dao.mybatis.HomeworkSnapshotDao;
+import cn.strong.leke.homework.manage.WorkDetailService;
+import cn.strong.leke.homework.model.Homework;
+import cn.strong.leke.homework.model.HomeworkDtl;
+import cn.strong.leke.homework.model.WorkDetail;
+import cn.strong.leke.homework.service.HomeworkMainService;
+import cn.strong.leke.homework.service.HomeworkSnapshotService;
+import cn.strong.leke.homework.util.HomeworkCst;
+import cn.strong.leke.lesson.model.LessonVM;
+import cn.strong.leke.model.question.QuestionResult;
+import cn.strong.leke.notice.model.todo.HwAssignEvent;
+import cn.strong.leke.notice.model.todo.HwFlowEvent;
+import cn.strong.leke.remote.service.lesson.ILessonRemoteService;
+
+@Service
+public class HomeworkSnapshotServiceImpl implements HomeworkSnapshotService {
+
+	@Resource
+	private HomeworkSnapshotDao homeworkSnapshotDao;
+	@Resource
+	private HomeworkDao homeworkDao;
+	@Resource
+	private HomeworkDtlDao homeworkDtlDao;
+	@Resource
+	private WorkDetailDao workDetailDao;
+	@Resource
+	private WorkDetailService workDetailService;
+	@Resource
+	private HomeworkMainService homeworkMainService;
+	@Resource
+	private ILessonRemoteService lessonRemoteService;
+
+	public void saveFlowAfterClassByLessonId(Long lessonId) {
+		LessonVM lesson = this.lessonRemoteService.getLessonVMByLessonId(lessonId);
+		if (lesson == null) {
+			return;
+		}
+
+		// 课中课件作业的处理为已经完成
+		List<Long> homeworkIds = this.homeworkDao.findHomeworkIdsByLessonId(lessonId, HomeworkCst.HOMEWORK_USE_PHASE_LESSON);
+		homeworkIds.forEach(homeworkId -> {
+			homeworkSnapshotDao.updateHomeworkDtlIsFinished(homeworkId, lesson.getStartTime(), lesson.getEndTime());
+			homeworkMainService.updateHomeworkStat(homeworkId);
+		});
+
+		// 课前和课中试卷作业的处理成为课后作业
+		int nextPhase = HomeworkCst.HOMEWORK_USE_PHASE_AFTER;
+		Date startTime = lesson.getEndTime();
+		Date closeTime = DateUtils.truncateDate(DateUtils.addDays(lesson.getStartTime(), 4));
+		homeworkIds = this.homeworkSnapshotDao.findFlowAfterClassHomeworkIdsByLessonId(lessonId);
+		homeworkIds.forEach(
+				homeworkId -> this.saveSnapshotAndNextPhase(homeworkId, nextPhase, startTime, closeTime, true));
+
+		// 所有与课堂相关的作业都变为可见
+		this.homeworkDao.updateHomeworkVisibleByLessonId(lessonId);
+
+		// 所有的课后作业发送待办
+		List<HwAssignEvent> events = this.homeworkDao.findHwAssignEventsByCourseSingleId(lessonId);
+		events.forEach(event -> {
+			List<Long> studentIds = this.homeworkDtlDao.findUnfinishStudentIdsByHomeworkId(event.getHomeworkId());
+			event.setStudentIds(studentIds);
+		});
+		events.forEach(NoticeHelper::todo);
+	}
+
+	@Override
+	public Homework saveSnapshotAndNextPhase(Long homeworkId, Integer nextPhase, Date startTime, Date closeTime,
+			boolean retainAnswer) {
+		Homework homework = homeworkDao.getHomeworkById(homeworkId);
+		// 作业修改为镜像
+		this.homeworkSnapshotDao.updateHomeworkIsSnapshot(homeworkId, homework.getTeacherId());
+
+		// 拷贝生成新的老师作业
+		homework.setStartTime(startTime);
+		homework.setCloseTime(closeTime);
+		homework.setUsePhase(nextPhase);
+		this.homeworkDao.insertHomework(homework);
+		Long newHomeworkId = homework.getHomeworkId();
+
+		// 拷贝生成新的学生作业
+		if (retainAnswer) {
+			this.homeworkSnapshotDao.insertFullScoreHomeworkDtl(newHomeworkId, homeworkId, closeTime);
+			this.homeworkSnapshotDao.insertNoFullScoreHomeworkDtl(newHomeworkId, homeworkId, closeTime);
+		} else {
+			this.homeworkSnapshotDao.insertClearScoreHomeworkDtl(newHomeworkId, homeworkId, closeTime);
+		}
+
+		// 更新老师作业统计信息
+		this.homeworkMainService.updateHomeworkStat(newHomeworkId);
+
+		// 克隆作业答题数据
+		if (retainAnswer) {
+			this.cloneWorDetails(homeworkId, newHomeworkId);
+		}
+
+		if (nextPhase < 3) {
+			//课堂上的作业发送取消老师批改待办
+			HwFlowEvent event = new HwFlowEvent();
+			event.setOldHwId(homeworkId);
+			event.setTeacherId(homework.getTeacherId());
+			NoticeHelper.todo(event);
+		}
+		return homework;
+	}
+
+	/**
+	 * 克隆原作业的答题数据
+	 * @param oldHomeworkId
+	 * @param newHomeworkId
+	 */
+	private void cloneWorDetails(Long oldHomeworkId, Long newHomeworkId) {
+		Map<Long, Long> oldIdMap = this.resolveIdMap(oldHomeworkId);
+		List<HomeworkDtl> homeworkDtls = this.homeworkDtlDao.findHomeworkDtlListByHomeworkId(newHomeworkId);
+		homeworkDtls.forEach(homeworkDtl -> {
+			Long oldHomeworkDtlId = oldIdMap.get(homeworkDtl.getStudentId());
+			WorkDetail workDetail = this.workDetailDao.getWorkDetailByHomeworkDtlId(oldHomeworkDtlId);
+			// 有答题
+			if (workDetail != null) {
+				boolean isSubmitWork = workDetail.getSubmitTime() != null;
+				boolean isFullScore = workDetail.getQuestions().stream()
+						.allMatch(v -> Boolean.TRUE.equals(v.getTotalIsRight()));
+				// 已经提交 && 非满分时修改数据，未提交OR满分保持原样
+				if (isSubmitWork && !isFullScore) {
+					workDetail.setCorrectCount(null);
+					workDetail.setScore(null);
+					workDetail.setScoreRate(null);
+					workDetail.setCommentary(null);
+					workDetail.setQueScores(null);
+					workDetail.setKnoScores(null);
+					workDetail.setAnswerInfos(null);
+					workDetail.setSubmitTime(null);
+					this.clearWrongQuestionResults(workDetail.getQuestions());
+				}
+				workDetail.setId(null);
+				workDetail.setHomeworkId(homeworkDtl.getHomeworkId());
+				workDetail.setHomeworkDtlId(homeworkDtl.getHomeworkDtlId());
+
+				// 保存生成的新作业数据
+				this.workDetailDao.saveWorkDetail(workDetail);
+			}
+		});
+	}
+
+	/**
+	 * 清空错题&未批改题的答案&批改
+	 * @param questionResults
+	 */
+	private void clearWrongQuestionResults(List<QuestionResult> questionResults) {
+		questionResults.forEach(questionResult -> {
+			if (CollectionUtils.isNotEmpty(questionResult.getSubs())) {
+				// 有子题的，先处理子题
+				this.clearWrongQuestionResults(questionResult.getSubs());
+			}
+			// 正确的题目保持原样，错误及未批改清空批改
+			if (!Boolean.TRUE.equals(questionResult.getTotalIsRight())) {
+				questionResult.setTotalIsRight(null);
+				questionResult.setTotalResultScore(null);
+				questionResult.setTotalScoreRate(null);
+				questionResult.setCorrectComments(null);
+				if (questionResult.getAnswerResults() != null) {
+					questionResult.getAnswerResults().forEach(answerResult -> {
+						answerResult.setResultScore(null);
+						answerResult.setIsRight(null);
+						answerResult.setCorrectContent(null);
+					});
+				}
+			}
+		});
+	}
+
+	private Map<Long, Long> resolveIdMap(Long homeworkId) {
+		List<HomeworkDtl> homeworkDtls = this.homeworkDtlDao.findHomeworkDtlListByHomeworkId(homeworkId);
+		return homeworkDtls.stream().collect(toMap(HomeworkDtl::getStudentId, HomeworkDtl::getHomeworkDtlId));
+	}
+}

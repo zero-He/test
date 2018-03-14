@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8" ?>   
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.homework.dao.mybatis.ExerciseSettingDao">
+	
+	<select id="queryExerciseSettingList" resultMap="exerciseSettingDtlDetailResult" >  
+	    select 
+			es.settingId,es.gradeId,es.gradeName,es.defaultNum,es.questionTypeId,es.questionTypeName,esd.settingDtlId,esd.subjectId,esd.subjectName,esd.questionNum
+		from 
+			HW_EXERCISE_SETTING es join HW_EXERCISE_SETTING_DTL esd on es.settingId=esd.settingId
+		where 
+			es.schoolId=#{schoolId} and es.exerciseType=#{exerciseType} and es.isDeleted=0 and esd.isDeleted=0
+		order by es.gradeId,es.questionTypeId,esd.subjectId
+	</select>  
+	<resultMap id="exerciseSettingDtlDetailResult"  type="cn.strong.leke.homework.model.ExerciseSettingDTO">   
+		<id property="settingId"  column="settingId" />  
+	    <result property="gradeId" column="gradeId"/>
+	    <result property="gradeName" column="gradeName"/>
+	    <result property="defaultNum" column="defaultNum"/>
+	    <result property="questionTypeId" column="questionTypeId"/>  
+	    <result property="questionTypeName" column="questionTypeName"/>
+	    <collection property="exerciseSettingDtlList"  ofType="cn.strong.leke.homework.model.ExerciseSettingDtl" javaType="ArrayList">   
+	        <id property="settingDtlId"  column="settingDtlId"/>   
+	        <result property="subjectId"  column="subjectId"/>
+	        <result property="subjectName" column="subjectName"/>
+	        <result property="questionNum" column="questionNum"/>
+	    </collection>   
+	</resultMap>  
+	
+	<insert id="saveExerciseSetting" parameterType="cn.strong.leke.homework.model.ExerciseSetting" useGeneratedKeys="true" keyProperty="settingId">
+    	insert into HW_EXERCISE_SETTING
+    		(exerciseType,schoolId,gradeId,questionTypeId,defaultNum,isDeleted,createdBy,createdOn) 
+		values
+			(#{exerciseType},#{schoolId},#{gradeId},#{questionTypeId},#{defaultNum},0,#{createdBy},#{createdOn})
+    </insert>
+    
+    <update id="updateExerciseSetting" parameterType="cn.strong.leke.homework.model.ExerciseSetting">
+    	update 
+    		HW_EXERCISE_SETTING
+    	set 
+    		defaultNum=#{defaultNum},modifiedBy=#{modifiedBy},modifiedOn=#{modifiedOn} 
+    	where 
+    		settingId=#{settingId}
+    </update>
+	
+	<!-- <insert id="test" parameterType="cn.strong.leke.homework.model.ExerciseSettingDtl" useGeneratedKeys="true" keyProperty="id">
+    	insert into HW_EXERCISE_SETTING_DTL
+    		(settingId,isDeleted,subjectId,questionNum) 
+		values
+			(#{settingId},0,#{subjectId},#{questionNum})
+    </insert> -->
+    
+    <select id="findQuestionTypeRule" parameterType="map" resultType="cn.strong.leke.model.question.QuestionTypeRule">
+    	<![CDATA[
+    	select a.questionTypeId, a.questionTypeName, ifnull(b.questionNum, a.defaultNum) questionNum
+		  from HW_EXERCISE_SETTING a
+		 inner join HW_EXERCISE_SETTING_DTL b
+		    on a.settingId = b.settingId
+		 where a.schoolId = #{schoolId}
+		   and a.schoolStageId = #{schoolStageId}
+		   and b.subjectId = #{subjectId}
+		   and a.exerciseType = #{exerciseType}
+		   and a.isDeleted = 0
+		   and b.isDeleted = 0
+    	]]>
+    </select>
+</mapper>   

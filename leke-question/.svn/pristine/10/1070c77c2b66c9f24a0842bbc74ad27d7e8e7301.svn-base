@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+         http://www.springframework.org/schema/beans/spring-beans-3.2.xsd
+        ">
+	
+	<bean id="jedisConfig" class="redis.clients.jedis.JedisPoolConfig">
+		<property name="maxActive" value="${redis.pool.maxActive}" />
+		<property name="maxIdle" value="${redis.pool.maxIdle}" />
+		<property name="maxWait" value="${redis.pool.maxWait}" />
+		<property name="testOnBorrow" value="true" />
+	</bean>
+
+	<bean id="jedisPool" class="redis.clients.jedis.JedisPool">
+		<constructor-arg index="0" ref="jedisConfig" />
+		<constructor-arg index="1" value="${redis.host1}" />
+		<constructor-arg index="2" value="${redis.port1}" />
+		<constructor-arg index="3" value="1000000" />
+	</bean>
+
+	<bean id="hessianSerializer" class="cn.strong.leke.core.nosql.support.redis.serialize.HessianSerializerAdapter" />
+
+	<bean id="jedisClient" class="cn.strong.leke.core.nosql.support.redis.jedis.JedisClient">
+		<property name="jedisPool" ref="jedisPool" />
+		<property name="serializer" ref="hessianSerializer" />
+	</bean>
+
+</beans>     

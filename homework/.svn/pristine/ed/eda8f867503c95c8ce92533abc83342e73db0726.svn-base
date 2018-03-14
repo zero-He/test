@@ -1,0 +1,88 @@
+<%@ page pageEncoding="UTF-8"%>
+<%@ include file="/pages/common/tags.jsp"%>
+<!DOCTYPE html>
+<html>
+<head>
+<title>代人布置作业 列表 - <locale:message code="common.page.header.leke" /></title>
+<%@ include file="/pages/common/meta.jsp"%>
+<link rel="stylesheet" href="${assets}/styles/homework/homework.css?t=${_t}" type="text/css">
+</head>
+<body>
+	<%@ include file="/pages/header/header.jsp"%>
+	<div class="g-bd">
+		<%@ include file="/pages/navigate/navigate.jsp"%>
+		<div class="g-mn">
+			<form action="" method="post" id="formPage">
+				<div class="m-search-box">
+					<label for="" class="title">作业名称：</label>
+					<input type="text" name="homeworkName" class="u-ipt u-ipt-nm">
+					<button class="u-btn u-btn-nm u-btn-bg-turquoise" id="j_btnSearch">查询</button>
+					<div class="operation">
+						<a class="u-btn u-btn-nm u-btn-bg-orange" target="_blank" href="${ctx}/auth/teacher/assignLog.htm">代人布置</a>
+					</div>
+				</div>
+
+				<div class="z-homework-grade z-homework-grade-teach">
+					<ul id="j_homework_body"></ul>
+					<div class="page" id="divPage">
+						<div class="f-hide tips f-tac " id="j_emptyData">未能查询到相关作业~</div>
+					</div>
+				</div>
+			</form>
+		</div>
+	</div>
+
+<script id="j_homework_templ" type="text/handlebars">
+{{#dataList}} 
+<li class="item" data-id={{assignId}} data-start="{{startTime}}" data-close = {{closeTime}} >
+	<div class="title">
+		<span title="{{homeworkName}}" >
+		<a target="_blank" href="${initParam.paperServerName}/auth/common/paper/view.htm?paperId={{paperId}}" class="s-c-turquoise">{{homeworkName}} </a>	
+		</span>
+		<div class="m-btns c-btns z-index">
+		{{#cif 'this.status != 2'}}
+			<div class="init-btn">
+				<a class="modify">修改</a><b><i></i></b>
+			</div>
+			<menu>
+				<li><a class="invalid" >作废</a></li>
+			</menu>
+		{{/cif}}
+		{{#cif 'this.status == 2'}}
+			<span>已作废</span>
+		{{/cif}}
+		</div>
+		<div class="tips">
+	       	<span class="class-name" title="{{classInfo}}">{{classInfo}}</span>
+	        <p class="time">开始/截止时间：{{fmt startTime 'yyyy-MM-dd HH:mm:ss'}} / {{fmt closeTime 'yyyy-MM-dd HH:mm:ss'}}</p>
+	        
+	    </div>
+	</div>
+</li>	
+{{/dataList}}
+</script>
+
+<script id="j_assignEditTpl" type="x-mustache">
+<div class="m-form f-ml80">
+	<ul>
+		<li>
+			<label class="title">开始时间：</label>
+			<div class="con">
+				<input type="text" id="jEditStartTime" class="u-ipt u-ipt-lg" readonly="readonly">
+			</div>
+		</li>
+		<li>
+			<label class="title">截止时间：</label>
+			<div class="con">
+				<input type="text" id="jEditCloseTime" class="u-ipt u-ipt-lg" readonly="readonly">
+			</div>
+		</li>
+	</ul>
+</div>
+</script>
+
+<script type="text/javascript">
+seajs.use('homework/batch/assignLogList');
+</script>
+</body>
+</html>

@@ -1,0 +1,173 @@
+package cn.strong.leke.homework.service;
+
+import java.util.List;
+
+import cn.strong.leke.homework.model.HomeworkCorrectMQ;
+import cn.strong.leke.homework.model.HomeworkData;
+import cn.strong.leke.homework.model.HomeworkDtlInfo;
+import cn.strong.leke.homework.model.HomeworkProgressMQ;
+import cn.strong.leke.homework.model.HomeworkSubmitMQ;
+import cn.strong.leke.homework.model.SheetResult;
+import cn.strong.leke.homework.model.WorkRequest;
+import cn.strong.leke.model.incentive.Award;
+import cn.strong.leke.model.question.QuestionResult;
+
+/**
+ * 作业系统主业务类。
+ * @author  andy
+ * @since   v1.0.0
+ */
+public interface HomeworkMainService {
+	
+	/**
+	 * 将原来的一个更新拆分为一个查询和一个更新，预防死锁问题出现。
+	 * @param homeworkId
+	 */
+	public void updateHomeworkStat(Long homeworkId);
+
+	// ~ 作业暂存和提交 ------------------------------------------------------------------
+
+	/**
+	 * 开始作业
+	 * @param homeworkDtlId 作业ID
+	 * @param dataSource 做题的平台
+	 */
+	public void saveStartWork(Long homeworkDtlId, Integer dataSource);
+
+	/**
+	 * 作业暂存。
+	 * @param request 请求数据
+	 * @return
+	 */
+	public void saveAnswerSnapshot(WorkRequest request);
+
+	/**
+	 * 作业提交。
+	 * @param request 请求数据
+	 * @return
+	 */
+	public void saveAnswerSubmit(WorkRequest request);
+
+	/**
+	 * 作业提交。
+	 * @param request
+	 */
+	public void savePreviewSubmit(WorkRequest request);
+
+	/**
+	 * 录制微课提交
+	 * @param request
+	 */
+	public void savePreviewSubmitForRecordMicroCourse(WorkRequest request);
+	
+	/**
+	 * 随堂作业数据暂存。
+	 * @param homeworkData 作业数据
+	 */
+	public void saveOnlineAnswerTempData(HomeworkData homeworkData);
+
+	/**
+	 * 作业提交消息处理。
+	 * @param homeworkSubmitMQ
+	 */
+	public void handleHomeworkSubmitMessageWithTx(HomeworkSubmitMQ homeworkSubmitMQ);
+
+	/**
+	 * 线下答题卡作业提交处理（包含批改信息）
+	 * @param id
+	 */
+	public HomeworkDtlInfo handleSheetSubmitMessageWithTx(String id);
+
+	/**
+	 * 线下答题卡作业
+	 * @param id
+	 */
+	public HomeworkDtlInfo handleSheetOverrideMessageWithTx(String bookId, List<SheetResult> results);
+
+	/**
+	 * 确定作业ID
+	 * @param dataId
+	 * @return
+	 */
+	public void resolveOnlineSubmitHomeworkWithTx(Long dataId);
+
+	/**
+	 * 随堂作业提交消息处理。
+	 * @param dataId 作业标识
+	 */
+	public void handleOnlineSubmitMessageWithTx(Long dataId);
+
+	// ~ 批改暂存和提交 ------------------------------------------------------------------
+
+	/**
+	 * 批量批改暂存。
+	 */
+	public void saveCorrectSnapshotWithBatch(Long homeworkDtlId, QuestionResult questionResultNew);
+
+	/**
+	 * 普通批改提交。
+	 * @param request 请求数据
+	 */
+	public HomeworkDtlInfo saveCorrectSubmit(WorkRequest request);
+
+	/**
+	 * 批量批改提交消息处理。
+	 * @param homeworkCorrectMQ
+	 */
+	public void handleHomeworkCorrectMessageWithTx(HomeworkCorrectMQ homeworkCorrectMQ);
+
+	/**
+	 * 批改进度消息处理。
+	 * @param homeworkDtlId
+	 */
+	public void handleCorrectProgressMessageWithTx(HomeworkProgressMQ homeworkProgressMQ);
+
+	/**
+	 * 随堂作业提交消息处理。
+	 * @param dataId 作业标识
+	 */
+	public void handleMutualCorrectSubmitMessageWithTx(Long dataId);
+
+	// ~ 订正/复批作业 ------------------------------------------------------------------
+
+	/**
+	 * 订正暂存。
+	 * @param request 请求数据
+	 * @return
+	 */
+	public void saveBugFixSnapshot(WorkRequest request);
+
+	/**
+	 * 订正提交。
+	 * @param request 请求数据
+	 * @return
+	 */
+	public HomeworkDtlInfo saveBugFixSubmit(WorkRequest request);
+
+	/**
+	 * 订正复批提交。
+	 * @param request 请求数据
+	 */
+	public HomeworkDtlInfo saveReviewSubmit(WorkRequest request);
+
+	/**
+	 * 复批全部通过
+	 * @param request 请求数据
+	 */
+	public void saveReviewSubmitWithBatch(WorkRequest request);
+
+	/**
+	 * 提交作业触发激励
+	 * 全部是客观题时才触发
+	 * @param homeworkDtlInfo
+	 */
+	public Award sendIncTypeForSubmitHomework(HomeworkDtlInfo homeworkDtlInfo);
+	
+	/**
+	 * 催交作业
+	 * @param homeworkId
+	 */
+	public void cuijiaoHomework(Long homeworkId);
+
+	Long getHomeworkDataTotal(Long homeworkId, Long version);
+}

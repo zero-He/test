@@ -1,0 +1,165 @@
+package cn.strong.leke.homework.service.impl;
+
+import static java.util.stream.Collectors.toList;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
+
+import javax.annotation.Resource;
+
+import org.springframework.stereotype.Service;
+
+import cn.strong.leke.common.serialize.support.json.JsonUtils;
+import cn.strong.leke.common.utils.CollectionUtils;
+import cn.strong.leke.context.base.UserBaseContext;
+import cn.strong.leke.context.paper.PaperContext;
+import cn.strong.leke.context.user.cst.RoleCst;
+import cn.strong.leke.core.business.incentive.DynamicHelper;
+import cn.strong.leke.core.business.notice.NoticeHelper;
+import cn.strong.leke.framework.mq.MessageSender;
+import cn.strong.leke.homework.dao.mybatis.HomeworkDao;
+import cn.strong.leke.homework.dao.mybatis.HomeworkDtlDao;
+import cn.strong.leke.homework.model.Homework;
+import cn.strong.leke.homework.model.HomeworkType;
+import cn.strong.leke.homework.model.LayerAssign;
+import cn.strong.leke.homework.model.mongo.HomeworkProgress;
+import cn.strong.leke.homework.model.mongo.HomeworkProgress.StudentTs;
+import cn.strong.leke.homework.service.HomeworkAssignService;
+import cn.strong.leke.homework.service.IHomeworkProgressService;
+import cn.strong.leke.model.BaseModelHelper;
+import cn.strong.leke.model.incentive.DynamicInfo;
+import cn.strong.leke.model.incentive.IncentiveTypes;
+import cn.strong.leke.model.paper.PaperDTO;
+import cn.strong.leke.model.user.SimpleUser;
+import cn.strong.leke.model.user.User;
+import cn.strong.leke.notice.model.todo.HwAssignEvent;
+import cn.strong.leke.notice.model.todo.TodoEvent;
+import cn.strong.leke.remote.service.lesson.IStudentGroupRemoteService;
+
+@Service
+public class HomeworkAssignServiceImpl implements HomeworkAssignService {
+
+	@Resource
+	private HomeworkDao homeworkDao;
+	@Resource
+	private HomeworkDtlDao homeworkDtlDao;
+	@Resource
+	private IHomeworkProgressService homeworkProgressService;
+	@Resource
+	private IStudentGroupRemoteService studentGroupRemoteService;
+	@Resource
+	private MessageSender paperArrangeTimesSender;
+
+	public Long saveAssign(LayerAssign assign, User user) {
+		List<Long> homeworkIds = new ArrayList<>();
+		List<Homework> homeworks = new ArrayList<>();
+		List<TodoEvent> events = new ArrayList<>();
+		List<HomeworkProgress> progress = new ArrayList<>();
+		assign.getSections().forEach(section -> {
+			section.getPaperIds().forEach(paperId -> {
+				PaperDTO paperDTO = PaperContext.getPaperDTO(paperId);
+				Homework homework = new Homework();
+				homework.setTeacherId(user.getId());
+				homework.setTeacherName(user.getUserName());
+				homework.setSchoolId(user.getCurrentSchool().getId());
+				homework.setPaperId(paperDTO.getPaperId());
+				homework.setSubjectId(paperDTO.getSubjectId());
+				homework.setSubjectName(paperDTO.getSubjectName());
+				homework.setSubjective(paperDTO.getSubjective());
+				homework.setPaperType(paperDTO.getPaperType());
+				homework.setHomeworkName(paperDTO.getTitle());
+				homework.setHomeworkType(HomeworkType.HOME.value);
+				homework.setStartTime(assign.getStartTime());
+				homework.setCloseTime(assign.getCloseTime());
+				homework.setFinishNum(0);
+				homework.setDelayNum(0);
+				homework.setCorrectNum(0);
+				BaseModelHelper.fillInsertProps(homework, user.getId());
+
+				section.getClasses().forEach(clazz -> {
+					homework.setClassId(clazz.getClassId());
+					homework.setClassType(clazz.getClassType());
+					homework.setClassName(clazz.getClassName());
+					homework.setTotalNum(clazz.getUsers().size());
+					homework.setStudentGroupsJson(JsonUtils.toJSON(clazz.getGroups()));
+
+					List<SimpleUser> users = clazz.getUsers();
+					if (CollectionUtils.isEmpty(users)) {
+						List<Long> userIds;
+						if (CollectionUtils.isNotEmpty(clazz.getGroups())) {
+							Long[] groupIds = clazz.getGroups().stream().map(v -> v.getGroupId()).toArray(Long[]::new);
+							userIds = this.studentGroupRemoteService.findStudentByGroupList(groupIds);
+						} else {
+							userIds = this.studentGroupRemoteService.findStudentByClassId(clazz.getClassId());
+						}
+						users = UserBaseContext.findUserBaseByUserId(userIds.toArray(new Long[0])).stream().map(v -> {
+							SimpleUser simple = new SimpleUser();
+							simple.setUserId(v.getUserId());
+							simple.setUserName(v.getUserName());
+							return simple;
+						}).collect(toList());
+					}
+
+					this.homeworkDao.insertHomework(homework);
+					if (!users.isEmpty()) {
+						this.homeworkDtlDao.insertHomeworkDtlBySimpleUser(homework, users);
+					}
+					events.add(this.buildHwAssignEvent(homework, users));
+					progress.add(this.buildHomeworkProgress(homework, users));
+					homeworkIds.add(homework.getHomeworkId());
+					homeworks.add(homework);
+				});
+			});
+		});
+		
+		progress.forEach(this.homeworkProgressService::insert);
+
+		List<Long> paperIds = assign.getSections().stream().flatMap(v -> v.getPaperIds().stream()).collect(toList());
+		paperArrangeTimesSender.send(Arrays.asList(paperIds));
+		NoticeHelper.todo(events);
+		//发送激励
+		homeworks.forEach(v->{
+			DynamicInfo dynamicInfo = new DynamicInfo();
+			dynamicInfo.setTypeId(IncentiveTypes.TEACHER.REP_ASSIGN);
+			dynamicInfo.setTitle(v.getHomeworkName());
+			dynamicInfo.setUserId(v.getTeacherId());
+			dynamicInfo.setUserName(v.getTeacherName());
+			dynamicInfo.setRoleId(RoleCst.TEACHER);
+			dynamicInfo.setSchoolId(v.getSchoolId());
+			DynamicHelper.publish(dynamicInfo);
+		});
+		return homeworkIds.size() == 1 ? homeworkIds.get(0) : null;
+	}
+
+	private HomeworkProgress buildHomeworkProgress(Homework homework, List<SimpleUser> users) {
+		List<StudentTs> unfinished = users.stream().map(user -> {
+			StudentTs stuTs = new StudentTs();
+			stuTs.setStudentId(user.getUserId());
+			stuTs.setTs(new Date(0));
+			stuTs.setUsed(0);
+			return stuTs;
+		}).collect(toList());
+		HomeworkProgress record = new HomeworkProgress();
+		record.setHomeworkId(homework.getHomeworkId());
+		record.setStartTime(homework.getStartTime());
+		record.setCloseTime(homework.getCloseTime());
+		record.setUnfinished(unfinished);
+		record.setTotalNum(unfinished.size());
+		return record;
+	}
+
+	private HwAssignEvent buildHwAssignEvent(Homework homework, List<SimpleUser> users) {
+		HwAssignEvent event = new HwAssignEvent();
+		event.setTeacherId(homework.getTeacherId());
+		event.setCourseSingleId(homework.getCourseSingleId());
+		event.setHomeworkId(homework.getHomeworkId());
+		event.setHomeworkName(homework.getHomeworkName());
+		event.setStartTime(homework.getStartTime());
+		event.setCloseTime(homework.getCloseTime());
+		event.setHomeworkType(homework.getHomeworkType());
+		event.setStudentIds(users.stream().map(SimpleUser::getUserId).collect(toList()));
+		return event;
+	}
+}

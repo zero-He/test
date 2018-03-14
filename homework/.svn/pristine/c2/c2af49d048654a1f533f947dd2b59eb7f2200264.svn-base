@@ -1,0 +1,83 @@
+package cn.strong.leke.homework.service.impl;
+
+import java.util.List;
+
+import javax.annotation.Resource;
+
+import cn.strong.leke.homework.manage.HolidayHwMicroService;
+import cn.strong.leke.homework.service.IExamService;
+import org.springframework.stereotype.Service;
+
+import cn.strong.leke.framework.mq.MessageSender;
+import cn.strong.leke.homework.model.HomeworkPaperMQ;
+import cn.strong.leke.homework.service.HomeworkForWrongService;
+import cn.strong.leke.homework.service.IJobService;
+import cn.strong.leke.homework.util.HomeworkCst;
+import cn.strong.leke.model.base.Clazz;
+import cn.strong.leke.model.base.SchoolCst;
+import cn.strong.leke.remote.service.lesson.IKlassRemoteService;
+import cn.strong.leke.remote.service.user.ISchoolRemoteService;
+
+@Service
+public class JobServiceImpl implements IJobService {
+
+	@Resource
+	private ISchoolRemoteService schoolRemoteService;
+	@Resource
+	private IKlassRemoteService klassRemoteService;
+	@Resource
+	private MessageSender weekHomeworkSender;
+	@Resource
+	private HomeworkForWrongService homeworkForWrongService;
+	@Resource
+	private HolidayHwMicroService holidayHwService;
+	@Resource
+	private IExamService examService;
+
+	@Override
+	public void excuteWeekHomework() {
+		this.excute(HomeworkCst.HOMEWORK_WRONG_WEEK);
+	}
+
+	@Override
+	public void excuteMonthHomework() {
+		this.excute(HomeworkCst.HOMEWORK_WRONG_MONTH);
+	}
+
+	/**
+	 * 周：1
+	 * 月：2
+	 * @param type
+	 */
+	private void excute(Integer type) {
+		List<Long> schoolIds = this.schoolRemoteService.findSchoolIdBySchoolNature(SchoolCst.NATURE_BASIC);
+		for (Long schoolId : schoolIds) {
+			if (schoolId > 0) {
+				List<Clazz> clazzList = klassRemoteService.findDeptClazzBySchoolId(schoolId);
+				for (Clazz clazz : clazzList) {
+					HomeworkPaperMQ mq = new HomeworkPaperMQ(clazz.getClassId(), clazz.getSchoolId(), type);
+					weekHomeworkSender.send(mq);
+				}
+			}
+		}
+	}
+
+	@Override
+	public void excuteWrontQuestion() {
+		homeworkForWrongService.excuteWrontQuestion();
+	}
+
+	/**
+	 * 催交寒暑假作业
+	 */
+	public void excuteCallVacationHomework() {
+		holidayHwService.excuteCallVacationHomework();
+	}
+
+	/**
+	 * 在线考试提醒
+	 */
+	public void excuteOnlineExam() {
+		examService.excuteOnlineExam();
+	}
+}

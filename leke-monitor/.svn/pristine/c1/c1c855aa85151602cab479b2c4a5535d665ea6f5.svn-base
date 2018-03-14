@@ -1,0 +1,81 @@
+/**
+ * 
+ */
+package cn.strong.leke.monitor.util;
+
+import java.util.Date;
+
+import org.joda.time.LocalDate;
+import org.joda.time.LocalDateTime;
+
+/**
+ * 统计工具类
+ * 
+ * @author liulongbiao
+ *
+ */
+public class StatUtils {
+
+	public static final int ONLINE_MIN = 15;
+	public static final long TS_MIN_5 = 300000L;
+	private static final int MUL_YEAR = 10000; // 年份乘数因子
+	private static final int MUL_MONTH = 100; // 月份乘数因子
+
+	/**
+	 * 获取日期的整型表示
+	 * 
+	 * @param date
+	 * @return
+	 */
+	public static final int ofDay(Date date) {
+		if (date == null) {
+			throw new IllegalArgumentException("arg day must not be null.");
+		}
+		LocalDate ld = new LocalDate(date);
+		return ld.getYear() * MUL_YEAR + ld.getMonthOfYear() * MUL_MONTH + ld.getDayOfMonth();
+	}
+
+	/**
+	 * 将 yyyyMMdd 格式的日期转换成 LocalDate
+	 * 
+	 * @param day
+	 * @return
+	 */
+	public static final LocalDate dayToLocalDate(int day) {
+		int y = day / MUL_YEAR;
+		int md = day % MUL_YEAR;
+		int m = md / MUL_MONTH;
+		int d = md % MUL_MONTH;
+		return new LocalDate(y, m, d);
+	}
+
+	/**
+	 * 获取当前在线时间(15分钟前)
+	 * 
+	 * @return
+	 */
+	public static Date getCurrentOnlineTs() {
+		return LocalDateTime.now().minusMinutes(ONLINE_MIN).toDate();
+	}
+
+	/**
+	 * 获取指定时间的快照时间戳(5分钟起始点)
+	 * 
+	 * @param in
+	 * @return
+	 */
+	public static Date getSnapshotTs(Date in) {
+		long time = in.getTime();
+		return new Date(time - time % TS_MIN_5);
+	}
+
+	/**
+	 * 获取当前时间的快照时间戳(5分钟起始点)
+	 * 
+	 * @return
+	 */
+	public static Date getSnapshotTs() {
+		long time = System.currentTimeMillis();
+		return new Date(time - time % TS_MIN_5);
+	}
+}

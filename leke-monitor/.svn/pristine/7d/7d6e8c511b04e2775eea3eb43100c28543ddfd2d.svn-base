@@ -1,0 +1,276 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.monitor.core.dao.mybatis.IIndividualsInDao">
+
+	<select id="getCustomerCount" parameterType="cn.strong.leke.monitor.core.model.IndividualsInDto"
+		resultType="int">
+		SELECT COUNT(1)
+		FROM crm.scs_customer
+		WHERE isDeleted=0
+		AND customerType != 2 AND status =1
+		<if test="sellerId != null and sellerId != ''">
+			AND sellerId =#{sellerId}
+		</if>
+		<if test="listSeller != null and listSeller.size() > 0">
+			AND
+			sellerId IN (
+			<foreach collection="listSeller" item="item" separator=",">#{item}
+			</foreach>
+			)
+		</if>
+	</select>
+
+	<select id="getNewCustomerCount" parameterType="cn.strong.leke.monitor.core.model.IndividualsInDto"
+		resultType="int">
+		SELECT COUNT(1)
+		FROM crm.scs_customer
+		WHERE isDeleted=0
+		AND customerType != 2 AND status =1
+		<if test="sellerId != null and sellerId != ''">
+			AND sellerId =#{sellerId}
+		</if>
+		<if test="listSeller != null and listSeller.size() > 0">
+			AND
+			sellerId IN (
+			<foreach collection="listSeller" item="item" separator=",">#{item}
+			</foreach>
+			)
+		</if>
+		<if test="month != null and month != ''">
+			AND bindTime LIKE CONCAT(#{month},'%')
+		</if>
+	</select>
+
+	<select id="getCommission" parameterType="cn.strong.leke.monitor.core.model.IndividualsInDto"
+		resultType="cn.strong.leke.monitor.core.model.IndividualsInDto">
+		SELECT SUM(BINARY(tradeAmount)) tradeAmount,SUM(BINARY(commAmount))
+		commAmount
+		FROM crm.scs_commission
+		WHERE isDeleted = 0
+		<if test="listSeller != null and listSeller.size() > 0"> 
+		AND sellerId IN ( <foreach collection="listSeller" item="item" separator=",">#{item} </foreach> 
+			) </if> 
+		<if test="month != null and month != ''">
+			AND createdOn LIKE CONCAT(#{month},'%')
+		</if>
+	</select>
+
+
+	<select id="getCustomerDetail" parameterType="cn.strong.leke.monitor.core.model.IndividualsInDto"
+		resultType="cn.strong.leke.monitor.core.model.IndividualsInDto">
+		SELECT SUM(BINARY(cc.tradeAmount))
+		tradeAmount,SUM(BINARY(cc.commAmount)) commAmount,
+		sc.lekeLoginName
+		loginName,sc.customerName teacherName,sc.phone,sc.bindTime tradeTime
+		FROM crm.scs_customer sc
+		LEFT OUTER JOIN crm.scs_commission cc ON sc.customerId = cc.customerId AND
+		cc.isDeleted = 0
+		WHERE sc.isDeleted = 0 AND sc.customerType != 2 AND
+		sc.status =1
+		<if test="sellerId != null and sellerId != ''">
+			AND sc.sellerId =#{sellerId}
+		</if>
+		<if test="sellerName != null and sellerName != ''">
+			AND sc.sellerName =#{sellerName}
+		</if>
+		<if test="loginName != null and loginName != ''">
+			AND sc.lekeLoginName =#{loginName}
+		</if>
+		<if test="teacherName != null and teacherName != ''">
+			AND sc.customerName LIKE
+			CONCAT(CONCAT('%',#{teacherName},'%'))
+		</if>
+		<if test="phone != null and phone != ''">
+			AND sc.phone =#{phone}
+		</if>
+		<if test="month != null and month != ''">
+			AND cc.createdOn LIKE CONCAT(#{month},'%')
+		</if>
+		GROUP BY sc.customerId
+		<if test="order != null and order != ''">
+			ORDER BY ${order} ${sort}
+		</if>
+	</select>
+
+
+	<select id="getCustomerGroupBySeller" parameterType="cn.strong.leke.monitor.core.model.IndividualsInDto"
+		resultType="cn.strong.leke.monitor.core.model.IndividualsInDto">
+		SELECT SUM(BINARY(cc.tradeAmount))
+		tradeAmount,SUM(BINARY(cc.commAmount)) commAmount,
+		u.loginName,u.userName sellerName,m.marketName,mm.userId sellerId
+		FROM
+		tutor.um_market_manager mm
+		LEFT OUTER JOIN tutor.um_market m ON mm.secondDptIds = m.marketId
+		LEFT
+		OUTER JOIN crm.scs_commission cc ON cc.sellerId = mm.userId AND
+		cc.isDeleted = 0
+		LEFT OUTER JOIN tutor.tutor_user u ON mm.userId =
+		u.userId AND u.isDeleted = 0
+		WHERE mm.roleId = 112 AND mm.isDeleted = 0
+		<if test="listSeller != null and listSeller.size() > 0">
+			AND
+			mm.userId IN (
+			<foreach collection="listSeller" item="item" separator=",">#{item}
+			</foreach>
+			)
+		</if>
+		<if test="loginName != null and loginName != ''">
+			AND u.loginName =#{loginName}
+		</if>
+		<if test="marketName != null and marketName != ''">
+			AND m.marketName =#{marketName}
+		</if>
+		<if test="sellerName != null and sellerName != ''">
+			AND u.userName LIKE CONCAT(CONCAT('%',#{sellerName},'%'))
+		</if>
+		<if test="month != null and month != ''">
+			AND cc.createdOn LIKE CONCAT(#{month},'%')
+		</if>
+		GROUP BY mm.userId
+		<if test="order != null and order != ''">
+			ORDER BY ${order} ${sort}
+		</if>
+	</select>
+
+	<select id="getCustomerGroupByMarketId" parameterType="cn.strong.leke.monitor.core.model.IndividualsInDto"
+		resultType="cn.strong.leke.monitor.core.model.IndividualsInDto">
+		SELECT SUM(BINARY(cc.tradeAmount))
+		tradeAmount,SUM(BINARY(cc.commAmount)) commAmount,
+		m.marketName,m.marketId
+		FROM tutor.um_market_manager mm
+		LEFT OUTER JOIN crm.scs_commission cc ON cc.sellerId = mm.userId AND
+		cc.isDeleted = 0
+		<if test="month != null and month != ''">
+			AND cc.createdOn LIKE CONCAT(#{month},'%')
+		</if>
+		LEFT OUTER JOIN tutor.um_market m ON mm.secondDptIds =
+		m.marketId
+		WHERE mm.roleId = 112 AND mm.isDeleted = 0
+		<if test="listMarketId != null and listMarketId.size() > 0">
+			AND
+			m.marketId IN (
+			<foreach collection="listMarketId" item="item" separator=",">#{item}
+			</foreach>
+			)
+		</if>
+		<if test="marketId != null and marketId != ''">
+			AND m.marketId =#{marketId}
+		</if>
+		GROUP BY m.marketId
+		<if test="order != null and order != ''">
+			ORDER BY ${order} ${sort}
+		</if>
+	</select>
+
+	<select id="getSeller" parameterType="Long" resultType="Long">
+		SELECT
+		m.userId FROM tutor.um_market_manager m
+		WHERE m.roleId=112 AND
+		m.secondDptIds = #{1}
+	</select>
+
+
+	<select id="getDepartName" resultType="string" parameterType="long">
+		SELECT marketName FROM tutor.um_market WHERE marketId =
+		(SELECT pId FROM tutor.um_market um WHERE um.pId != 1 AND um.marketId =#{1})
+	</select>
+
+	<select id="getNewInTeacherNum" parameterType="cn.strong.leke.monitor.core.model.IndividualsInDto"
+		resultType="int">
+		SELECT COUNT(1) FROM tutor.tutor_school
+		WHERE schoolNature = 3 AND isDeleted = 0
+		<if test="month != null and month != ''">
+			AND createdOn LIKE CONCAT(#{month},'%')
+		</if>
+	</select>
+
+	<!-- 查询已结束课堂数 -->
+	<select id="getFinishedClassNums" parameterType="cn.strong.leke.monitor.core.model.IndividualsInDto"
+		resultType="java.lang.Long">
+		SELECT COUNT(a.courseSingleId) AS finishedClassNum
+		FROM lesson.ls_lesson a
+		LEFT JOIN tutor.tutor_school b ON a.schoolId = b.schoolId
+		LEFT JOIN tutor.tutor_user c ON c.userId = a.teacherId
+		WHERE b.schoolNature = 3 AND a.isDeleted = 0 AND a.isEnd = 1
+		<if test="loginName != null and loginName != ''">
+			AND c.loginName =#{loginName}
+		</if>
+		<if test="month != null and month != ''">
+			AND a.startTime LIKE CONCAT(#{month},'%')
+		</if>
+	</select>
+	<!-- 查询上课课堂数 -->
+	<select id="getAttendedClassNums" parameterType="cn.strong.leke.monitor.core.model.IndividualsInDto"
+		resultType="java.lang.Long">
+		SELECT COUNT(d.scId) AS attendedClassNum
+		FROM lesson.ls_lesson a
+		LEFT JOIN tutor.tutor_school b ON a.schoolId = b.schoolId
+		LEFT JOIN tutor.tutor_user c ON c.userId = a.teacherId
+		LEFT JOIN lesson.ls_attendance_lesson d ON d.scId = a.courseSingleId
+		WHERE b.schoolNature = 3 AND a.isDeleted = 0 AND d.isDeleted = 0
+		<if test="loginName != null and loginName != ''">
+			AND c.loginName =#{loginName}
+		</if>
+		<if test="month != null and month != ''">
+			AND a.startTime LIKE CONCAT(#{month},'%')
+		</if>
+	</select>
+	<!-- 查询应上课人次、实上课人次 -->
+	<select id="getMustClassTimesAndActualClassTimes" parameterType="cn.strong.leke.monitor.core.model.IndividualsInDto"
+		resultType="cn.strong.leke.monitor.core.model.IndiClassStatisticsDTO">
+		SELECT case when SUM(d.totalCount) is NULL THEN 0 ELSE SUM(d.totalCount) END AS mustClassTimes,
+				CASE WHEN SUM(d.realCount) IS NULL THEN 0 ELSE SUM(d.realCount) END AS actualClassTimes
+		FROM lesson.ls_lesson a
+		LEFT JOIN tutor.tutor_school b ON a.schoolId = b.schoolId
+		LEFT JOIN tutor.tutor_user c ON c.userId = a.teacherId
+		LEFT JOIN lesson.ls_attendance_lesson d ON d.scId = a.courseSingleId
+		WHERE b.schoolNature = 3 AND a.isDeleted = 0 AND d.isDeleted = 0
+		<if test="loginName != null and loginName != ''">
+			AND c.loginName =#{loginName}
+		</if>
+		<if test="month != null and month != ''">
+			AND a.startTime LIKE CONCAT(#{month},'%')
+		</if>
+	</select>
+	<!-- 查询应上课学生数 -->
+	<select id="getMustClassNums" parameterType="cn.strong.leke.monitor.core.model.IndividualsInDto"
+		resultType="java.lang.Long">
+		SELECT COUNT(DISTINCT(e.userId)) AS mustClassNum
+		FROM lesson.ls_attendance_student e
+		INNER JOIN(
+		SELECT d.csAttenId,d.scId FROM lesson.ls_lesson a 
+		LEFT JOIN tutor.tutor_school b ON a.schoolId = b.schoolId 
+		LEFT JOIN tutor.tutor_user c ON c.userId = a.teacherId
+		LEFT JOIN lesson.ls_attendance_lesson d ON d.scId = a.courseSingleId
+		WHERE b.schoolNature = 3 AND a.isDeleted = 0 AND d.isDeleted = 0
+        <if test="loginName != null and loginName != ''">
+			AND c.loginName =#{loginName}
+		</if>
+		<if test="month != null and month != ''">
+			AND a.startTime LIKE CONCAT(#{month},'%')
+		</if>
+		GROUP BY 1,2)f ON e.csAttenId = f.csAttenId
+	</select>
+	<!-- 查询实上课学生数 -->
+	<select id="getActualClassNums" parameterType="cn.strong.leke.monitor.core.model.IndividualsInDto"
+		resultType="java.lang.Long"> 
+		SELECT COUNT(DISTINCT(e.userId)) AS actualClassNum
+		FROM lesson.ls_attendance_student e
+		INNER JOIN(
+		SELECT d.csAttenId,d.scId FROM lesson.ls_lesson a 
+		LEFT JOIN tutor.tutor_school b ON a.schoolId = b.schoolId 
+		LEFT JOIN tutor.tutor_user c ON c.userId = a.teacherId
+		LEFT JOIN lesson.ls_attendance_lesson d ON d.scId = a.courseSingleId
+		WHERE b.schoolNature = 3 AND a.isDeleted = 0 AND d.isDeleted = 0
+        <if test="loginName != null and loginName != ''">
+			AND c.loginName =#{loginName}
+		</if>
+		<if test="month != null and month != ''">
+			AND a.startTime LIKE CONCAT(#{month},'%')
+		</if>
+		GROUP BY 1,2)f ON e.csAttenId = f.csAttenId
+		WHERE e.attendState != 4
+	</select>
+
+</mapper>

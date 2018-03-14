@@ -1,0 +1,1679 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.1//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.question.dao.mybatis.QuestionDao">
+
+	<insert id="insertQuestion" useGeneratedKeys="true" keyProperty="questionId"
+		parameterType="cn.strong.leke.model.question.Question">
+		INSERT INTO que_question(
+			questionCode, schoolStageId, subjectId, gradeId,matSync,
+			questionTypeId,	year, provinceId, provinceName, source,
+			questionStatus,	difficulty, hasSub, parentId, ord,
+			subjective, sharePersonal, shareSchool, sharePlatform, isDisabled,
+			handwritten, handwriteTypeId, schoolId, schoolName,paperId,sourceId,workbookNodeId, creatorName,
+			isDeleted, createdBy, createdOn, modifiedBy, modifiedOn
+		) VALUES (
+			#{questionCode}, #{schoolStageId}, #{subjectId}, #{gradeId},#{matSync},
+			#{questionTypeId}, #{year}, #{provinceId}, #{provinceName}, #{source},
+			#{questionStatus}, #{difficulty}, #{hasSub}, #{parentId}, #{ord},
+			#{subjective}, #{sharePersonal}, #{shareSchool}, #{sharePlatform}, 0,
+			#{handwritten}, #{handwriteTypeId}, #{schoolId}, #{schoolName},#{paperId},#{sourceId},#{workbookNodeId}, #{creatorName},
+			0, #{createdBy}, now(), #{modifiedBy}, now()
+		)
+	</insert>
+	
+	<update id="updateQuestion" parameterType="cn.strong.leke.model.question.Question">
+		UPDATE que_question
+		<set>
+			questionCode = #{questionCode},
+			schoolStageId = #{schoolStageId},
+			subjectId = #{subjectId},
+			questionTypeId = #{questionTypeId},
+			matSync = #{matSync},
+			year = #{year},
+			provinceId = #{provinceId},
+			provinceName = #{provinceName},
+			source = #{source},
+			difficulty = #{difficulty},
+			hasSub = #{hasSub},
+			parentId = #{parentId},
+			ord = #{ord},
+			subjective = #{subjective},
+			<if test="shareSchool != null">shareSchool = #{shareSchool},</if>
+			<if test="sharePlatform != null">sharePlatform = #{sharePlatform},</if>
+			handwritten = #{handwritten},
+			handwriteTypeId = #{handwriteTypeId},
+			<if test="schoolId != null">schoolId = #{schoolId},</if>
+			<if test="schoolName != null and schoolName != ''">schoolName = #{schoolName},</if>
+			<if test="modifiedBy != null">modifiedBy = #{modifiedBy},</if>
+			modifiedOn = now()
+		</set>
+		<where>
+			questionId = #{questionId}
+		</where>
+	</update>
+	
+	<update id="updateQuestionShare" parameterType="cn.strong.leke.model.question.Question">
+		UPDATE que_question
+		<set>
+			<if test="shareSchool != null">shareSchool = #{shareSchool},</if>
+			<if test="sharePlatform != null">sharePlatform = #{sharePlatform},</if>
+			<if test="schoolId != null">schoolId = #{schoolId},</if>
+			<if test="modifiedBy != null">modifiedBy = #{modifiedBy},</if>
+			modifiedOn = now()
+		</set>
+		<where>
+			questionId = #{questionId}
+		</where>
+	</update>
+	
+	<update id="updateQuestionsPaperId" parameterType="map">
+		UPDATE que_question
+		SET paperId = #{paperId}
+		WHERE
+			isDeleted = 0
+		AND paperId  IS NULL
+		AND questionId IN
+			<foreach collection="questionIds" item="questionId" separator="," open="(" close=")">
+				#{questionId}
+			</foreach>
+	</update>
+	
+	<update id="deleteQuestion" parameterType="cn.strong.leke.model.question.Question">
+		UPDATE que_question
+		<set>
+			isDeleted = 1,
+			<if test="modifiedBy != null">modifiedBy = #{modifiedBy},</if>
+			modifiedOn = now()
+		</set>
+		<where>
+			questionId= #{questionId}
+		</where>
+	</update>
+
+	<select id="getQuestion" parameterType="long"
+		resultType="cn.strong.leke.model.question.QuestionDTO">
+		SELECT 
+			a.*, qt.template
+		FROM que_question a
+		LEFT JOIN que_question_type qt
+		ON a.questionTypeId = qt.questionTypeId
+		<where>
+			a.questionId = #{questionId}
+			AND a.isDeleted = 0
+		</where>
+	</select>
+	
+	<select id="findSubQuestions" parameterType="long"
+		resultType="cn.strong.leke.model.question.QuestionDTO">
+		SELECT 
+			a.*, qt.template
+		FROM que_question a
+		LEFT JOIN que_question_type qt
+		ON a.questionTypeId = qt.questionTypeId
+		<where>
+			a.parentId = #{parentId}
+			AND a.isDeleted = 0
+		</where>
+		ORDER BY a.ord ASC
+	</select>
+	
+	<sql id="common_join_officialTagId">
+		<if test="officialTagId != null">
+			JOIN que_question_official_tag qt
+			ON qt.questionId = a.questionId
+			AND qt.officialTagId = #{officialTagId}
+			AND qt.isDeleted = 0
+		</if>
+	</sql>
+	
+	<sql id="common_join_officialTagIds">
+		<if test="officialTagIds != null and officialTagIds.size > 0">
+			JOIN que_question_official_tag qts
+			ON qts.questionId = a.questionId
+			AND qts.officialTagId IN
+				<foreach collection="officialTagIds" item="item" separator="," open="(" close=")">#{item}</foreach>
+			AND qts.isDeleted = 0
+		</if>
+	</sql>
+	
+	<sql id="common_join">
+		<include refid="common_join_officialTagId"/>
+		<if test="content != null and content != ''">
+			LEFT JOIN que_question_stem c
+			ON c.questionId = a.questionId
+			AND c.isDeleted = 0
+		</if>
+	</sql>
+	
+	<sql id="common_join_materialNodeId">
+		<if test="materialNodeId != null">
+			JOIN que_material_node h
+			ON h.materialNodeId = #{materialNodeId}
+			AND h.isDeleted = 0
+			JOIN que_question_section f
+			ON a.questionId = f.questionId
+			AND f.isDeleted = 0
+			JOIN que_material_node g
+			ON f.materialNodeId = g.materialNodeId
+			AND g.materialId = h.materialId
+			<![CDATA[
+			AND	g.lft >= h.lft
+			AND g.rgt <= h.rgt
+			]]>
+			AND g.isDeleted = 0
+		</if>
+	</sql>
+	
+	<sql id="common_join_materialNodeIds">
+		<if test="materialNodeIds != null and materialNodeIds.size > 0">
+			JOIN que_material_node mns_h
+			ON mns_h.materialNodeId IN 
+				<foreach collection="materialNodeIds" item="mid" separator="," open="(" close=")">#{mid}</foreach>
+			AND mns_h.isDeleted = 0
+			JOIN que_question_section mns_f
+			ON a.questionId = mns_f.questionId
+			AND mns_f.isDeleted = 0
+			JOIN que_material_node mns_g
+			ON mns_f.materialNodeId = mns_g.materialNodeId
+			AND mns_g.materialId = mns_h.materialId
+			<![CDATA[
+			AND	mns_g.lft >= mns_h.lft
+			AND mns_g.rgt <= mns_h.rgt
+			]]>
+			AND mns_g.isDeleted = 0
+		</if>
+	</sql>
+	
+	<sql id="common_join_knowledgeId">
+		<if test="knowledgeId != null">
+			JOIN que_knowledge k
+			ON k.knowledgeId = #{knowledgeId}
+			AND k.isDeleted = 0
+			JOIN que_question_knowledge m
+			ON a.questionId = m.questionId
+			AND m.isDeleted = 0
+			JOIN que_knowledge n
+			ON m.knowledgeId = n.knowledgeId
+			AND n.schoolStageId = k.schoolStageId
+			AND n.subjectId = k.subjectId
+			<![CDATA[
+			AND	n.lft >= k.lft
+			AND n.rgt <= k.rgt
+			]]>
+			AND n.isDeleted = 0
+		</if>
+	</sql>
+	
+	<sql id="common_join_knowledgeIds">
+		<if test="knowledgeIds != null and knowledgeIds.size > 0">
+			JOIN que_knowledge ks_k
+			ON ks_k.knowledgeId IN
+				<foreach collection="knowledgeIds" item="item" separator="," open="(" close=")">#{item}</foreach>
+			AND ks_k.isDeleted = 0
+			JOIN que_question_knowledge ks_m
+			ON a.questionId = ks_m.questionId
+			AND ks_m.isDeleted = 0
+			JOIN que_knowledge ks_n
+			ON ks_m.knowledgeId = ks_n.knowledgeId
+			AND ks_n.schoolStageId = ks_k.schoolStageId
+			AND ks_n.subjectId = ks_k.subjectId
+			<![CDATA[
+			AND	ks_n.lft >= ks_k.lft
+			AND ks_n.rgt <= ks_k.rgt
+			]]>
+			AND ks_n.isDeleted = 0
+		</if>
+	</sql>
+	
+	<sql id="common_join_workbookNodeId">
+		<if test="workbookNodeId != null">
+			JOIN que_workbook_node wbn1
+			ON wbn1.workbookNodeId = #{workbookNodeId}
+			AND wbn1.isDeleted = 0
+			JOIN que_question_wb_node qwbn
+			ON a.questionId = qwbn.questionId
+			AND qwbn.isDeleted = 0
+			JOIN que_workbook_node wbn2
+			ON qwbn.workbookNodeId = wbn2.workbookNodeId
+			AND wbn2.workbookId = wbn1.workbookId
+			<![CDATA[
+			AND	wbn2.lft >= wbn1.lft
+			AND wbn2.rgt <= wbn1.rgt
+			]]>
+			AND wbn2.isDeleted = 0
+		</if>
+	</sql>
+	
+	<sql id="que_common_criteria">
+		<if test="questionId != null">AND a.questionId = #{questionId}</if>
+		<if test="creatorName != null">AND a.creatorName like CONCAT('%', #{creatorName}, '%') </if>
+		
+		<if test="schoolStageId != null">AND a.schoolStageId = #{schoolStageId}</if>
+		<if test="subjectId != null">AND a.subjectId = #{subjectId}</if>
+		
+		<if test="questionTypeId != null">AND a.questionTypeId = #{questionTypeId}</if>
+		<if test="year != null">AND a.year = #{year}</if>
+		<if test="provinceId != null">AND a.provinceId = #{provinceId}</if>
+		<if test="minDifficulty != null"><![CDATA[ AND a.difficulty >= #{minDifficulty} ]]></if>
+		<if test="maxDifficulty != null"><![CDATA[ AND a.difficulty <= #{maxDifficulty} ]]></if>
+		<if test="content != null and content != ''">
+			AND (
+				a.source LIKE CONCAT('%', #{content}, '%')
+				OR c.stemContent LIKE CONCAT('%', #{content}, '%')
+			)
+		</if>
+		<if test="hangwriteTypeId != null">
+			AND a.hangwriteTypeId = #{hangwriteTypeId}
+		</if>
+		AND a.parentId IS NULL
+		AND a.isDeleted = 0
+		AND a.isDisabled = 0
+	</sql>
+	
+	<sql id="plat_que_common_criteria">
+		AND a.sharePlatform = 1
+		<include refid="que_common_criteria"/>
+	</sql>
+	
+	<sql id="group_join">
+		<if test="userResGroupId != null and userResGroupId !=''">
+			JOIN 
+				que_question_user_res_group k
+			ON 
+				a.questionId = k.questionId
+			AND 
+				k.isDeleted = 0
+			AND 
+				k.createdBy = #{userId}
+			AND 
+				k.userResGroupId = #{userResGroupId}
+		</if>
+	</sql>
+	
+	<sql id="not_in_qids">
+		<if test="excludeQueIds != null and excludeQueIds.size > 0 ">
+		AND a.questionId NOT IN
+			<foreach collection="excludeQueIds" item="qid" separator="," open="(" close=")">#{qid}</foreach>
+		</if>
+	</sql>
+	
+	<select id="queryInputerQuestionIds" parameterType="cn.strong.leke.question.model.InputerQuestionQuery"
+		resultType="long">
+		SELECT DISTINCT(a.questionId)
+		FROM que_question a
+		<include refid="common_join"/>
+		<include refid="common_join_materialNodeId"/>
+		<where>
+			<include refid="plat_que_common_criteria"/>
+			<if test="inputerId != null">AND a.createdBy = #{inputerId}</if>
+			<if test="statusType != null">AND a.questionStatus = #{statusType}</if>
+			<if test="minInputDate != null">
+				<![CDATA[
+					AND a.createdOn >= #{minInputDate}
+				]]>
+			</if>
+			<if test="maxInputDate != null">
+				<![CDATA[
+					AND a.createdOn <= #{maxInputDate}
+				]]>
+			</if>
+		</where>
+		ORDER BY questionId DESC
+	</select>
+	
+	<select id="queryCheckerUncheckedQuestionIds" parameterType="cn.strong.leke.question.model.CheckerQuestionQuery"
+		resultType="long">
+		SELECT DISTINCT(a.questionId)
+		FROM que_question a, que_question_task_item d
+		<include refid="common_join"/>
+		<where>
+			<include refid="plat_que_common_criteria"/>
+			AND a.questionId = d.questionId
+			<if test="checkerId != null">AND d.userId = #{checkerId}</if>
+			AND a.questionStatus = 12
+			AND d.isDeleted = 0
+		</where>
+		ORDER BY questionId DESC
+	</select>
+	
+	<select id="queryCheckerCheckedQuestionIds" parameterType="cn.strong.leke.question.model.CheckerQuestionQuery"
+		resultType="long">
+		SELECT DISTINCT(a.questionId)
+		FROM que_question a
+		<include refid="common_join"/>
+		<where>
+			<include refid="plat_que_common_criteria"/>
+			<if test="checkerId != null">
+				AND EXISTS (
+					SELECT *
+					FROM que_question_log e
+					WHERE e.questionId = a.questionId
+					AND e.createdBy = #{checkerId}
+					<if test="minCheckDate != null">
+						<![CDATA[
+							AND e.createdOn >= #{minCheckDate}
+						]]>
+					</if>
+					<if test="maxCheckDate != null">
+						<![CDATA[
+							AND e.createdOn <= #{maxCheckDate}
+						]]>
+					</if>
+					AND e.type = 17
+					AND e.isDeleted = 0 
+				)
+			</if>
+		</where>
+		ORDER BY questionId DESC
+	</select>
+	
+	<select id="queryResearcherQuestionIds"
+		parameterType="cn.strong.leke.question.model.ResearcherQuestionQuery"
+		resultType="long">
+		SELECT DISTINCT(a.questionId)
+		FROM que_question a
+		<include refid="common_join"/>
+		<include refid="common_join_materialNodeId"/>
+		<where>
+			<include refid="plat_que_common_criteria"/>
+			<if test="statusType == 4">
+				AND a.questionStatus = 4
+			</if>
+			<if test="statusType == 5 or statusType == 7">
+				AND a.questionStatus = #{statusType}
+				AND EXISTS (
+					SELECT *
+					FROM que_question_log i
+					WHERE i.questionId = a.questionId
+					AND i.type = #{statusType}
+					AND i.isDeleted = 0
+				)
+			</if>
+			<if test="minCheckDate != null or maxCheckDate != null">
+				AND EXISTS (
+					SELECT *
+					FROM que_question_log e
+					WHERE e.questionId = a.questionId
+					<if test="minCheckDate != null">
+						<![CDATA[
+							AND e.createdOn >= #{minCheckDate}
+						]]>
+					</if>
+					<if test="maxCheckDate != null">
+						<![CDATA[
+							AND e.createdOn <= #{maxCheckDate}
+						]]>
+					</if>
+					AND e.type = 4
+					AND e.isDeleted = 0
+				)
+			</if>
+		</where>
+		ORDER BY questionId DESC
+	</select>
+	
+	<select id="queryStatisQuestionIds"
+		parameterType="cn.strong.leke.question.model.StatisQuestionQuery"
+		resultType="long">
+		SELECT DISTINCT(a.questionId)
+		FROM que_question a
+		<include refid="common_join"/>
+		<include refid="common_join_materialNodeId"/>
+		<where>
+			<include refid="plat_que_common_criteria"/>
+			<if test="statusType != null">
+				AND EXISTS (
+					SELECT *
+					FROM que_question_log i
+					WHERE i.questionId = a.questionId
+					AND i.type = #{statusType}
+					AND i.isDeleted = 0
+				)
+			</if>
+			<if test="operatorId != null and operateType != null">
+				AND EXISTS (
+					SELECT *
+					FROM que_question_log e
+					WHERE e.questionId = a.questionId
+					AND e.createdBy = #{operatorId}
+					<if test="minOperateDate != null">
+						<![CDATA[
+							AND e.createdOn >= #{minOperateDate}
+						]]>
+					</if>
+					<if test="maxOperateDate != null">
+						<![CDATA[
+							AND e.createdOn <= #{maxOperateDate}
+						]]>
+					</if>
+					AND e.type = #{operateType}
+					AND e.isDeleted = 0 
+				)
+			</if>
+		</where>
+		ORDER BY questionId DESC
+	</select>
+	
+	<select id="queryDraftQuestionIds"
+		parameterType="cn.strong.leke.question.model.DraftQuestionQuery"
+		resultType="long">
+		SELECT DISTINCT(a.questionId)
+		FROM que_question a
+		<include refid="common_join"/>
+		<include refid="common_join_materialNodeId"/>
+		<where>
+			<include refid="plat_que_common_criteria"/>
+			AND a.questionStatus IN (1, 2)
+			<if test="inputerId != null or (inputerName != null and inputerName != '') or minInputDate != null or maxInputDate != null">
+				AND EXISTS (
+					SELECT *
+					FROM que_question_log e
+					WHERE e.questionId = a.questionId
+					<if test="inputerId != null">
+						AND e.createdBy = #{inputerId}
+					</if>
+					<if test="inputerName != null and inputerName != ''">
+						AND e.userName LIKE CONCAT('%', #{inputerName}, '%')
+					</if>
+					<if test="minInputDate != null">
+						<![CDATA[
+							AND e.createdOn >= #{minInputDate}
+						]]>
+					</if>
+					<if test="maxInputDate != null">
+						<![CDATA[
+							AND e.createdOn <= #{maxInputDate}
+						]]>
+					</if>
+					AND e.type = 1
+					AND e.isDeleted = 0 
+				)
+			</if>
+		</where>
+		ORDER BY questionId DESC
+	</select>
+	
+	<select id="queryPublishedQuestionIds"
+		parameterType="cn.strong.leke.question.model.PublishedQuestionQuery"
+		resultType="long">
+		SELECT DISTINCT(a.questionId)
+		FROM que_question a
+		<include refid="common_join"/>
+		<include refid="common_join_materialNodeId"/>
+		<include refid="common_join_knowledgeId"/>
+		<where>
+			<include refid="plat_que_common_criteria"/>
+			AND a.questionStatus IN (4, 17)
+		</where>
+		ORDER BY questionId DESC
+	</select>
+	
+	<select id="queryFeedbackQuestionIds"
+		parameterType="cn.strong.leke.model.user.Researcher" 
+		resultType="long">
+		SELECT DISTINCT(a.questionId)
+		FROM que_question a
+		JOIN que_question_feedback f
+		ON a.questionId = f.questionId
+		<where>
+			AND f.isProcessed = 0
+			AND a.isDeleted = 0
+			AND a.isDisabled = 0
+			AND f.isDeleted = 0
+			AND a.parentId is null
+			<if test="schoolStageSubjects != null and schoolStageSubjects.size != 0">
+				AND (a.schoolStageId, a.subjectId) IN
+				<foreach collection="schoolStageSubjects" item="sss" open="(" close=")" separator=",">
+					(#{sss.schoolStageId}, #{sss.subjectId})
+				</foreach>
+			</if>
+		</where>
+		ORDER BY questionId DESC
+	</select>
+	
+	<select id="queryAllFeedbackQuestionIds"
+		parameterType="cn.strong.leke.model.user.Researcher" 
+		resultType="long">
+		SELECT DISTINCT(a.questionId)
+		FROM que_question a
+		JOIN que_question_feedback f
+		ON a.questionId = f.questionId
+		<where>
+			AND a.isDeleted = 0
+			AND a.isDisabled = 0
+			AND f.isDeleted = 0
+			AND a.parentId is null
+			<if test="schoolStageSubjects != null and schoolStageSubjects.size != 0">
+				AND (a.schoolStageId, a.subjectId) IN
+				<foreach collection="schoolStageSubjects" item="sss" open="(" close=")" separator=",">
+					(#{sss.schoolStageId}, #{sss.subjectId})
+				</foreach>
+			</if>
+		</where>
+		ORDER BY questionId DESC
+	</select>
+	
+	<select id="queryFeedbackQuestionIdsByUser" parameterType="long" resultType="long">
+		SELECT DISTINCT(a.questionId)
+		FROM que_question a
+		JOIN que_question_feedback f
+		ON a.questionId = f.questionId
+		<where>
+			AND f.isProcessed = 0
+			AND a.isDeleted = 0
+			AND a.isDisabled = 0
+			AND f.isDeleted = 0
+			AND a.parentId is null
+			AND a.createdBy = #{userId}
+		</where>
+		ORDER BY questionId DESC
+	</select>
+	
+	
+	<select id="queryRejectionQuestionIdsByUser" parameterType="long" resultType="long">
+		SELECT DISTINCT(a.questionId)
+		FROM que_question a
+		JOIN que_question_rejection r
+		ON a.questionId = r.questionId
+		<where>
+			AND r.isProcessed = 0
+			AND a.isDeleted = 0
+			AND a.isDisabled = 0
+			AND r.isDeleted = 0
+			AND a.parentId is null
+			AND a.createdBy = #{userId}
+		</where>
+		ORDER BY questionId DESC
+	</select>
+	
+	<select id="queryHomeworkSelectQuestions" parameterType="cn.strong.leke.model.question.querys.QuestionSelectQuery" resultType="long">
+		SELECT DISTINCT a.questionId
+		FROM que_question a
+		<if test="knowledgeIds != null and knowledgeIds.size > 0">
+			JOIN que_question_knowledge qk
+			ON a.questionId = qk.questionId AND qk.knowledgeId IN
+				<foreach collection="knowledgeIds" item="item" separator="," open="(" close=")">#{item}</foreach>
+			AND qk.isDeleted = 0
+		</if>
+		<where>
+			<if test="schoolStageId != null">
+					AND a.schoolStageId = #{schoolStageId}
+			</if>
+			<if test="subjectId != null">
+				AND a.subjectId = #{subjectId}
+			</if>
+			<if test="questionTypeId != null">
+				AND a.questionTypeId = #{questionTypeId}
+			</if>
+			 AND
+			 	a.isDeleted = 0 
+			 AND 
+			 	a.isDisabled = 0 
+		</where>
+		<if test="questionNum != null ">
+			limit #{questionNum}
+		</if> 
+	</select>
+	
+	<!-- 随机根据教材或者知识点获取一道习题 -->
+	<select id="getRandomQuestionId" parameterType="cn.strong.leke.question.model.question.query.RandomGetQuestionQuery" resultType="long">
+		SELECT a.questionId
+		FROM que_question a
+		<include refid="common_join_materialNodeId"/>
+		<include refid="common_join_knowledgeIds"/>
+		<where>
+			AND	a.sharePlatform = 1
+			AND a.questionTypeId = #{questionTypeId}
+			<![CDATA[
+				AND a.difficulty >= #{difficulty}
+			]]>
+			AND a.questionId 
+			NOT IN 
+			<foreach collection="questionIds" item="questionId" separator="," open="(" close=")">
+				#{questionId}
+			</foreach>
+		</where>
+		ORDER BY rand() 
+		limit 1
+	</select>
+	
+	<select id="countStandaloneQuestions" resultType="_int">
+		SELECT count(*)
+		FROM que_question a
+		WHERE a.parentId IS NULL
+		AND a.isDeleted = 0
+		AND a.isDisabled = 0
+	</select>
+	
+	<select id="queryStandaloneQuestions"
+		resultType="cn.strong.leke.model.question.QuestionDTO">
+		SELECT 
+			que.*, qt.template
+		FROM que_question que
+		LEFT JOIN que_question_type qt
+		ON que.questionTypeId = qt.questionTypeId
+		WHERE que.parentId IS NULL
+		AND que.isDeleted = 0
+		AND que.isDisabled = 0
+		ORDER BY que.questionId DESC
+	</select>
+	
+	<select id="queryTypeMismatchInputerQuestionIds" parameterType="cn.strong.leke.question.model.InputerQuestionQuery"
+		resultType="long">
+		SELECT DISTINCT(a.questionId)
+		FROM que_question a
+		<include refid="common_join"/>
+		<where>
+			<include refid="plat_que_common_criteria"/>
+			<if test="inputerId != null">AND a.createdBy = #{inputerId}</if>
+			AND NOT EXISTS (
+				SELECT
+					*
+				FROM
+					que_subject_question_type sqt
+				WHERE
+					sqt.subjectId = a.subjectId
+				AND sqt.questionTypeId = a.questionTypeId
+			)
+		</where>
+		ORDER BY questionId DESC
+	</select>
+	
+	<update id="disableQuestion" parameterType="cn.strong.leke.model.question.Question">
+		UPDATE que_question
+		<set>
+			isDisabled = 1,
+			<if test="modifiedBy != null">modifiedBy = #{modifiedBy},</if>
+			modifiedOn = now()
+		</set>
+		<where>
+			questionId= #{questionId}
+		</where>
+	</update>
+	
+	<select id="queryReviewQuestionIds"
+		parameterType="cn.strong.leke.question.model.ReviewQuestionQuery"
+		resultType="long">
+		SELECT DISTINCT(a.questionId)
+		FROM que_question a
+		<include refid="common_join"/>
+		<include refid="common_join_materialNodeId"/>
+		<where>
+			<include refid="plat_que_common_criteria"/>
+			<if test="reviewed != null">
+				<if test="reviewed == false">
+					AND a.questionStatus IN (1, 2)
+				</if>
+				AND <if test="reviewed == false"> NOT </if>
+				EXISTS (
+					SELECT *
+					FROM que_question_review rev
+					WHERE rev.questionId = a.questionId
+					AND rev.isDeleted = 0
+				)
+			</if>
+			<if test="minInputDate != null">
+				<![CDATA[
+					AND a.createdOn >= #{minInputDate}
+				]]>
+			</if>
+			<if test="maxInputDate != null">
+				<![CDATA[
+					AND a.createdOn <= #{maxInputDate}
+				]]>
+			</if>
+			<if test="creatorName != null and creatorName != ''">
+				AND a.creatorName LIKE CONCAT('%', #{creatorName}, '%')
+			</if>
+		</where>
+		ORDER BY questionId DESC
+	</select>
+	
+	<select id="queryTeacherShareQuestionIds"
+		parameterType="cn.strong.leke.question.model.TeacherShareQuestionQuery"
+		resultType="long">
+		SELECT DISTINCT(a.questionId)
+		FROM que_question a
+		<include refid="common_join"/>
+		<include refid="common_join_materialNodeId"/>
+		<where>
+			<include refid="que_common_criteria"/>
+			AND a.questionStatus = 9
+			AND a.sharePlatform = 1
+			<if test="minInputDate != null">
+				<![CDATA[
+					AND a.createdOn >= #{minInputDate}
+				]]>
+			</if>
+			<if test="maxInputDate != null">
+				<![CDATA[
+					AND a.createdOn <= #{maxInputDate}
+				]]>
+			</if>
+			<if test="schoolName != null and schoolName != ''">
+				AND a.schoolName LIKE CONCAT('%', #{schoolName}, '%')
+			</if>
+		</where>
+		ORDER BY questionId DESC
+	</select>
+	
+	<select id="findSchoolQuestionContributions" parameterType="cn.strong.leke.remote.model.question.SchoolQuestionContributionQuery"
+		resultType="cn.strong.leke.remote.model.question.SchoolQuestionContribution">
+		SELECT 
+			q.createdBy AS teacherId, 
+			q.creatorName AS teacherName, 
+			COUNT(q.questionId) AS totalCount, 
+			SUM(q.usedCount) AS totalPaperCount
+		FROM que_question q
+		WHERE q.isDeleted = 0
+		AND q.isDisabled = 0
+		AND q.shareSchool = 1
+		<if test="schoolId != null">
+			AND q.schoolId = #{schoolId}
+		</if>
+		<if test="minCreatedOn != null">
+			AND q.createdOn <![CDATA[>=]]> #{minCreatedOn}
+		</if>
+		<if test="maxCreatedOn != null">
+			AND q.createdOn <![CDATA[<=]]> #{maxCreatedOn}
+		</if>
+		GROUP BY q.createdBy, q.creatorName
+	</select>
+	
+	<!-- 查询习题数量 -->
+	<select id="queryQuestionCount" resultType="long">
+		SELECT count(*) FROM que_question WHERE isDeleted=0 AND isDisabled = 0 AND parentId IS NULL
+	</select>
+	
+	<select id="queryQuestionIdsForCheck"
+		parameterType="cn.strong.leke.question.model.CheckQuestionQuery"
+		resultType="long">
+		SELECT DISTINCT(a.questionId)
+		FROM que_question a
+		<include refid="common_join"/>
+		<include refid="common_join_materialNodeId"/>
+		<where>
+			<include refid="plat_que_common_criteria"/>
+			<if test="statusType == 96">
+				AND a.questionStatus = 1
+			</if>
+			<if test="statusType == 97">
+				AND a.questionStatus = 4
+			</if>
+			<if test="minInputDateTime != null">
+				<![CDATA[
+					AND a.createdOn >= #{minInputDateTime}
+				]]>
+			</if>
+			<if test="maxInputDateTime != null">
+				<![CDATA[
+					AND a.createdOn <= #{maxInputDateTime}
+				]]>
+			</if>
+			<if test="creatorName != null and creatorName != ''">
+				AND a.creatorName LIKE CONCAT('%', #{creatorName}, '%')
+			</if>
+		</where>
+		ORDER BY questionId DESC
+	</select>
+	
+	<update id="updateDifficulty" parameterType="cn.strong.leke.model.question.Question">
+		UPDATE que_question
+		<set>
+			difficulty = #{difficulty},
+			<if test="modifiedBy != null">modifiedBy = #{modifiedBy},</if>
+			modifiedOn = now()
+		</set>
+		<where>
+			questionId = #{questionId}
+		</where>
+	</update>
+	
+	<update id="updateQuestionType" parameterType="cn.strong.leke.model.question.Question">
+		UPDATE que_question
+		<set>
+			questionTypeId = #{questionTypeId},
+			<if test="modifiedBy != null">modifiedBy = #{modifiedBy},</if>
+			modifiedOn = now()
+		</set>
+		<where>
+			questionId = #{questionId}
+		</where>
+	</update>
+	
+	<update id="updateQuestionStatus" parameterType="cn.strong.leke.model.question.Question">
+		UPDATE que_question
+		<set>
+			questionStatus = #{questionStatus},
+			<if test="modifiedBy != null">modifiedBy = #{modifiedBy},</if>
+			modifiedOn = now()
+		</set>
+		<where>
+			questionId = #{questionId}
+		</where>
+	</update>
+	
+	<update id="updateNote" parameterType="cn.strong.leke.model.question.Question">
+		UPDATE que_question
+		<set>
+			note = #{note}
+		</set>
+		<where>
+			questionId = #{questionId}
+		</where>
+	</update>
+	
+	<select id="queryImportedQuestionIds"
+		parameterType="cn.strong.leke.question.model.ImportedQuestionQuery"
+		resultType="long">
+		SELECT a.questionId
+		FROM que_question a
+		<where>
+			<if test="schoolStageId != null">AND a.schoolStageId = #{schoolStageId}</if>
+			<if test="subjectId != null">AND a.subjectId = #{subjectId}</if>
+			<if test="userId != null">AND a.createdBy = #{userId}</if>
+			<if test="status != null">
+				AND a.questionStatus = #{status}
+			</if>
+			AND a.parentId IS NULL
+			AND a.isDeleted = 0
+			AND a.isDisabled = 0
+		</where>
+		ORDER BY questionId DESC
+	</select>
+	
+	<sql id="questionCheckPending">
+		<if test="statusType != null and statusType == 1">
+			JOIN que_question_check_pending qcp 
+			ON a.questionId = qcp.questionId AND qcp.isDeleted = 0
+		</if>
+	</sql>
+	
+	<select id="queryResearcherQuestionIdList"
+		parameterType="cn.strong.leke.question.model.ResearcherQuestionQuery"
+		resultType="long">
+		SELECT DISTINCT(a.questionId)
+		FROM que_question a
+		<include refid="questionCheckPending"/>
+		<include refid="common_join"/>
+		<include refid="common_join_materialNodeId"/>
+		<where>
+			<include refid="plat_que_common_criteria"/>
+			<if test="statusType > 0">
+				AND a.questionStatus = #{statusType}
+			</if>
+			<if test="minInputDateTime != null">
+				<![CDATA[
+					AND a.createdOn >= #{minInputDateTime}
+				]]>
+			</if>
+			<if test="maxInputDateTime != null">
+				<![CDATA[
+					AND a.createdOn <= #{maxInputDateTime}
+				]]>
+			</if>
+			AND a.schoolId = 0
+		</where>
+		ORDER BY questionId DESC
+	</select>
+	
+	<select id="queryUpdatedPlatformQuestionIds"
+		parameterType="cn.strong.leke.question.duplication.model.UpdatedQuestionQuery"
+		resultType="long">
+		SELECT a.questionId
+		FROM que_question a
+		<where>
+			<if test="lastQuestionId != null">
+				<![CDATA[
+					AND a.questionId > #{lastQuestionId}
+				]]>
+			</if>
+			<if test="last != null">
+				<![CDATA[
+					AND a.modifiedOn >= #{last}
+				]]>
+			</if>
+			<if test="now != null">
+				<![CDATA[
+					AND a.modifiedOn <= #{now}
+				]]>
+			</if>
+			AND a.questionStatus = 4
+			AND a.sharePlatform = 1
+			AND a.isDeleted = 0
+			AND a.isDisabled = 0
+			AND a.parentId IS NULL
+		</where>
+		ORDER BY questionId ASC
+		LIMIT #{batchSize}
+	</select>
+	
+	<select id="queryRemovedPlatformQuestionIds"
+		parameterType="cn.strong.leke.question.duplication.model.UpdatedQuestionQuery"
+		resultType="long">
+		SELECT a.questionId
+		FROM que_question a
+		<where>
+			<if test="lastQuestionId != null">
+				<![CDATA[
+					AND a.questionId > #{lastQuestionId}
+				]]>
+			</if>
+			<if test="last != null">
+				<![CDATA[
+					AND a.modifiedOn >= #{last}
+				]]>
+			</if>
+			<if test="now != null">
+				<![CDATA[
+					AND a.modifiedOn <= #{now}
+				]]>
+			</if>
+			AND a.sharePlatform = 1
+			AND (
+				a.isDeleted = 1
+				OR a.isDisabled = 1
+			)
+			AND a.parentId IS NULL
+		</where>
+		ORDER BY questionId ASC
+		LIMIT #{batchSize}
+	</select>
+	
+	<update id="updateMayDup" parameterType="cn.strong.leke.model.question.Question">
+		UPDATE que_question
+		<set>
+			mayDup = #{mayDup}
+		</set>
+		<where>
+			questionId = #{questionId}
+		</where>
+	</update>
+	
+	<select id="queryDupQuestionIds" resultType="long"
+		parameterType="cn.strong.leke.question.duplication.model.DupQuestionQuery">
+		SELECT a.questionId
+		FROM que_question a
+		<where>
+			<if test="schoolStageId != null">
+				AND a.schoolStageId = #{schoolStageId}
+			</if>
+			<if test="subjectId != null">
+				AND a.subjectId = #{subjectId}
+			</if>
+			AND a.mayDup = 1
+			AND a.isDeleted = 0
+			AND a.isDisabled = 0
+			AND a.parentId IS NULL
+		</where>
+		ORDER BY a.questionId ASC
+	</select>
+	
+	<update id="incUsedCount" parameterType="long">
+		UPDATE que_question
+		<set>
+			usedCount = usedCount + 1,
+			modifiedOn = now()
+		</set>
+		<where>
+			questionId = #{questionId}
+		</where>
+	</update>
+	
+	<update id="incFavCount" parameterType="long">
+		UPDATE que_question
+		<set>
+			favCount = favCount + 1,
+			modifiedOn = now()
+		</set>
+		<where>
+			questionId = #{questionId}
+		</where>
+	</update>
+	
+	<update id="incBatchFavCount" parameterType="map">
+		UPDATE que_question
+		<set>
+			favCount = favCount + 1,
+			modifiedOn = now()
+		</set>
+		<where>
+			questionId 
+		IN 
+			<foreach collection="questionIds" item="questionId" separator="," open="(" close=")">
+				#{questionId}
+			</foreach>
+		</where>
+	</update>
+	
+	<update id="incPraiseCount" parameterType="long">
+		UPDATE que_question
+		<set>
+			praiseCount = praiseCount + 1,
+			modifiedOn = now()
+		</set>
+		<where>
+			questionId = #{questionId}
+		</where>
+	</update>
+	
+	<update id="incCommentCount" parameterType="long">
+		UPDATE que_question
+		<set>
+			commentCount = commentCount + 1
+		</set>
+		<where>
+			questionId = #{questionId}
+		</where>
+	</update>
+	
+	<sql id="repo_join">
+		<include refid="common_join_materialNodeId"/>
+		<include refid="common_join_knowledgeId"/>
+		<include refid="common_join_workbookNodeId"/>
+		<if test="content != null and content != ''">
+			LEFT JOIN que_question_stem c
+			ON c.questionId = a.questionId
+			AND c.isDeleted = 0
+		</if>
+	</sql>
+	
+	<sql id="repo_criteria">
+		<if test="schoolStageId != null">AND a.schoolStageId = #{schoolStageId}</if>
+		<if test="subjectId != null">AND a.subjectId = #{subjectId}</if>
+		<if test="startDateTime != null">AND a.createdOn <![CDATA[>=]]> #{startDateTime}</if>
+        <if test="endDataTime != null">AND a.createdOn <![CDATA[<=]]> #{endDataTime}</if>
+		<if test="questionTypeId != null">AND a.questionTypeId = #{questionTypeId}</if>
+		<if test="questionTypeIds != null and questionTypeIds.size > 0">
+		  AND a.questionTypeId IN
+        <foreach collection="questionTypeIds" item="qTypeId" open="(" close=")" separator=",">
+            #{qTypeId}
+        </foreach>
+        
+        </if>
+		<if test="content != null and content != ''">
+			AND (
+				a.source LIKE CONCAT('%', #{content}, '%')
+				OR c.stemContent LIKE CONCAT('%', #{content}, '%')
+			)
+		</if>
+		<if test="minDifficulty != null"><![CDATA[ AND a.difficulty >= #{minDifficulty} ]]></if>
+		<if test="maxDifficulty != null"><![CDATA[ AND a.difficulty <= #{maxDifficulty} ]]></if>
+		AND a.parentId IS NULL
+		AND a.isDeleted = 0
+		AND a.isDisabled = 0
+	</sql>
+	
+	<sql id="order_field">
+		<choose>
+			<when test="orderBy == 1">
+				a.createdOn
+			</when>
+			<when test="orderBy == 2">
+				a.usedCount
+			</when>
+			<when test="orderBy == 3">
+				a.praiseCount
+			</when>
+			<when test="orderBy == 4">
+				a.favCount
+			</when>
+			<otherwise>
+				a.questionId
+			</otherwise>
+		</choose>
+	</sql>
+	
+	<sql id="order_dir">
+		<if test="asc == true">ASC</if>
+		<if test="asc != true">DESC</if>
+	</sql>
+	
+	<select id="queryPersonalQuestions"
+		parameterType="cn.strong.leke.model.question.querys.RepositoryQuestionQuery"
+		resultType="long">
+		SELECT DISTINCT(a.questionId)
+		FROM que_question a
+		<include refid="repo_join"/>
+		<include refid="common_join_knowledgeIds"/>
+		<include refid="group_join"/>
+		<where>
+			AND a.createdBy = #{userId}
+			AND a.sharePersonal = 1
+			<include refid="repo_criteria"/>
+		</where>
+		ORDER BY a.questionId DESC
+	</select>
+	
+	<select id="queryFavoriteQuestions"
+		parameterType="cn.strong.leke.model.question.querys.RepositoryQuestionQuery"
+		resultType="long">
+		SELECT DISTINCT(a.questionId)
+		FROM que_question a
+		JOIN que_teacher_question tq
+		ON a.questionId = tq.questionId
+		AND tq.isDeleted = 0
+		<include refid="repo_join"/>
+		<include refid="group_join"/>
+		<include refid="common_join_knowledgeIds"/>
+		<where>
+			AND tq.teacherId = #{userId}
+			<include refid="repo_criteria"/>
+		</where>
+		ORDER BY tq.createdOn DESC
+	</select>
+	
+	<sql id="outline_join">
+		<if test="outlineNodeIds != null and outlineNodeIds.size > 0">
+			JOIN que_school_question_outline_node m
+			ON a.questionId = m.questionId
+			AND m.outlineNodeId  IN
+			<foreach collection="outlineNodeIds" item="outlineNodeId" open="(" separator="," close=")">
+				#{outlineNodeId}
+			</foreach>
+			AND m.isDeleted = 0
+		</if>
+	</sql>
+	
+	<select id="querySchoolQuestions"
+		parameterType="cn.strong.leke.model.question.querys.RepositoryQuestionQuery"
+		resultType="long">
+		SELECT DISTINCT(a.questionId)
+		FROM que_question a
+		JOIN que_school_question sq
+		ON a.questionId = sq.questionId
+		AND sq.isDeleted = 0
+		<include refid="repo_join"/>
+		<include refid="outline_join"/>
+		<where>
+			AND sq.schoolId = #{schoolId}
+			AND sq.status IN (0, 1)
+		<if test="sourceType != null and sourceType == 1 and agencyUserId != null">
+			AND sq.addType IN (0,1)
+			AND sq.createdBy = #{agencyUserId}
+		</if>
+			<include refid="repo_criteria"/>
+		</where>
+		ORDER BY
+		<if test="orderBy == 0">sq.createdOn</if>
+		<if test="orderBy != 0"><include refid="order_field"/></if>
+		<include refid="order_dir"/>
+	</select>
+	
+	<select id="queryLeagueQuestions"
+		parameterType="cn.strong.leke.model.question.querys.RepositoryQuestionQuery"
+		resultType="long">
+		SELECT DISTINCT(a.questionId)
+		FROM que_question a
+		JOIN que_school_question sq
+		ON a.questionId = sq.questionId
+		AND sq.isDeleted = 0
+		<include refid="repo_join"/>
+		<where>
+			AND sq.schoolId IN
+			<foreach collection="leagueMemberIds" item="memberId" open="(" separator="," close=")">
+				#{memberId}
+			</foreach>
+			AND sq.status IN (0, 1)
+			<include refid="repo_criteria"/>
+		</where>
+		ORDER BY
+		<if test="orderBy == 0">sq.createdOn</if>
+		<if test="orderBy != 0"><include refid="order_field"/></if>
+		<include refid="order_dir"/>
+	</select>
+	
+	<select id="queryLekeShareQuestions"
+		parameterType="cn.strong.leke.model.question.querys.RepositoryQuestionQuery"
+		resultType="long">
+		SELECT DISTINCT(a.questionId)
+		FROM que_question a
+		<include refid="repo_join"/>
+		<where>
+			<![CDATA[
+			AND a.schoolId <> 0
+			]]>
+			AND a.sharePlatform = 1
+			<include refid="repo_criteria"/>
+		</where>
+		ORDER BY
+		<include refid="order_field"/>
+		<include refid="order_dir"/>
+	</select>
+	
+	<select id="queryLekeBoutiqueQuestions"
+		parameterType="cn.strong.leke.model.question.querys.RepositoryQuestionQuery"
+		resultType="long">
+		SELECT DISTINCT(a.questionId)
+		FROM que_question a
+		<include refid="repo_join"/>
+		<where>
+			AND a.schoolId = 0
+			AND a.sharePlatform = 1
+			AND a.questionStatus IN (4, 17)
+			<include refid="repo_criteria"/>
+		</where>
+		ORDER BY
+		<include refid="order_field"/>
+		<include refid="order_dir"/>
+	</select>
+	
+	<select id="queryFamousTeacherQuestions"
+		parameterType="cn.strong.leke.model.question.querys.RepositoryQuestionQuery"
+		resultType="long">
+		SELECT DISTINCT(a.questionId)
+		FROM que_question a
+		JOIN que_famous_teacher_question ftq
+		ON a.questionId = ftq.questionId
+		AND ftq.isDeleted = 0
+		<include refid="repo_join"/>
+		<where>
+			<if test="famousTeacherId != null">
+			AND ftq.teacherId = #{famousTeacherId}
+			</if>
+			AND ftq.status IN (0, 1)
+			<include refid="repo_criteria"/>
+		</where>
+		ORDER BY
+		<if test="orderBy == 0">ftq.createdOn</if>
+		<if test="orderBy != 0"><include refid="order_field"/></if>
+		<include refid="order_dir"/>
+	</select>
+	
+	<select id="queryFamousSchoolQuestions"
+		parameterType="cn.strong.leke.model.question.querys.RepositoryQuestionQuery"
+		resultType="long">
+		SELECT DISTINCT(a.questionId)
+		FROM que_question a
+		JOIN que_famous_school_question fsq
+		ON a.questionId = fsq.questionId
+		AND fsq.isDeleted = 0
+		<include refid="repo_join"/>
+		<where>
+			<if test="famousSchoolId != null">
+			AND fsq.schoolId = #{famousSchoolId}
+			</if>
+			AND fsq.status IN (0, 1)
+			<include refid="repo_criteria"/>
+		</where>
+		ORDER BY
+		<if test="orderBy == 0">fsq.createdOn</if>
+		<if test="orderBy != 0"><include refid="order_field"/></if>
+		<include refid="order_dir"/>
+	</select>
+	
+	<sql id="common_total">
+		<if test="questionFrom == null">
+			AND a.paperId IS NULL AND a.workbookNodeId IS NULL
+		</if>
+		<if test="questionFrom != null and questionFrom == 1">
+			AND a.paperId IS NOT NULL AND a.workbookNodeId IS NULL
+		</if>
+		<if test="questionFrom != null and questionFrom == 2">
+			AND a.workbookNodeId IS NOT NULL
+		</if>
+		<if test="minCreatedOn != null">
+			AND a.createdOn <![CDATA[>=]]> #{minCreatedOn}
+		</if>
+		<if test="maxCreatedOn != null">
+			AND a.createdOn <![CDATA[<=]]> #{maxCreatedOn}
+		</if>
+		<if test="userId != null">
+			AND a.createdBy = #{userId}
+		</if>
+		<if test="userIds != null and userIds.size != 0">
+			AND a.createdBy IN
+			<foreach collection="userIds" item="userId" open="(" close=")" separator=",">
+				#{userId}
+			</foreach>
+		</if>
+	</sql>
+	<select id="countInputQuestionFrom" resultType="cn.strong.leke.question.model.question.QuestionTotalResult"
+		parameterType="cn.strong.leke.question.model.question.query.AmountQuestionQuery">
+		SELECT COUNT(a.questionId) as amount, (a.createdBy) as userId
+		FROM que_question a
+		WHERE a.isDeleted = 0
+		AND a.schoolId = 0
+		AND a.parentId IS NULL
+		AND a.isDisabled = 0
+		<include refid="common_total"/>
+		GROUP BY a.createdBy
+	</select>
+	
+	<select id="countInputQuestion"  resultType="long" 
+		parameterType="cn.strong.leke.question.model.question.query.AmountQuestionQuery">
+		SELECT COUNT(a.questionId)
+		FROM que_question a
+		WHERE a.isDeleted = 0
+		AND a.schoolId = 0
+		AND a.parentId IS NULL
+		AND a.isDisabled = 0
+		<include refid="common_total"/>
+	</select>
+	
+	<select id="queryInputStatisDTO"  resultType="cn.strong.leke.question.model.InputStatisDTO" 
+		parameterType="cn.strong.leke.question.model.InputStatisDTO">
+			SELECT COUNT(*) as inputAmount, (a.createdBy) as userId
+			FROM que_question a
+			WHERE a.isDeleted = 0
+			AND a.schoolId = 0
+			AND a.parentId IS NULL
+			AND a.isDisabled = 0
+			<if test="startDate != null">
+				AND a.createdOn <![CDATA[>=]]> #{startDate}
+			</if>
+			<if test="endDate != null">
+				AND a.createdOn <![CDATA[<=]]> #{endDate}
+			</if>
+			<if test="userIds != null and userIds.size != 0">
+				AND a.createdBy IN
+				<foreach collection="userIds" item="userId" open="(" close=")" separator=",">
+					#{userId}
+				</foreach>
+			</if>
+			GROUP BY a.createdBy
+	</select>
+	
+	<select id="queryQuestionAmount"  resultType="cn.strong.leke.question.model.InputStatisDTO" 
+		parameterType="cn.strong.leke.question.model.InputStatisDTO">
+			SELECT COUNT(*) as inputAmount, (a.schoolStageId) as schoolStageId, (a.subjectId) as subjectId, (a.createdBy) as userId
+			FROM que_question a
+			WHERE a.isDeleted = 0
+			AND a.schoolId = 0
+			AND a.parentId IS NULL
+			AND a.isDisabled = 0
+			AND a.sharePlatform = 1 
+			AND a.questionStatus IN (4, 17)
+			<if test="startDate != null">
+				AND a.createdOn <![CDATA[>=]]> #{startDate}
+			</if>
+			<if test="endDate != null">
+				AND a.createdOn <![CDATA[<=]]> #{endDate}
+			</if>
+			<if test="schoolStageId == null and subjectId == null">
+				GROUP BY a.schoolStageId
+			</if>
+			<if test="schoolStageId == null and subjectId != null">
+				GROUP BY a.subjectId
+			</if>
+			<if test="schoolStageId != null and subjectId == null">
+				AND a.schoolStageId = #{schoolStageId}
+				GROUP BY a.subjectId
+			</if>
+			<if test="schoolStageId != null and subjectId != null and userIds != null and userIds.size != 0">
+				AND a.schoolStageId = #{schoolStageId}
+				AND a.subjectId = #{subjectId}
+				AND a.createdBy IN
+				<foreach collection="userIds" item="userId" open="(" close=")" separator=",">
+					#{userId}
+				</foreach>
+				GROUP BY a.createdBy
+			</if>
+			
+	</select>
+	
+	<select id="queryQuestionTotalAmount"  resultType="long" 
+		parameterType="cn.strong.leke.question.model.InputStatisDTO">
+			SELECT COUNT(*) as inputAmount
+			FROM que_question a
+			WHERE a.isDeleted = 0
+			AND a.parentId IS NULL
+			AND a.isDisabled = 0
+			AND a.sharePlatform = 1 
+			AND a.questionStatus IN (4, 17)
+			<if test="startDate != null">
+				AND a.createdOn <![CDATA[>=]]> #{startDate}
+			</if>
+			<if test="endDate != null">
+				AND a.createdOn <![CDATA[<=]]> #{endDate}
+			</if>
+	</select>
+	
+	<!-- <select id="queryCheckAmountList" resultType="cn.strong.leke.question.model.InputStatisDTO" parameterType="cn.strong.leke.question.model.InputStatisQuery">
+		SELECT
+			l.createdBy as userId,
+			COUNT(*)AS checkAmount
+		FROM
+			`que_question_log` l
+		LEFT JOIN que_question q ON q.questionId = l.questionId
+		WHERE
+			q.parentId IS NULL
+			AND l.type = 17
+			AND q.sharePlatform = 1
+			AND q.schoolId = 0
+			AND l.isDeleted = 0
+			AND q.isDisabled = 0
+			<if test="startDate != null and startDate != ''">
+				AND l.createdOn <![CDATA[>=]]> #{startDate}
+			</if>
+			<if test="endDate != null and endDate != ''">
+				AND l.createdOn <![CDATA[<=]]> #{endDate}
+			</if>
+			<if test="userIds != null and userIds.size != 0">
+				AND l.createdBy in
+				<foreach collection="userIds" item="userId" open="(" close=")" separator=",">
+					#{userId}
+				</foreach>
+			</if>
+		GROUP BY l.createdBy
+	</select> -->
+	
+	<!-- 统计精品库未审核的习题 -->
+	<select id="countUnCheckedQuestionOfLekeBoutique" resultType="_long" 
+	parameterType="cn.strong.leke.question.model.question.query.AmountQuestionQuery">
+		SELECT COUNT(a.questionId)
+		FROM que_question a
+		WHERE a.isDeleted = 0 
+		AND a.parentId IS NULL
+		AND a.schoolId = 0
+		AND a.sharePlatform = 1
+		AND a.questionStatus = 1
+		AND a.isDisabled = 0
+		<if test="minCreatedOn != null">
+			AND a.createdOn <![CDATA[>=]]> #{minCreatedOn}
+		</if>
+		<if test="maxCreatedOn != null">
+			AND a.createdOn <![CDATA[<=]]> #{maxCreatedOn}
+		</if>
+		<if test="schoolStageSubjects != null and schoolStageSubjects.size != 0">
+			AND (a.schoolStageId, a.subjectId) IN
+			<foreach collection="schoolStageSubjects" item="sss" open="(" close=")" separator=",">
+				(#{sss.schoolStageId}, #{sss.subjectId})
+			</foreach>
+		</if>
+	</select>
+	
+	<update id="addToPersonal" parameterType="map">
+		UPDATE que_question 
+		<set>
+			sharePersonal = 1,
+			modifiedBy = #{modifiedBy},
+			modifiedOn = now()
+		</set>
+		WHERE questionId = #{questionId} 
+		AND createdBy = #{userId}
+		AND sharePersonal = 0
+		AND isDeleted = 0
+	</update>
+	
+	<update id="removeFromPersonal" parameterType="map">
+		UPDATE que_question 
+		<set>
+			sharePersonal = 0,
+			modifiedBy = #{modifiedBy},
+			modifiedOn = now()
+		</set>
+		WHERE questionId = #{questionId} 
+		AND createdBy = #{userId}
+		AND sharePersonal = 1
+		AND isDeleted = 0
+	</update>
+	
+	<update id="addToLekeBoutique" parameterType="map">
+		UPDATE que_question 
+		<set>
+			sharePlatform = 1,
+			modifiedBy = #{modifiedBy},
+			modifiedOn = now()
+		</set>
+		WHERE questionId = #{questionId} 
+		AND schoolId = 0
+		AND sharePlatform = 0
+		AND isDeleted = 0
+	</update>
+	
+	<update id="removeFromLekeBoutique" parameterType="map">
+		UPDATE que_question 
+		<set>
+			sharePlatform = 0,
+			modifiedBy = #{modifiedBy},
+			modifiedOn = now()
+		</set>
+		WHERE questionId = #{questionId} 
+		AND schoolId = 0
+		AND sharePlatform = 1
+		AND isDeleted = 0
+	</update>
+	
+	<update id="addToLekeShare" parameterType="map">
+		UPDATE que_question 
+		<set>
+			sharePlatform = 1,
+			modifiedBy = #{modifiedBy},
+			modifiedOn = now()
+		</set>
+		WHERE questionId = #{questionId}
+		<![CDATA[
+		AND schoolId <> 0
+		]]>
+		AND sharePlatform = 0
+		AND isDeleted = 0
+	</update>
+	
+	<update id="removeFromLekeShare" parameterType="map">
+		UPDATE que_question 
+		<set>
+			sharePlatform = 0,
+			modifiedBy = #{modifiedBy},
+			modifiedOn = now()
+		</set>
+		WHERE questionId = #{questionId} 
+		<![CDATA[
+		AND schoolId <> 0
+		]]>
+		AND sharePlatform = 1
+		AND isDeleted = 0
+	</update>
+	
+	<update id="addToSchoolShare" parameterType="map">
+		UPDATE que_question 
+		<set>
+			shareSchool = 1,
+			modifiedBy = #{modifiedBy},
+			modifiedOn = now()
+		</set>
+		WHERE questionId = #{questionId}
+		<![CDATA[
+		AND schoolId <> 0
+		]]>
+		AND shareSchool = 0
+		AND isDeleted = 0
+	</update>
+	
+	<update id="removeFromSchoolShare" parameterType="map">
+		UPDATE que_question 
+		<set>
+			shareSchool = 0,
+			modifiedBy = #{modifiedBy},
+			modifiedOn = now()
+		</set>
+		WHERE questionId = #{questionId} 
+		<![CDATA[
+		AND schoolId <> 0
+		]]>
+		AND shareSchool = 1
+		AND isDeleted = 0
+	</update>
+	
+	<update id="updateSubjective" parameterType="map">
+		UPDATE que_question
+		<set>
+			subjective = #{subjective},
+			modifiedOn = now()
+		</set>
+		<where>
+			questionId = #{questionId}
+		</where>
+	</update>
+
+	<select id="maxLekeBoutiqueQuestionId"  resultType="long">
+		SELECT max(questionId)
+		FROM  que_question q
+		WHERE 
+			q.isDeleted = 0
+		AND q.createdBy = 2
+		AND q.sharePlatform = 1
+		AND q.isDeleted = 0
+		AND q.questionStatus = 1
+	</select>
+	
+	<!-- 定时任务修改习题状态审核通过-->
+	<update id="updateStatusTask" parameterType="long">
+		UPDATE que_question a,que_question_section b,que_question_knowledge c 
+		SET a.questionStatus=4,a.modifiedOn=NOW()
+		WHERE a.schoolId=0 AND a.sharePlatform=1 AND a.isDeleted=0 
+ 		AND a.createdBy = 2 AND a.questionId = b.questionId AND a.questionId = c.questionId AND b.isDeleted = 0 AND c.isDeleted =0 
+ 		AND a.questionId <![CDATA[>]]> #{minQuestionId}
+ 		AND a.questionId <![CDATA[<=]]> #{minQuestionId} <![CDATA[+]]> 1000
+	</update>
+	
+	<update id="setQuestionLevel" parameterType="map">
+		UPDATE 
+			que_question a
+		SET
+			a.level = #{level},
+			a.modifiedBy = #{userId},
+			a.modifiedOn = now()
+		WHERE
+			a.questionId = #{questionId}
+		AND
+			a.isDeleted = 0
+	</update>
+	
+	<sql id="repo_criteria_leke">
+	    a.sharePlatform = 1
+        <if test="shareScope == 6">
+        <![CDATA[ AND a.schoolId <> 0 ]]>
+        </if>
+        <if test="userId != null">AND a.createdBy = #{userId}</if>
+        <if test="shareScope != 6 and schoolId != null">AND a.schoolId = #{schoolId}</if>
+        <include refid="repo_criteria"/>
+	</sql>
+	
+	<select id="countLekeQuestion" parameterType="cn.strong.leke.model.question.querys.RepositoryQuestionQuery"
+	   resultType="int">
+       SELECT 
+           COUNT(*)
+       FROM
+           que_question a
+       <where>
+           <include refid="repo_criteria_leke"/>
+           <if test="schoolId != null and schoolId == 0  and userId == null">AND a.createdBy != 2</if>
+       </where>
+    </select>
+    
+    <select id="groupCreatedOnLekeQuestion" parameterType="cn.strong.leke.model.question.querys.RepositoryQuestionQuery"
+       resultType="cn.strong.leke.model.repository.RepoDayGroup">
+       SELECT 
+           DATE_FORMAT(a.createdOn,"%Y-%m-%d") as `day`,COUNT(*) as `count`
+       FROM
+           que_question a
+       <where>
+          <include refid="repo_criteria_leke"/>
+          <if test="schoolId != null and schoolId == 0 and userId == null">AND a.createdBy != 2</if>
+       </where>
+       GROUP BY DATE_FORMAT(a.createdOn,"%Y-%m-%d")
+    </select>
+
+</mapper>

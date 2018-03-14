@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.question.dao.mybatis.QuestionReviewDao">
+
+	<insert id="insertQuestionReview" useGeneratedKeys="true" keyProperty="questionReviewId"
+		parameterType="cn.strong.leke.question.model.QuestionReview">
+		INSERT INTO que_question_review(
+			questionId, isDeleted, createdBy, createdOn
+		) VALUES (
+			#{questionId}, 0, #{createdBy}, now()
+		)
+	</insert>
+	
+	<select id="countQuestionReview" resultType="_int"
+		 parameterType="cn.strong.leke.question.model.QuestionReview">
+		SELECT count(*)
+		FROM que_question_review
+		<where>
+			questionId = #{questionId}
+			AND isDeleted = 0
+		</where>
+	</select>
+</mapper>

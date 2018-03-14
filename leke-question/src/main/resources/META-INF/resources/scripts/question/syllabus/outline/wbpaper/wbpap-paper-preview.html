@@ -1,0 +1,28 @@
+<div>
+	<div class="f-tar">
+		<button class="u-btn u-btn-nm u-btn-bg-turquoise f-mr10"
+	   		data-bind="visible: mode == 'edit',
+	   		click: function() {
+	   			scene('edit');
+	   		}, i18n: 'pap.paper.btn.edit'">编辑</button>
+	   	<button class="u-btn u-btn-nm f-mr10"
+	   		data-bind="click: function() {
+	   			scene('list');
+	   		}, i18n: 'pap.paper.btn.return'">返回</button>
+	</div>
+	<div class="j-content">
+	
+	</div>
+	<div class="f-tac" data-bind="visible: mode == 'view'">
+		<button class="u-btn u-btn-nm u-btn-bg-turquoise f-mr5"
+	   		data-bind="click: function() {
+	   			$component.toAddPaper();
+	   		}, i18n: 'pap.quecart.btn.toAddPaper'">生成试卷</button>
+	   	<!-- ko if: isTeacher -->
+	   	<button class="u-btn u-btn-nm u-btn-bg-turquoise f-mr5" 
+	   		data-bind="click: function() {
+	   			$component.toFastBeike();
+	   		}, i18n: 'pap.quecart.btn.toFastBeike'">推送到备课</button>
+	   	<!-- /ko -->
+	</div>
+</div>

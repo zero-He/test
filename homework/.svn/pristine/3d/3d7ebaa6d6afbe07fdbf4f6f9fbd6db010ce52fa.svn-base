@@ -1,0 +1,211 @@
+package cn.strong.leke.homework.controller;
+
+import static java.util.stream.Collectors.toList;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.annotation.Resource;
+
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import cn.strong.leke.beike.model.Courseware;
+import cn.strong.leke.beike.model.MicrocourseDTO;
+import cn.strong.leke.beike.model.Types;
+import cn.strong.leke.common.serialize.support.json.JsonUtils;
+import cn.strong.leke.context.beike.CoursewareContext;
+import cn.strong.leke.context.beike.MicrocourseContext;
+import cn.strong.leke.context.paper.PaperContext;
+import cn.strong.leke.context.question.QuestionContext;
+import cn.strong.leke.framework.mq.MessageSender;
+import cn.strong.leke.framework.web.JsonResult;
+import cn.strong.leke.homework.model.ApiParamDTO;
+import cn.strong.leke.homework.model.Homework;
+import cn.strong.leke.homework.model.HomeworkData;
+import cn.strong.leke.homework.model.StudentReviewInfo;
+import cn.strong.leke.homework.service.HomeworkDtlService;
+import cn.strong.leke.homework.service.HomeworkMainService;
+import cn.strong.leke.homework.service.HomeworkService;
+import cn.strong.leke.homework.util.HomeworkCst;
+import cn.strong.leke.model.paper.PaperDTO;
+import cn.strong.leke.model.paper.QuestionGroup;
+import cn.strong.leke.model.paper.ScoredQuestion;
+import cn.strong.leke.model.question.QuestionDTO;
+
+import com.fasterxml.jackson.annotation.JsonView;
+
+@RestController
+@RequestMapping("/api/n/*")
+public class APINController {
+
+	@Resource
+	private HomeworkService homeworkService;
+	@Resource
+	private HomeworkDtlService homeworkDtlService;
+	@Resource
+	private HomeworkMainService homeworkMainService;
+	@Resource
+	private MessageSender onlinetestSender;
+	@Resource
+	private MessageSender homeworkMutualCorrectSender;
+	
+	/**
+	 * 上传随堂作业数据
+	 * 调用者：课堂服务端
+	 */
+	@RequestMapping("upHwInfo")
+	public JsonResult upHwInfo(String data) {
+		APILogger.invoking("upHwInfo", data);
+		HomeworkData homeworkData = JsonUtils.fromJSON(data, HomeworkData.class);
+		homeworkData.setIsDeleted(false);
+		this.homeworkMainService.saveOnlineAnswerTempData(homeworkData);
+		this.onlinetestSender.send(homeworkData.getDataId());
+		return new JsonResult();
+	}
+
+	/**
+	 * 上传课堂互批数据
+	 * 调用者：课堂服务端
+	 * @param data
+	 * @return
+	 */
+	@RequestMapping("upMutualCorrectInfo")
+	public JsonResult upMutualCorrectInfo(String data) {
+		APILogger.invoking("upMutualCorrectInfo", data);
+		HomeworkData homeworkData = JsonUtils.fromJSON(data, HomeworkData.class);
+		homeworkData.setIsDeleted(false);
+		this.homeworkMainService.saveOnlineAnswerTempData(homeworkData);
+		this.homeworkMutualCorrectSender.send(homeworkData.getDataId());
+		return new JsonResult();
+	}
+
+	/**
+	 * 根据单课标识和老师标识，获取作业列表。
+	 * 调用者：课堂服务端
+	 */
+	@RequestMapping("getHwByLessonId")
+	@JsonView(Homework.MobileView.class)
+	public JsonResult getHwByLessonId(String data) {
+		APILogger.invoking("getHwByLessonId", data);
+		ApiParamDTO param = JsonUtils.fromJSON(data, ApiParamDTO.class);
+		List<Homework> list = homeworkService.findLessonWorkByLessonId(param.getTeacherId(), param.getLessonId(),
+				HomeworkCst.HOMEWORK_RES_PAPER, param.getIsSpecial() ? null : false);
+		//特殊处理数据
+		if (param.getIsSpecial()) {
+			List<Long> paperIds = list.stream().filter(v->v.getIsSnapshot()).map(v->v.getPaperId()).collect(toList());
+			list.removeIf(v->!v.getIsSnapshot() && paperIds.contains(v.getPaperId()));
+		}
+		return new JsonResult().addDatas("list", list);
+	}
+
+	/**
+	 * 根据单课标识和老师标识，获取课件列表。
+	 * 调用者：课堂服务端
+	 */
+	@RequestMapping("getCwByLessonId")
+	public JsonResult getCwByLessonId(String data) {
+		APILogger.invoking("getCwByLessonId", data);
+		ApiParamDTO param = JsonUtils.fromJSON(data, ApiParamDTO.class);
+		List<Homework> homeworks = homeworkService.findLessonWorkByLessonId(param.getTeacherId(), param.getLessonId(),
+				HomeworkCst.HOMEWORK_RES_COURSEWARE, false);
+		List<Map<String, Object>> list = homeworks.stream().map(Homework::getPaperId)
+				.map(CoursewareContext::getCourseware).map(this::convertCourseware).collect(toList());
+		return new JsonResult().addDatas("list", list);
+	}
+	
+	private Map<String, Object> convertCourseware(Courseware courseware) {
+		Map<String, Object> map = new HashMap<String, Object>();
+		map.put("coursewareVersion_id", courseware.getCoursewareId());
+		map.put("fileId", courseware.getFileId());
+		map.put("name", courseware.getName());
+		if (Types.isMedia(courseware.getType())) {
+			map.put("multimedia", 1);
+		} else {
+			map.put("multimedia", 0);
+		}
+		return map;
+	}
+
+	/**
+	 * 根据单课标识和老师标识，获取微课列表。
+	 * 调用者：课堂服务端
+	 */
+	@RequestMapping("getMcByLessonId")
+	public JsonResult getMcByLessonId(String data) {
+		APILogger.invoking("getMcByLessonId", data);
+		ApiParamDTO param = JsonUtils.fromJSON(data, ApiParamDTO.class);
+		List<Homework> homeworks = homeworkService.findLessonWorkByLessonId(param.getTeacherId(), param.getLessonId(),
+				HomeworkCst.HOMEWORK_RES_MICROCOURSE, false);
+		List<Map<String, Object>> list = homeworks.stream().map(Homework::getPaperId)
+				.map(MicrocourseContext::getMicrocourse).map(this::convertMicrocourseFile).filter(v -> v != null)
+				.collect(toList());
+		return new JsonResult().addDatas("list", list);
+	}
+	
+	private Map<String, Object> convertMicrocourseFile(MicrocourseDTO microcourseDTO) {
+		if (microcourseDTO.getMicrocourseFile() == null) {
+			return null;
+		}
+		Map<String, Object> map = new HashMap<String, Object>();
+		map.put("coursewareVersion_id", microcourseDTO.getMicrocourseId());
+		map.put("fileId", microcourseDTO.getMicrocourseFile().getFileId());
+		map.put("name", microcourseDTO.getMicrocourseName());
+		map.put("changeType", microcourseDTO.getMicrocourseFile().getType());
+//		map.put("totalPage", microcourseDTO.getMicrocourseFile().getPageCount());
+		if (Types.isMedia(microcourseDTO.getMicrocourseFile().getType())) {
+			map.put("multimedia", 1);
+		} else {
+			map.put("multimedia", 0);
+		}
+		return map;
+	}
+
+	/**
+	 * 获取课堂金榜的预习情况（完成、得分）
+	 * @param data
+	 * @return
+	 */
+	@RequestMapping("findReviewInfos")
+	public JsonResult findReviewInfos(String data) {
+		APILogger.invoking("findReviewInfos", data);
+		ApiParamDTO apiParamDTO = JsonUtils.fromJSON(data, ApiParamDTO.class);
+		List<StudentReviewInfo> reviewInfos = this.homeworkDtlService
+				.findStudentReviewInfosByLessonId(apiParamDTO.getCourseSingleId());
+		return new JsonResult().addDatas("reviewInfos", reviewInfos);
+	}
+
+	/**
+	 * 根据试卷ID列表，获取试卷及题目信息。
+	 * 调用者：课堂服务端
+	 */
+	@RequestMapping("getPaperInfo")
+	public JsonResult getPaperInfo(String data) {
+		APILogger.invoking("getPaperInfo", data);
+		ApiParamDTO param = JsonUtils.fromJSON(data, ApiParamDTO.class);
+
+		List<Map<String, Object>> list = param.getPaperIds().stream().map((Long paperId) -> {
+			PaperDTO paperDTO = PaperContext.getPaperDTO(paperId);
+
+			Map<String, Object> item = new HashMap<String, Object>();
+			item.put("paperId", paperId);
+			item.put("paperType", paperDTO.getPaperType());
+			item.put("paperDetail", paperDTO.getDetail());
+			item.put("attachment", paperDTO.getAttachment());
+
+			List<Long> questionIds = new ArrayList<Long>();
+			for (QuestionGroup questionGroup : paperDTO.getDetail().getGroups()) {
+				for (ScoredQuestion scoredQuestion : questionGroup.getQuestions()) {
+					questionIds.add(scoredQuestion.getQuestionId());
+				}
+			}
+			List<QuestionDTO> questionList = QuestionContext.findQuestions(questionIds.toArray(new Long[0]));
+			item.put("questionList", questionList);
+			return item;
+		}).collect(toList());
+		return new JsonResult().addDatas("list", list);
+	}
+
+}

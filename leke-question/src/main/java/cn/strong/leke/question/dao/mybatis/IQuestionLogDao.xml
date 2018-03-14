@@ -1,0 +1,757 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.question.dao.mybatis.IQuestionLogDao">
+	
+    <select id="queryInputAmountList" resultType="cn.strong.leke.question.model.InputStatisDTO" parameterType="cn.strong.leke.question.model.InputStatisQuery">
+		SELECT b.createdBy AS userId,
+			SUM(CASE WHEN b.ii=1 THEN 1 ELSE 0 END) AS inputAmount,
+			SUM(CASE WHEN b.rr=1 THEN 1 ELSE 0 END) AS returnAmount,
+			SUM(CASE WHEN b.cc=1 THEN 1 ELSE 0 END) AS correctAmount
+		FROM (
+			SELECT a.createdBy, a.questionId,
+				CASE WHEN a.inp > 0 THEN 1 ELSE 0 END AS ii,
+				CASE WHEN a.ret > 0 THEN 1 ELSE 0 END AS rr,
+				CASE WHEN a.cor > 0 THEN 1 ELSE 0 END AS cc
+			FROM (
+				SELECT tqlog.createdBy,tqlog.questionId,
+					SUM(CASE WHEN t.type=1 THEN 1 ELSE 0 END) AS inp,
+					SUM(CASE WHEN t.type=2 THEN 1 ELSE 0 END) AS ret,
+					SUM(CASE WHEN t.type=3 THEN 1 ELSE 0 END) AS cor
+				FROM (
+					SELECT l.questionId, l.createdBy 
+					FROM que_question_log l 
+					LEFT join que_question q ON q.questionId = l.questionId 
+					WHERE q.parentId is null 
+						AND l.type = 1 
+						AND q.sharePlatform = 1
+						AND l.isDeleted = 0 
+						
+						<if test="startDate != null and startDate != ''">
+							AND l.createdOn <![CDATA[>=]]> #{startDate}
+						</if>
+						<if test="endDate != null and endDate != ''">
+							AND l.createdOn <![CDATA[<=]]> #{endDate}
+						</if>
+						<if test="userIds != null and userIds.size != 0">
+							AND l.createdBy in
+							<foreach collection="userIds" item="userId" open="(" close=")" separator=",">
+								#{userId}
+							</foreach>
+						</if>
+				) AS tqlog 
+				LEFT join que_question_log t ON tqlog.questionId = t.questionId
+				GROUP BY tqlog.createdBy,tqlog.questionId
+			)AS a
+			GROUP BY a.createdBy, a.questionId
+		) AS b
+		GROUP BY b.createdBy
+	</select>
+	
+	<select id="queryInputAmountEffectiveList" resultType="cn.strong.leke.question.model.InputStatisDTO" parameterType="cn.strong.leke.question.model.InputStatisQuery">
+		SELECT t.createdBy AS userId,
+			SUM(CASE WHEN t.questionStatus <![CDATA[>=]]> 4 AND t.isDeleted=0 THEN 1 ELSE 0 END) AS effectiveAmount
+		FROM (
+			SELECT l.questionId, l.createdBy, l.createdOn
+			FROM que_question_log l 
+			LEFT join que_question q ON q.questionId = l.questionId 
+			WHERE q.parentId is null 
+				AND l.type = 1 
+				AND q.sharePlatform = 1
+				AND l.isDeleted = 0  
+				
+				<if test="startDate != null and startDate != ''">
+					AND l.createdOn <![CDATA[>=]]> #{startDate}
+				</if>
+				<if test="endDate != null and endDate != ''">
+					AND l.createdOn <![CDATA[<=]]> #{endDate}
+				</if>
+				<if test="userIds != null and userIds.size != 0">
+					AND l.createdBy in
+					<foreach collection="userIds" item="userId" open="(" close=")" separator=",">
+						#{userId}
+					</foreach>
+				</if>
+		) AS tqlog 
+		LEFT join que_question t ON tqlog.questionId = t.questionId
+		WHERE t.sharePlatform = 1
+		GROUP BY t.createdBy
+	</select>
+	
+	<select id="queryInputAmountEffectiveListByUserIdOrderByDate" resultType="cn.strong.leke.question.model.InputStatisDTO" parameterType="cn.strong.leke.question.model.InputStatisQuery">
+		SELECT 
+			CONVERT(tqlog.createdOn,DATE) AS createdDate,
+			SUM(CASE WHEN t.questionStatus<![CDATA[>=]]> 4 AND t.isDeleted=0 THEN 1 ELSE 0 END) AS effectiveAmount
+		FROM (
+			SELECT l.questionId, l.createdBy, l.createdOn
+			FROM que_question_log l 
+			LEFT join que_question q ON q.questionId = l.questionId 
+			WHERE q.parentId is null 
+				AND l.type = 1 
+				AND q.sharePlatform = 1
+				AND l.isDeleted = 0 
+				 
+				<if test="startDate != null and startDate != ''">
+					AND l.createdOn <![CDATA[>=]]> #{startDate}
+				</if>
+				<if test="endDate != null and endDate != ''">
+					AND l.createdOn <![CDATA[<=]]> #{endDate}
+				</if>
+				<if test="userId != null and userId > 0">
+					AND l.createdBy = #{userId} 
+				</if>
+		) AS tqlog 
+		LEFT join que_question t ON tqlog.questionId = t.questionId
+		WHERE t.sharePlatform = 1
+		GROUP BY YEAR(tqlog.createdOn),MONTH(tqlog.createdOn),DAY(tqlog.createdOn)
+	</select>
+	
+	<select id="queryInputAmountListByUserIdOrderByDate" resultType="cn.strong.leke.question.model.InputStatisDTO" parameterType="cn.strong.leke.question.model.InputStatisQuery">
+		SELECT CONVERT(b.createdOn,DATE) AS createdDate,
+			SUM(CASE WHEN b.ii=1 THEN 1 ELSE 0 END) AS inputAmount,
+			SUM(CASE WHEN b.rr=1 THEN 1 ELSE 0 END) AS returnAmount,
+			SUM(CASE WHEN b.cc=1 THEN 1 ELSE 0 END) AS correctAmount
+		FROM (
+			SELECT a.questionId,a.createdOn,
+				CASE WHEN a.inp > 0 THEN 1 ELSE 0 END AS ii,
+				CASE WHEN a.ret > 0 THEN 1 ELSE 0 END AS rr,
+				CASE WHEN a.cor > 0 THEN 1 ELSE 0 END AS cc
+			FROM (
+				SELECT tqlog.questionId,tqlog.createdOn,
+					SUM(CASE WHEN t.type=1 THEN 1 ELSE 0 END) AS inp,
+					SUM(CASE WHEN t.type=2 THEN 1 ELSE 0 END) AS ret,
+					SUM(CASE WHEN t.type=3 THEN 1 ELSE 0 END) AS cor
+				FROM (
+					SELECT l.questionId, l.createdBy, l.createdOn
+					FROM que_question_log l 
+					LEFT join que_question q ON q.questionId = l.questionId 
+					WHERE q.parentId is null 
+						AND l.type = 1 
+						AND q.sharePlatform = 1
+						AND l.isDeleted = 0 
+						
+						<if test="startDate != null and startDate != ''">
+							AND l.createdOn <![CDATA[>=]]> #{startDate}
+						</if>
+						<if test="endDate != null and endDate != ''">
+							AND l.createdOn <![CDATA[<=]]> #{endDate}
+						</if>
+						<if test="userId != null and userId > 0">
+							AND l.createdBy = #{userId} 
+						</if>
+				) AS tqlog 
+				LEFT join que_question_log t ON tqlog.questionId = t.questionId
+				GROUP BY tqlog.createdOn, tqlog.questionId
+			)AS a
+			GROUP BY a.questionId,a.createdOn
+		) AS b
+		GROUP BY YEAR(b.createdOn),MONTH(b.createdOn),DAY(b.createdOn)
+	</select>
+	
+	<select id="queryInputAmountByUserId" resultType="cn.strong.leke.question.model.InputStatisDTO" parameterType="cn.strong.leke.question.model.InputStatisQuery">
+		SELECT count(*) AS inputAmount
+			FROM que_question t
+			WHERE exists(
+				SELECT * 
+				FROM que_question_log l 
+				LEFT join que_question q ON q.questionId = l.questionId
+				WHERE l.questionId = t.questionId 
+					AND q.sharePlatform = 1
+					AND q.parentId is null
+					AND l.type = 1
+					AND l.isDeleted = 0 
+					
+			)
+			<if test="userId != null and userId > 0">
+				AND t.createdBy = #{userId}
+			</if>
+			AND t.sharePlatform = 1
+	</select>
+	
+	<select id="countCheckAmount" resultType="_long"
+		parameterType="cn.strong.leke.question.model.InputStatisQuery">
+		SELECT COUNT(l.questionId)
+		FROM
+			que_question_log l
+		JOIN que_question q ON q.questionId = l.questionId
+		WHERE
+		q.parentId IS NULL
+		AND q.sharePlatform = 1
+		AND q.schoolId = 0
+		AND l.isDeleted = 0
+		AND q.isDisabled = 0
+		AND l.createdBy = #{userId}
+		<if test="startDate != null and startDate != ''">
+			AND l.createdOn <![CDATA[>=]]> #{startDate}
+		</if>
+		<if test="endDate != null and endDate != ''">
+			AND l.createdOn <![CDATA[<=]]> #{endDate}
+		</if>
+	 </select>
+	
+	<select id="queryCheckAmountList" resultType="cn.strong.leke.question.model.InputStatisDTO" parameterType="cn.strong.leke.question.model.InputStatisQuery">
+		SELECT
+			l.createdBy as userId,
+			COUNT(*)AS checkAmount
+		FROM
+			`que_question_log` l
+		LEFT JOIN que_question q ON q.questionId = l.questionId
+		WHERE
+			q.parentId IS NULL
+			AND l.type = 17
+			AND q.sharePlatform = 1
+			AND q.schoolId = 0
+			AND l.isDeleted = 0
+			AND q.isDisabled = 0
+			
+			<if test="startDate != null and startDate != ''">
+				AND l.createdOn <![CDATA[>=]]> #{startDate}
+			</if>
+			<if test="endDate != null and endDate != ''">
+				AND l.createdOn <![CDATA[<=]]> #{endDate}
+			</if>
+			<if test="userIds != null and userIds.size != 0">
+				AND l.createdBy in
+				<foreach collection="userIds" item="userId" open="(" close=")" separator=",">
+					#{userId}
+				</foreach>
+			</if>
+		GROUP BY l.createdBy
+	</select>
+	
+	<select id="queryCheckAmountListByUserIdOrderByDate" resultType="cn.strong.leke.question.model.InputStatisDTO" parameterType="cn.strong.leke.question.model.InputStatisQuery">
+		SELECT
+			CONVERT(l.createdOn, DATE)AS createdDate,
+			COUNT(*)AS checkAmount
+		FROM
+			`que_question_log` l
+		LEFT JOIN que_question q ON q.questionId = l.questionId
+		WHERE
+			q.parentId IS NULL
+			AND l.type = 17
+			AND q.sharePlatform = 1
+			AND l.isDeleted = 0
+			AND q.isDisabled = 0
+			
+			<if test="startDate != null and startDate != ''">
+				AND l.createdOn <![CDATA[>=]]> #{startDate}
+			</if>
+			<if test="endDate != null and endDate != ''">
+				AND l.createdOn <![CDATA[<=]]> #{endDate}
+			</if>
+			<if test="userId != null and userId > 0">
+				AND l.createdBy = #{userId} 
+			</if>
+		GROUP BY
+			YEAR(l.createdOn),
+			MONTH(l.createdOn),
+			DAY(l.createdOn)
+	</select>
+	
+	<select id="queryCheckAmountByUserId" resultType="cn.strong.leke.question.model.InputStatisDTO" parameterType="cn.strong.leke.question.model.InputStatisQuery">
+		SELECT 
+			SUM(CASE WHEN b.cc=1 THEN 1 ELSE 0 END) AS checkAmount,
+			SUM(CASE WHEN TO_DAYS(NOW())-TO_DAYS(createdOn)=1 AND b.cc = 4 THEN 1 ELSE 0 END) AS yesterdayAmount,
+			(
+				SELECT COUNT(*) FROM que_question_task_item task
+				WHERE task.userId = #{userId} AND isDeleted = 0
+			) AS taskAmount
+		FROM (
+			SELECT  a.questionId,a.createdOn,
+			 CASE WHEN a.che > 0 THEN 1 ELSE 0 END AS cc
+			FROM (
+				SELECT tqlog.questionId,tqlog.createdOn,
+					SUM(CASE WHEN t.type=4 THEN 1 ELSE 0 END) AS che
+				FROM (SELECT l.questionId, l.createdBy, l.createdOn
+						FROM que_question_log l 
+						LEFT join que_question q ON q.questionId = l.questionId 
+						WHERE q.parentId is null 
+							AND l.type = 4 
+							AND q.sharePlatform = 1
+							AND l.isDeleted = 0 
+							AND q.isDisabled = 0
+							 
+							<if test="userId != null and userId > 0">
+								AND l.createdBy = #{userId} 
+							</if>
+				) AS tqlog 
+				LEFT join que_question_log t ON tqlog.questionId = t.questionId
+				GROUP BY tqlog.createdOn, tqlog.questionId
+			)AS a
+			GROUP BY  a.questionId,a.createdOn
+		) AS b
+	</select>
+	
+	<select id="queryUnCheckAmountByUserId" resultType="cn.strong.leke.question.model.InputStatisDTO" parameterType="cn.strong.leke.question.model.InputStatisQuery">
+		SELECT COUNT(*) AS unCheckAmount
+		FROM que_question_task_item task
+		LEFT join que_question q ON task.questionId = q.questionId
+		WHERE q.questionStatus = 12 
+			AND q.isDeleted = 0
+			AND q.sharePlatform = 1 
+			AND q.isDisabled = 0
+			
+			<if test="userId != null and userId > 0">
+				AND task.userId = #{userId}
+			</if>
+			AND task.isDeleted = 0
+	</select>
+	
+	<select id="queryProofreadingAmountByUserId" resultType="cn.strong.leke.question.model.InputStatisDTO" parameterType="cn.strong.leke.question.model.InputStatisQuery">
+		SELECT COUNT(*) AS proofreadingAmount, l.createdBy AS userId
+		FROM que_question_log l
+		LEFT join que_question q ON q.questionId = l.questionId
+		WHERE l.type = 7 
+			AND q.isDeleted = 0 
+			AND q.parentId is null
+			AND l.isDeleted = 0
+			AND q.sharePlatform = 1 
+			AND q.isDisabled = 0
+			
+			<if test="userId != null and userId > 0">
+				AND l.createdBy = #{userId}
+			</if>
+	</select>
+	
+	
+	<select id="queryVerifyAmountList" parameterType="cn.strong.leke.question.model.InputStatisQuery" resultType="cn.strong.leke.question.model.InputStatisDTO">
+		<foreach collection="researchers" item="researcher" open="" close="" separator=" union ">
+		SELECT #{researcher.id} AS userId,
+			sum(case when l.type=18 and l.createdBy = #{researcher.id} then 1 else 0 end ) AS proofreadingAmount
+		FROM que_question_log l
+		LEFT JOIN que_question q on l.questionId = q.questionId
+		WHERE l.type = 18
+			AND q.sharePlatform = 1
+			AND q.isDeleted = 0 
+			AND q.parentId is null 
+			AND q.isDisabled = 0
+			
+			AND l.isDeleted = 0
+			<if test="startDate != null and startDate != ''">
+				AND l.createdOn <![CDATA[>=]]> #{startDate}
+			</if>
+			<if test="endDate != null and endDate != ''">
+				AND l.createdOn <![CDATA[<=]]> #{endDate}
+			</if>
+			<if test="researcher.schoolStageSubjects != null and researcher.schoolStageSubjects.size != 0">
+				AND (q.schoolStageId, q.subjectId) IN
+				<foreach collection="researcher.schoolStageSubjects" item="sss" open="(" close=")" separator=",">
+					(#{sss.schoolStageId}, #{sss.subjectId})
+				</foreach>
+			</if>
+		</foreach>
+	</select>
+	
+	<select id="queryUnVerifyAmountList" resultType="cn.strong.leke.question.model.InputStatisDTO">
+		<foreach collection="list" item="researcher" open="" close="" separator=" union ">
+		SELECT #{researcher.id} AS userId,
+			count(*) AS unProofreadingAmount
+		FROM que_question q
+		WHERE q.questionStatus = 17
+			AND q.sharePlatform = 1
+			AND q.isDeleted = 0 
+			AND q.parentId is null 
+			AND q.isDisabled = 0
+			
+			<if test="researcher.schoolStageSubjects != null and researcher.schoolStageSubjects.size != 0">
+				AND (q.schoolStageId, q.subjectId) IN
+				<foreach collection="researcher.schoolStageSubjects" item="sss" open="(" close=")" separator=",">
+					(#{sss.schoolStageId}, #{sss.subjectId})
+				</foreach>
+			</if>  
+		</foreach>
+	</select>
+	
+	<select id="queryVerifyAmountListByUserIdOrderByDate" parameterType="cn.strong.leke.question.model.InputStatisQuery" resultType="cn.strong.leke.question.model.InputStatisDTO">
+		SELECT 
+			CONVERT(l.createdOn,DATE) AS createdDate,
+			count(*) AS proofreadingAmount
+		FROM que_question_log l
+		LEFT JOIN que_question q on l.questionId = q.questionId
+		WHERE l.type = 18
+			AND q.sharePlatform = 1
+			AND q.isDeleted = 0 
+			AND q.parentId is null 
+			AND q.isDisabled = 0
+			
+			AND l.createdBy = #{userId}
+			AND l.isDeleted = 0
+			<if test="startDate != null and startDate != ''">
+				AND l.createdOn <![CDATA[>=]]> #{startDate}
+			</if>
+			<if test="endDate != null and endDate != ''">
+				AND l.createdOn <![CDATA[<=]]> #{endDate}
+			</if>
+			<if test="schoolStageSubjects != null and schoolStageSubjects.size != 0">
+				AND (q.schoolStageId, q.subjectId) IN
+				<foreach collection="schoolStageSubjects" item="sss" open="(" close=")" separator=",">
+					(#{sss.schoolStageId}, #{sss.subjectId})
+				</foreach>
+			</if>
+		GROUP BY YEAR(l.createdOn),MONTH(l.createdOn),DAY(l.createdOn)
+	</select>
+	
+	<select id="queryUnVerifyAmountBySchoolStageSubjects" parameterType="cn.strong.leke.question.model.InputStatisQuery" resultType="cn.strong.leke.question.model.InputStatisDTO">
+		SELECT count(*) AS unProofreadingAmount
+		FROM que_question q
+		WHERE q.questionStatus = 17
+			AND q.sharePlatform = 1
+			AND q.isDeleted = 0 
+			AND q.parentId is null 
+			AND q.isDisabled = 0
+			
+			<if test="schoolStageSubjects != null and schoolStageSubjects.size != 0">
+				AND (q.schoolStageId, q.subjectId) IN
+				<foreach collection="schoolStageSubjects" item="sss" open="(" close=")" separator=",">
+					(#{sss.schoolStageId}, #{sss.subjectId})
+				</foreach>
+			</if>
+	</select>
+	
+	<select id="queryUnCheckAmountBySchoolStageSubjects" parameterType="cn.strong.leke.question.model.InputStatisQuery" resultType="cn.strong.leke.question.model.InputStatisDTO">
+		SELECT count(*) AS unCheckAmount
+		FROM que_question q
+		WHERE q.questionStatus = 1
+			AND q.sharePlatform = 1
+			AND q.isDeleted = 0 
+			AND q.parentId is null 
+			AND q.isDisabled = 0
+			
+			<if test="schoolStageSubjects != null and schoolStageSubjects.size != 0">
+				AND (q.schoolStageId, q.subjectId) IN
+				<foreach collection="schoolStageSubjects" item="sss" open="(" close=")" separator=",">
+					(#{sss.schoolStageId}, #{sss.subjectId})
+				</foreach>
+			</if>
+	</select>
+	
+	<select id="queryStatisListGroupByKnowledge" resultType="cn.strong.leke.question.model.InputStatisDTO">
+		SELECT schoolStageId, subjectId, COUNT(subjectId) AS amount
+		FROM que_question 
+		WHERE isDeleted = 0
+			AND sharePlatform = 1
+			AND questionStatus in (4,7)
+			AND parentId is null
+			AND isDisabled = 0
+			
+		GROUP BY schoolStageId,subjectId
+	</select>
+	
+	<select id="queryStatisGroupByOfficialTagId" resultType="cn.strong.leke.question.model.InputStatisDTO" >
+		SELECT t.officialTagId, t.officialTagName, COUNT(qt.questionId) AS amount
+		FROM que_official_tag t
+		LEFT join que_question_official_tag qt ON qt.officialTagId = t.officialTagId
+		WHERE t.isDeleted = 0
+			AND qt.isDeleted = 0
+		GROUP BY t.officialTagId
+	</select>
+	
+	<select id="queryStatisByOfficialTagId" resultType="cn.strong.leke.question.model.InputStatisDTO"  parameterType="map">
+		SELECT schoolStageId,gradeId,subjectId,qt.officialTagId AS officialTagId, COUNT(q.subjectId) AS amount
+		FROM que_question q
+		LEFT JOIN que_question_official_tag qt ON qt.questionId = q.questionId
+		WHERE q.isDeleted = 0
+			AND q.sharePlatform = 1
+			AND q.parentId is null
+			AND q.isDisabled = 0
+			
+			<if test="officialTagId != null and officialTagId > 0">
+				AND qt.officialTagId = #{officialTagId}
+			</if>
+		GROUP BY schoolStageId, gradeId,subjectId
+	</select>
+	
+	<select id="queryDraftAmountList" resultType="cn.strong.leke.question.model.InputStatisDTO">
+		SELECT schoolStageId, gradeId, subjectId,
+			SUM(CASE WHEN TO_DAYS(NOW())-TO_DAYS(createdOn)=1 THEN 1 ELSE 0 END) AS yesterdayAmount,
+			SUM(CASE WHEN isDeleted = 0 THEN 1 ELSE 0 END) AS amount
+		FROM que_question q
+		WHERE EXISTS(
+			SELECT *
+			FROM que_question q1
+			WHERE q1.questionStatus in (1,2)
+				AND q.questionId = q1.questionId
+				AND q1.isDeleted = 0
+				AND q1.parentId is null
+				AND q1.sharePlatform = 1
+				AND q1.isDisabled = 0
+		)
+			AND q.sharePlatform = 1
+		GROUP BY schoolStageId, gradeId, subjectId
+	</select>
+	
+	<select id="queryDraftAndFormalTotalAmount" resultType="cn.strong.leke.question.model.InputStatisDTO">
+		SELECT
+			SUM(CASE WHEN questionStatus not in(4, 17) THEN 1 ELSE 0 END) AS draftAmount,
+			SUM(CASE WHEN questionStatus in(4, 17) THEN 1 ELSE 0 END) AS formalAmount
+		FROM que_question 
+		WHERE  isDeleted = 0
+			AND parentId is null
+			AND sharePlatform = 1
+			AND isDisabled = 0
+			
+	</select>
+	
+	<insert id="insertQuestionLog" useGeneratedKeys="true" keyProperty="questionLogId"
+		parameterType="cn.strong.leke.model.question.QuestionLog">
+		INSERT INTO que_question_log(
+			questionId, reason, createdBy, userName, createdOn, type, isDeleted
+		) VALUES (
+			#{questionId}, #{reason}, #{createdBy}, #{userName}, now(), #{type}, 0
+		)
+	</insert>
+	
+	<select id="findQuestionLogByQuestionId" parameterType="long"
+		resultType="cn.strong.leke.model.question.QuestionLog"  >
+		SELECT
+			questionLogId, questionId, reason, createdBy, userName, createdOn, type, isDeleted
+		FROM que_question_log
+		<where>
+			questionId = #{questionId}
+			AND isDeleted = 0
+		</where>
+		ORDER BY createdOn DESC
+	</select>
+	
+	<select id="findResearcherVerifyStatis" parameterType="java.util.List"
+		resultType="cn.strong.leke.question.model.VerifyStatisDTO">
+		SELECT
+			a.schoolStageId, a.gradeId, a.subjectId, COUNT(a.questionId) AS total,
+			SUM(CASE WHEN a.questionStatus = 4 THEN 1 ELSE 0 END) AS unverified
+		FROM que_question a 
+		WHERE a.isDeleted = 0
+			AND a.isDisabled = 0
+			AND a.questionStatus in (4,7)
+			AND (a.gradeId,a.subjectId) IN 
+				<foreach item="item" index="index" collection="list" open="(" separator="," close=")">
+				(#{item.gradeId}, #{item.subjectId})
+				</foreach>
+				
+		GROUP BY a.schoolStageId,a.gradeId, a.subjectId
+	</select>
+	
+	<select id="queryResearcherCheckAmountList" resultType="cn.strong.leke.question.model.InputStatisDTO" parameterType="cn.strong.leke.question.model.InputStatisQuery">
+		SELECT
+			l.createdBy as userId,
+			SUM(CASE WHEN l.type=4 THEN 1 ELSE 0 END) AS checkAmount,
+			SUM(CASE WHEN l.type=6 THEN 1 ELSE 0 END) AS editedAmount
+		FROM
+			que_question_log l
+		LEFT JOIN que_question q ON q.questionId = l.questionId
+		WHERE q.parentId IS NULL
+		AND q.sharePlatform = 1
+		AND l.isDeleted = 0
+		AND l.type in (4,6)
+		
+		<if test="userIds != null and userIds.size != 0">
+			AND l.createdBy in
+			<foreach collection="userIds" item="userId" open="(" close=")" separator=",">
+				#{userId}
+			</foreach>
+		</if>
+		<if test="startDate != null and startDate != ''">
+			AND l.createdOn <![CDATA[>=]]> #{startDate}
+		</if>
+		<if test="endDate != null and endDate != ''">
+			AND l.createdOn <![CDATA[<=]]> #{endDate}
+		</if>
+		GROUP BY l.createdBy
+	</select>
+	
+	<select id="queryResearcherCheckAmountListByUserId" resultType="cn.strong.leke.question.model.InputStatisDTO" parameterType="cn.strong.leke.question.model.InputStatisQuery">
+		SELECT CONVERT(l.createdOn,DATE) AS createdDate,
+			SUM(CASE WHEN l.type=4 THEN 1 ELSE 0 END) AS checkAmount,
+			SUM(CASE WHEN l.type=6 THEN 1 ELSE 0 END) AS editedAmount
+		FROM
+			que_question_log l
+		LEFT JOIN que_question q ON q.questionId = l.questionId
+		WHERE q.parentId IS NULL
+		AND q.sharePlatform = 1
+		AND l.isDeleted = 0
+		AND l.type in (4,6)
+		
+		<if test="userId != null and userId > 0">
+			AND l.createdBy = #{userId} 
+		</if>
+		<if test="startDate != null and startDate != ''">
+			AND l.createdOn <![CDATA[>=]]> #{startDate}
+		</if>
+		<if test="endDate != null and endDate != ''">
+			AND l.createdOn <![CDATA[<=]]> #{endDate}
+		</if>
+		GROUP BY YEAR(l.createdOn),MONTH(l.createdOn),DAY(l.createdOn)
+	</select>
+	
+	<select id="queryCheckerEffectiveAmountListByUserId" resultType="cn.strong.leke.question.model.InputStatisDTO" parameterType="cn.strong.leke.question.model.InputStatisQuery">
+		SELECT 
+			CONVERT(l.createdOn, DATE)AS createdDate,
+			COUNT(*) AS effectiveAmount
+		FROM
+			que_question q 
+		JOIN que_question_log l ON q.questionId = l.questionId AND l.type = 17 AND l.isDeleted = 0
+			<if test="userId != null and userId > 0">
+				AND l.createdBy = #{userId} 
+			</if>
+			<if test="startDate != null and startDate != ''">
+				AND l.createdOn <![CDATA[>=]]> #{startDate}
+			</if>
+			<if test="endDate != null and endDate != ''">
+				AND l.createdOn <![CDATA[<=]]> #{endDate}
+			</if>
+		WHERE q.parentId IS NULL
+			AND q.questionStatus in (4, 17)
+			AND q.sharePlatform = 1
+			AND q.isDisabled = 0
+			
+		GROUP BY
+			YEAR(l.createdOn),
+			MONTH(l.createdOn),
+			DAY(l.createdOn)
+	</select>
+	
+	<select id="queryCheckerEffectiveAmountList" resultType="cn.strong.leke.question.model.InputStatisDTO" parameterType="cn.strong.leke.question.model.InputStatisQuery">
+		SELECT 
+			l.createdBy As userId,
+			COUNT(*) AS effectiveAmount
+		FROM
+			que_question q 
+		JOIN que_question_log l ON q.questionId = l.questionId AND l.type = 17 AND l.isDeleted = 0
+			<if test="userIds != null and userIds.size != 0">
+				AND l.createdBy in
+				<foreach collection="userIds" item="userId" open="(" close=")" separator=",">
+					#{userId}
+				</foreach>
+			</if>
+			<if test="startDate != null and startDate != ''">
+				AND l.createdOn <![CDATA[>=]]> #{startDate}
+			</if>
+			<if test="endDate != null and endDate != ''">
+				AND l.createdOn <![CDATA[<=]]> #{endDate}
+			</if>
+		WHERE q.parentId IS NULL
+			AND q.questionStatus in (4, 17)
+			AND q.sharePlatform = 1
+			AND q.isDisabled = 0
+			
+		GROUP BY l.createdBy
+	</select>
+	
+	
+	<select id="queryResearcherImportedAmountList" resultType="cn.strong.leke.question.model.InputStatisDTO" parameterType="cn.strong.leke.question.model.InputStatisQuery">
+		SELECT
+			l.createdBy as userId,
+			count(*) AS importedAmount
+		FROM
+			que_question_log l
+		LEFT JOIN que_question q ON q.questionId = l.questionId
+		WHERE q.parentId IS NULL
+		AND q.sharePlatform = 1
+		AND l.isDeleted = 0
+		AND l.type = 12
+		
+		<if test="userIds != null and userIds.size != 0">
+			AND l.createdBy in
+			<foreach collection="userIds" item="userId" open="(" close=")" separator=",">
+				#{userId}
+			</foreach>
+		</if>
+		<if test="startDate != null and startDate != ''">
+			AND l.createdOn <![CDATA[>=]]> #{startDate}
+		</if>
+		<if test="endDate != null and endDate != ''">
+			AND l.createdOn <![CDATA[<=]]> #{endDate}
+		</if>
+		GROUP BY l.createdBy
+	</select>
+	
+	<select id="queryResearcherImportedAmountListByUserId" resultType="cn.strong.leke.question.model.InputStatisDTO" parameterType="cn.strong.leke.question.model.InputStatisQuery">
+		SELECT CONVERT(l.createdOn,DATE) AS createdDate,
+			count(*) AS importedAmount
+		FROM
+			que_question_log l
+		LEFT JOIN que_question q ON q.questionId = l.questionId
+		WHERE q.parentId IS NULL
+		AND q.sharePlatform = 1
+		AND l.isDeleted = 0
+		AND l.type = 12
+		
+		<if test="userId != null and userId > 0">
+			AND l.createdBy = #{userId} 
+		</if>
+		<if test="startDate != null and startDate != ''">
+			AND l.createdOn <![CDATA[>=]]> #{startDate}
+		</if>
+		<if test="endDate != null and endDate != ''">
+			AND l.createdOn <![CDATA[<=]]> #{endDate}
+		</if>
+		GROUP BY YEAR(l.createdOn),MONTH(l.createdOn),DAY(l.createdOn)
+	</select>
+	
+	<select id="queryQuestionAmountByMaterial" resultType="cn.strong.leke.question.model.MaterialQuestionAmount" parameterType="cn.strong.leke.question.model.InputStatisQuery">
+		select q.materialId, m.materialName, count(*) as amount
+		from que_material m
+		left join que_question q on m.materialId = q.materialId
+		where  q.parentId IS NULL
+		AND q.sharePlatform = 1
+		AND q.isDeleted = 0
+		
+		<if test="schoolStageId != null and schoolStageId > 0">
+			AND q.schoolStageId = #{schoolStageId} 
+		</if>
+		<if test="subjectId != null and subjectId > 0">
+			AND q.subjectId = #{subjectId} 
+		</if>
+		<if test="pressId != null and pressId > 0">
+			AND q.pressId = #{pressId}
+		</if>
+		<if test="status==1">
+			AND q.questionStatus in (4)
+		</if>
+		<if test="status==2">
+			AND q.questionStatus in (1,2)
+		</if>
+		<if test="status==0">
+			AND q.questionStatus in (1,2,4)
+		</if>
+		GROUP BY q.materialId
+	</select>
+	
+	<select id="queryQuestionAndMaterialChecked" resultType="cn.strong.leke.question.model.MaterialQuestionAmount" parameterType="cn.strong.leke.question.model.InputStatisQuery">
+		select k.questionId, n.materialId
+		from que_question_knowledge k
+		left join que_material_node n on k.materialNodeId = n.materialNodeId
+		<if test="pressId != null and pressId > 0">
+			left join que_material m on m.materialId = n.materialId
+		</if>
+		where n.isDeleted = 0
+		AND k.isDeleted = 0
+		<if test="schoolStageId != null and schoolStageId > 0">
+			AND n.schoolStageId = #{schoolStageId} 
+		</if>
+		<if test="subjectId != null and subjectId > 0">
+			AND n.subjectId = #{subjectId} 
+		</if>
+		<if test="pressId != null and pressId > 0">
+			AND m.pressId = #{pressId}
+		</if>
+	</select>
+	
+	<select id="queryQuestionAndMaterialUnChecked" resultType="cn.strong.leke.question.model.MaterialQuestionAmount" parameterType="cn.strong.leke.question.model.InputStatisQuery">
+		select s.questionId, s.materialId
+		from que_question_section s
+		left join que_material_node n on s.materialNodeId = n.materialNodeId
+		<if test="pressId != null and pressId > 0">
+			left join que_material m on m.materialId = n.materialId
+		</if>
+		where s.isDeleted = 0
+		<if test="schoolStageId != null and schoolStageId > 0">
+			AND n.schoolStageId = #{schoolStageId} 
+		</if>
+		<if test="subjectId != null and subjectId > 0">
+			AND n.subjectId = #{subjectId} 
+		</if>
+		<if test="pressId != null and pressId > 0">
+			AND m.pressId = #{pressId}
+		</if>
+	</select>
+</mapper>

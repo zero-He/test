@@ -1,0 +1,47 @@
+var mySwipe = Swipe(document.querySelector('.m-swipe'), {
+	startSlide: 0,
+    continuous: false,
+    disableScroll: true,
+    stopPropagation: false,
+    callback: function(index, element) {},
+    transitionEnd: function(index, element) {}
+    });
+
+function bindEvent(){
+	$(".c-kemu li").on({
+		"touchstart":function(event){
+			$(this).attr("class",$(this).attr("class")+"-touch");
+		},
+		"touchend":function(){
+			$(this).attr("class",$(this).data("c"));
+		},
+		"touchcancel":function(){
+			$(this).attr("class",$(this).data("c"));
+		},
+		"click":function(){
+			var subjectId = $(this).data("i");
+			var studentId = $("menu .cur").data("i");
+			window.location.href = Leke.domain.diagServerName+"/auth/m/parent/homework/subjectManager.htm?studentId="+studentId+"&subjectId="+subjectId;
+		}
+		
+	});
+}
+
+function reload(){
+	var id = $("menu .cur").data("i");
+	$.post("managerDetail.htm",{id:id},function(data){
+		if(data.success){
+			var output = Mustache.render($("#jTpl").html(), data.datas);
+			$("#jMenu").html(output);
+			bindEvent();
+		}
+	})
+}
+
+$("menu span").click(function(){
+	$("menu span").removeClass("cur");
+	$(this).addClass("cur");
+	reload();
+});
+
+reload();

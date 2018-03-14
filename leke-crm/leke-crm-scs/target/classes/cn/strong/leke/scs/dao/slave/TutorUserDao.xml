@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8" ?>   
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.scs.dao.slave.TutorUserDao">
+	
+	<select id="queryTutorUserList" parameterType="cn.strong.leke.scs.model.query.TutorUserQuery" 
+		resultType="cn.strong.leke.scs.model.TutorUser">
+		SELECT 
+			c.userName, c.loginName, c.phone, c.schoolName, c.schoolNature, c.createdOn ,d.sellerName, c.schoolId   
+		FROM (
+			SELECT 
+				a.userName, a.userId, a.loginName, a.phone, b.schoolName, b.schoolNature, b.createdOn, b.schoolId 
+			FROM 
+				etl_tutor_user a,etl_tutor_school b 
+			WHERE 
+				a.isDeleted=0
+			AND b.isDeleted=0 
+			AND	a.schoolId=b.schoolId 
+			AND b.schoolNature=3 
+			<if test="loginName != null and loginName != ''">
+				AND a.loginName LIKE CONCAT('%', #{loginName}, '%') 
+			</if>
+			<if test="phone != null and phone != ''">
+				AND a.phone LIKE CONCAT('%', #{phone}, '%') 
+			</if>
+			<if test="createdOn != null and createdOn != ''">
+				AND b.createdOn > #{createdOn} 
+			</if>
+			<if test="createdOnR != null and createdOnR != ''">
+				AND b.createdOn <![CDATA[ < ]]> DATE_ADD(#{createdOnR},INTERVAL 1 DAY) 
+			</if>
+			<if test="origin != null">
+				<if test="origin == 1">
+					AND a.origin in (0,2)
+				</if>
+				<if test="origin == 2">
+					AND a.origin=1
+				</if>
+			</if>
+			) c 
+		LEFT JOIN scs_customer d 
+		ON c.userId=d.lekeId AND d.customerType=1 and d.isDeleted=0 and (d.status=0 or d.status=1) 
+		<where>
+			<if test="hasSeller != null">
+				<if test="hasSeller==1">
+					d.sellerName IS NOT NULL 
+				</if>
+				<if test="hasSeller==0">
+					d.sellerName IS NULL 
+				</if>
+				<if test="hasSeller==2">
+					d.sellerName IS NOT NULL AND d.status=0
+				</if>
+			</if>
+		</where>
+		order by c.createdOn desc 
+	</select>
+	
+	<select id="querySchoolIdsBySeller" resultType="java.lang.Long">
+			
+		<!-- SELECT DISTINCT 
+		  b.schoolId 
+		FROM
+		  scs_customer a,
+		  etl_tutor_user b 
+		WHERE a.lekeId = b.userId 
+		  AND a.isDeleted = 0 
+		  AND b.isDeleted = 0 
+		  AND a.sellerId = #{sellerId} -->
+		<!-- 原先查的是个人用户学校id,2015-12-27修改 -->
+		SELECT  
+		   DISTINCT b.schoolId 
+		FROM
+		  scs_customer a,
+		  etl_tutor_user b 
+		WHERE a.lekeId = b.userId 
+		  AND a.isDeleted = 0 
+		  AND b.isDeleted = 0 
+		  AND a.sellerId = #{sellerId}
+		UNION ALL
+		  SELECT  
+			  lekeId schoolId
+		  FROM
+			  scs_customer 
+		  WHERE 
+			  isDeleted = 0 
+		  AND CustomerType=2 and sellerId = #{sellerId}
+	</select>
+
+</mapper>   

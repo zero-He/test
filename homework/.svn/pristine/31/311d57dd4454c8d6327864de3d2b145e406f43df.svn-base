@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8" ?>   
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.homework.dao.mybatis.ExplainDao">
+
+	<!-- 插入实体 -->
+	<insert id="saveExplain" parameterType="cn.strong.leke.homework.model.Explain" keyProperty="explainId">
+		insert into HW_EXPLAIN(
+		doubtId,
+		explainContent,
+		expainAudio,
+		duration,
+		userName,
+		schoolId,
+		isDeleted,
+		createdBy,
+		createdOn
+		)
+		values(
+		#{doubtId},
+		#{explainContent},
+		#{expainAudio},
+		#{duration},
+		#{userName},
+		#{schoolId},
+		#{isDeleted},
+		#{createdBy},
+		#{createdOn}
+		)
+	</insert>
+
+	<update id="updateAgainDoubt" parameterType="long">
+		update
+			HW_DOUBT
+		set
+			resolved = 0
+		where
+			doubtId = #{doubtId}
+	</update>
+
+	<select id="getExplainDetail" parameterType="cn.strong.leke.homework.model.Explain" resultType="cn.strong.leke.homework.model.Explain">
+		select * from HW_EXPLAIN exp where exp.isDeleted = 0 and exp.explainId = #{explainId} 
+	</select>
+
+
+	<select id="getExplainList" parameterType="cn.strong.leke.homework.model.Explain" resultType="cn.strong.leke.homework.model.Explain" >
+	
+		select 
+			exp.explainId,
+			exp.doubtId,
+			exp.explainContent,
+			exp.expainAudio ,
+			exp.userName,
+			exp.duration,
+			exp.createdOn,
+			exp.createdBy
+		from 
+			HW_EXPLAIN exp 
+		where 
+			exp.isDeleted = 0 
+		and 
+			exp.doubtId = #{doubtId}
+		
+	</select>
+	<select id="firstTime" parameterType="long" resultType="Integer">
+		select count(1) from HW_EXPLAIN he,HW_DOUBT hd
+		where hd.createdBy!=he.createdBy and he.doubtId = hd.doubtId and hd.doubtId = #{doubtId}
+	</select>
+
+</mapper>   

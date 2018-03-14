@@ -1,0 +1,28 @@
+<!-- 答题卡状态面板 -->
+<div class="m-anchorpanel">
+	<div class="btns">
+		<div class="item show-box"><b>&lt;</b>
+		<em id="count1"></em>题<br>未完成</div>
+			<!-- ko if: paperIsIntact && workType == 0 -->
+				<div class="item save" id="btnSave">保存<br>作业</div>
+				<div class="item submit" id="btnSubmit">提交<br>作业</div>
+			<!-- /ko -->
+			<!-- ko if: workType == 1 -->
+				<div class="item save" id="correctSubmit">提交<br>批改</div>
+			<!-- /ko -->
+			<!-- ko if: workType == 2 -->
+				<div class="item save" id="savejob">保存<br>作业</div>
+				<div class="item submit" id="submitjob">提交<br>作业</div>
+			<!-- /ko -->
+			<!-- ko if: workType == 3 -->
+				<div class="item save" id="reviewSubmit">提交<br>批改</div>
+			<!-- /ko -->
+			
+			
+			<div class="item submit"  data-bind="click: close">关闭<br>窗口</div>
+	</div>
+	<!-- 面板 -->
+	<div class="box" id="j_question_panel">
+	
+	</div>
+</div>

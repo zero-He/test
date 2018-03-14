@@ -1,0 +1,786 @@
+package cn.strong.leke.homework.service.impl;
+
+import static cn.strong.leke.beike.model.LessonBeikePkgResourceMQ.CMD_ADD;
+import static cn.strong.leke.beike.model.LessonBeikePkgResourceMQ.CMD_DEL;
+import static cn.strong.leke.beike.model.LessonBeikePkgResourceMQ.CMD_UPDATE;
+import static cn.strong.leke.homework.util.HomeworkCst.HOMEWORK_USE_PHASE_AFTER;
+import static cn.strong.leke.homework.util.HomeworkCst.HOMEWORK_USE_PHASE_BEFORE;
+import static cn.strong.leke.homework.util.HomeworkCst.HOMEWORK_USE_PHASE_LESSON;
+import static java.util.stream.Collectors.groupingBy;
+import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toMap;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import javax.annotation.Resource;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+
+import cn.strong.leke.beike.model.CoursewareDTO;
+import cn.strong.leke.beike.model.LessonBeikePkgMQ;
+import cn.strong.leke.beike.model.LessonBeikePkgResourceMQ;
+import cn.strong.leke.beike.model.MicrocourseDTO;
+import cn.strong.leke.common.serialize.support.json.JsonUtils;
+import cn.strong.leke.common.utils.BeanUtils;
+import cn.strong.leke.common.utils.CollectionUtils;
+import cn.strong.leke.common.utils.DateUtils;
+import cn.strong.leke.context.base.ParametersContext;
+import cn.strong.leke.context.base.SchoolContext;
+import cn.strong.leke.context.base.UserBaseContext;
+import cn.strong.leke.context.beike.CoursewareContext;
+import cn.strong.leke.context.beike.MicrocourseContext;
+import cn.strong.leke.context.paper.PaperContext;
+import cn.strong.leke.context.user.cst.RoleCst;
+import cn.strong.leke.core.business.incentive.DynamicHelper;
+import cn.strong.leke.core.business.notice.NoticeHelper;
+import cn.strong.leke.framework.exceptions.ValidateException;
+import cn.strong.leke.framework.mq.MessageSender;
+import cn.strong.leke.homework.dao.mybatis.AssignLogDao;
+import cn.strong.leke.homework.dao.mybatis.HomeworkDao;
+import cn.strong.leke.homework.dao.mybatis.HomeworkDtlDao;
+import cn.strong.leke.homework.model.AssignLogDO;
+import cn.strong.leke.homework.model.Homework;
+import cn.strong.leke.homework.model.HomeworkDtl;
+import cn.strong.leke.homework.model.HomeworkType;
+import cn.strong.leke.homework.model.LayerAssign;
+import cn.strong.leke.homework.model.LayerAssign.AssignResource;
+import cn.strong.leke.homework.model.LayerAssign.Section;
+import cn.strong.leke.homework.model.LayerClazz;
+import cn.strong.leke.homework.model.ResRawType;
+import cn.strong.leke.homework.model.SubmitInfo;
+import cn.strong.leke.homework.service.HomeworkAssignService;
+import cn.strong.leke.homework.util.HomeworkCst;
+import cn.strong.leke.homework.util.HomeworkUtils;
+import cn.strong.leke.homework.util.PhaseUtils;
+import cn.strong.leke.lesson.model.LessonVM;
+import cn.strong.leke.model.BaseModelHelper;
+import cn.strong.leke.model.base.Clazz;
+import cn.strong.leke.model.incentive.DynamicInfo;
+import cn.strong.leke.model.incentive.IncentiveTypes;
+import cn.strong.leke.model.msg.ResourceUsedMsg;
+import cn.strong.leke.model.paper.PaperDTO;
+import cn.strong.leke.model.user.SimpleUser;
+import cn.strong.leke.model.user.User;
+import cn.strong.leke.model.user.UserBase;
+import cn.strong.leke.notice.model.LetterMessage;
+import cn.strong.leke.notice.model.Message;
+import cn.strong.leke.notice.model.MessageBusinessTypes;
+import cn.strong.leke.notice.model.todo.CsDelEvent;
+import cn.strong.leke.notice.model.todo.CsResourceAddEvent;
+import cn.strong.leke.notice.model.todo.HwAssignEvent;
+import cn.strong.leke.notice.model.todo.TodoEvent;
+import cn.strong.leke.remote.model.homework.VodHwAssignRemote;
+import cn.strong.leke.remote.model.homework.VodHwAssignRemote.ResInfo;
+import cn.strong.leke.remote.service.lesson.IKlassRemoteService;
+import cn.strong.leke.remote.service.lesson.ILessonRemoteService;
+import cn.strong.leke.remote.service.lesson.IStudentGroupRemoteService;
+
+import com.google.common.collect.Lists;
+
+@Service
+public class HomeworkAssignServiceImpl implements HomeworkAssignService {
+
+	protected static final Logger logger = LoggerFactory.getLogger(HomeworkAssignService.class);
+
+	@Resource
+	private HomeworkDao homeworkDao;
+	@Resource
+	private HomeworkDtlDao homeworkDtlDao;
+	@Resource
+	private AssignLogDao assignLogDao;
+	@Resource
+	private MessageService messageService;
+	@Resource
+	private IKlassRemoteService klassRemoteService;
+	@Resource
+	private ILessonRemoteService lessonRemoteService;
+	@Resource
+	private IStudentGroupRemoteService studentGroupRemoteService;
+	@Resource
+	private MessageSender resPaperUsedSender;
+	@Resource
+	private MessageSender resCoursewareUsedSender;
+	@Resource
+	private MessageSender resMicrocourseUsedSender;
+
+	public List<Long> saveFastAssign(List<Long> classIds, List<Long> paperIds, Date closeTime, User user) {
+		Date startTime = new Date();
+		if (closeTime == null) {
+			closeTime = DateUtils.addDays(startTime, 3);
+		}
+		List<Clazz> classes = this.klassRemoteService.findClazzByClassIds(classIds);
+		LayerAssign assign = new LayerAssign();
+		assign.setTeacherId(user.getId());
+		assign.setTeacherName(user.getUserName());
+		assign.setSchoolId(user.getCurrentSchool().getId());
+		assign.setStartTime(startTime);
+		assign.setCloseTime(closeTime);
+		assign.setOpenAnswerTime(null);
+		assign.setIsExam(false);
+		Section section = new Section();
+		section.setResources(paperIds.stream().map(resId -> {
+			AssignResource resource = new AssignResource();
+			resource.setResId(resId);
+			resource.setResType(HomeworkCst.HOMEWORK_RES_PAPER);
+			return resource;
+		}).collect(toList()));
+		section.setClasses(classes.stream().map(clazz -> {
+			LayerClazz layerClazz = new LayerClazz();
+			layerClazz.setClassId(clazz.getClassId());
+			layerClazz.setClassName(clazz.getClassName());
+			layerClazz.setClassType(clazz.getType());
+			return layerClazz;
+		}).collect(toList()));
+		assign.setSections(Arrays.asList(section));
+		// 布置作业
+		return this.saveAssign(assign);
+	}
+
+	public List<Long> saveAssign(LayerAssign assign) {
+		List<Long> homeworkIds = Lists.newArrayList();
+		List<Message> messages = Lists.newArrayList();
+		List<TodoEvent> events = Lists.newArrayList();
+		List<DynamicInfo> dynamicInfos = Lists.newArrayList();
+		List<AssignLogDO> assignLogs = Lists.newArrayList();
+
+		// 填充学生信息列表
+		for (Section section : assign.getSections()) {
+			for (LayerClazz layerClazz : section.getClasses()) {
+				this.fillClazzUsers(layerClazz);
+			}
+		}
+
+		// 布置作业并提取数据
+		for (Section section : assign.getSections()) {
+			for (AssignResource resource : section.getResources()) {
+				// 构造作业对象
+				Homework homework = this.buildHomeworkBaseInfo(assign, resource, section);
+				// 填充默认字段
+				this.fillHomeworkDefaultProps(homework);
+				// 填充资源信息
+				this.fillHomeworkResInfo(homework, resource);
+				BaseModelHelper.fillInsertProps(homework, assign.getTeacherId());
+
+				String idJson = section.getClasses().stream().map(layerClazz -> {
+					// 填充班级信息
+					this.fillHomeworkClassInfo(homework, layerClazz);
+					// 保存班级作业&作业明细
+					List<SimpleUser> users = layerClazz.getUsers();
+					this.homeworkDao.insertHomework(homework);
+					if (!users.isEmpty()) {
+						this.homeworkDtlDao.insertHomeworkDtlBySimpleUser(homework, users);
+						if (homework.getExam()) {
+							messages.add(this.buildExamRemindMessage(users, homework));
+						}
+					}
+					// 提取待办&动态等数据
+					homeworkIds.add(homework.getHomeworkId());
+					if (homework.getExam() == false) {
+						events.add(this.buildHwAssignEvent(homework, users));
+						dynamicInfos.add(buildDynamicInfo(homework));
+					}
+					return String.valueOf(homework.getHomeworkId());
+				}).collect(joining(","));
+				// 代人布置记录
+				if (assign.getAssignLog() != null) {
+					AssignLogDO assignLog = new AssignLogDO();
+					BeanUtils.copyProperties(assignLog, assign.getAssignLog());
+					assignLog.setPaperId(homework.getPaperId());
+					assignLog.setHomeworkName(homework.getHomeworkName());
+					assignLog.setHomeworkIdJson(idJson);
+					assignLogs.add(assignLog);
+				}
+			}
+		}
+
+		if (!assignLogs.isEmpty()) {
+			Set<Entry<Long, List<AssignLogDO>>> group = assignLogs.stream().collect(groupingBy(AssignLogDO::getPaperId)).entrySet();
+			assignLogs = group.stream().map(v->{
+            	 AssignLogDO item = v.getValue().get(0);
+            	 String homeworkIdJson = v.getValue().stream().map(h->h.getHomeworkIdJson()).collect(Collectors.joining(",")).toString();
+            	 item.setHomeworkIdJson(homeworkIdJson);
+            	 return item;
+             }).collect(toList());
+			this.assignLogDao.addAssignLog(assignLogs);
+		}
+
+		// 如果是考试发送消息
+		messages.forEach(NoticeHelper::send);
+		// 布置作业发送待办
+		NoticeHelper.todo(events);
+		// 发送激励
+		DynamicHelper.publish(dynamicInfos);
+		// 资源使用通知
+		this.sendArrangeTimes(assign);
+
+		return homeworkIds;
+	}
+
+	/**
+	 * 发送在线考试提醒消息
+	 */
+	private Message buildExamRemindMessage(List<SimpleUser> users, Homework homework) {
+		long diffSec = homework.getStartTime().getTime() - System.currentTimeMillis();
+		LetterMessage message = new LetterMessage();
+		message.setSubject("在线考试");
+		message.setBusinessType(MessageBusinessTypes.HOMEWORK);
+		message.addTo(users.stream().map(v -> String.valueOf(v.getUserId())).collect(toList()));
+		message.addVariable("teacher", homework.getTeacherName());
+		if (diffSec / 1000 < 5 * 60) {
+			message.setContent(ParametersContext.getString(HomeworkCst.AUTO_ONLINE_EXAM_REMIND));
+			message.addVariable("minute", diffSec / 1000 / 60);
+		} else {
+			message.setContent(ParametersContext.getString(HomeworkCst.ONLINE_EXAM_REMIND));
+			message.addVariable("time", DateUtils.format(homework.getStartTime(), DateUtils.MINITE_DATE_PATTERN));
+		}
+		return message;
+	}
+
+	/**
+	 * 填充学生信息列表
+	 */
+	private void fillClazzUsers(LayerClazz layerClazz) {
+		List<SimpleUser> users = layerClazz.getUsers();
+		if (CollectionUtils.isEmpty(users)) {
+			List<Long> userIds;
+			if (CollectionUtils.isNotEmpty(layerClazz.getGroups())) {
+				Long[] groupIds = layerClazz.getGroups().stream().map(v -> v.getGroupId()).toArray(Long[]::new);
+				userIds = this.studentGroupRemoteService.findStudentByGroupList(groupIds);
+			} else {
+				userIds = this.studentGroupRemoteService.findStudentByClassId(layerClazz.getClassId());
+			}
+			users = UserBaseContext.findUserBaseByUserId(userIds.toArray(new Long[0])).stream().map(v -> {
+				SimpleUser simple = new SimpleUser();
+				simple.setUserId(v.getUserId());
+				simple.setUserName(v.getUserName());
+				return simple;
+			}).collect(toList());
+			layerClazz.setUsers(users);
+		}
+	}
+
+	private LayerClazz buildLayerClazzByClassId(Long classId) {
+		LayerClazz layerClazz = new LayerClazz();
+		Clazz clazz = this.klassRemoteService.getClazzByClassId(classId);
+		layerClazz.setClassId(clazz.getClassId());
+		layerClazz.setClassName(clazz.getClassName());
+		layerClazz.setClassType(clazz.getType());
+		this.fillClazzUsers(layerClazz);
+		return layerClazz;
+	}
+
+	/**
+	 * 构建作业对象信息。
+	 */
+	private Homework buildHomeworkBaseInfo(LayerAssign assign, AssignResource resource, Section section) {
+		Homework homework = new Homework();
+		homework.setExam(assign.getIsExam());
+		if (assign.getIsExam()) {
+			homework.setHomeworkType(HomeworkType.Exam.value);
+		} else {
+			homework.setHomeworkType(HomeworkType.CLASS_HOUR.value);
+		}
+		if (section.getTeacherId() != null) {
+			homework.setTeacherId(section.getTeacherId());
+			homework.setTeacherName(section.getTeacherName());
+		} else {
+			homework.setTeacherId(assign.getTeacherId());
+			homework.setTeacherName(assign.getTeacherName());
+		}
+		homework.setSchoolId(assign.getSchoolId());
+		homework.setStartTime(assign.getStartTime());
+		homework.setCloseTime(assign.getCloseTime());
+		homework.setOpenAnswerTime(assign.getOpenAnswerTime());
+		homework.setIsVisible(true);
+		return homework;
+	}
+
+	/**
+	 * 填充资源信息
+	 */
+	private void fillHomeworkResInfo(Homework homework, AssignResource resource) {
+		Long resId = resource.getResId();
+		Integer resType = resource.getResType();
+		homework.setPaperId(resId);
+		homework.setResType(resType);
+
+		if (resType == HomeworkCst.HOMEWORK_RES_PAPER) {
+			PaperDTO paperDTO = PaperContext.getPaperDTO(resId);
+			homework.setSubjectId(paperDTO.getSubjectId());
+			homework.setSubjectName(paperDTO.getSubjectName());
+			homework.setHomeworkName(paperDTO.getTitle());
+			homework.setSubjective(paperDTO.getSubjective());
+			homework.setPaperType(paperDTO.getPaperType());
+			homework.setRawType(ResRawType.fromPaperType(paperDTO.getPaperType()).icon);
+		} else if (resType == HomeworkCst.HOMEWORK_RES_COURSEWARE) {
+			CoursewareDTO courseware = CoursewareContext.getCourseware(resId);
+			homework.setSubjectId(courseware.getSubjectId());
+			homework.setSubjectName(courseware.getSubjectName());
+			homework.setHomeworkName(courseware.getName());
+			homework.setRawType(ResRawType.fromCoursewareType(courseware.getType()).icon);
+			homework.setOpenAnswerTime(null);
+		} else if (resType == HomeworkCst.HOMEWORK_RES_MICROCOURSE) {
+			MicrocourseDTO micro = MicrocourseContext.getMicrocourse(resId);
+			homework.setSubjectId(micro.getSubjectId());
+			homework.setSubjectName(micro.getSubjectName());
+			homework.setHomeworkName(micro.getMicrocourseName());
+			homework.setRawType(ResRawType.fromMicrocourseType(micro).icon);
+			homework.setOpenAnswerTime(null);
+		} else {
+			throw new ValidateException("ResType '" + resType + "' is not support.");
+		}
+	}
+
+	/**
+	 * 填充作业的默认字段
+	 */
+	private void fillHomeworkDefaultProps(Homework homework) {
+		homework.setTotalNum(0);
+		homework.setFinishNum(0);
+		homework.setDelayNum(0);
+		homework.setCorrectNum(0);
+	}
+
+	/**
+	 * 填充班级信息
+	 */
+	private void fillHomeworkClassInfo(Homework homework, LayerClazz layerClazz) {
+		if (layerClazz != null) {
+			homework.setClassId(layerClazz.getClassId());
+			homework.setClassType(layerClazz.getClassType());
+			homework.setClassName(layerClazz.getClassName());
+			homework.setTotalNum(layerClazz.getUsers().size());
+			homework.setStudentGroupsJson(JsonUtils.toJSON(layerClazz.getGroups()));
+		}
+	}
+
+	/**
+	 * 构造待办信息
+	 */
+	private HwAssignEvent buildHwAssignEvent(Homework homework, List<SimpleUser> users) {
+		HwAssignEvent event = new HwAssignEvent();
+		event.setTeacherId(homework.getTeacherId());
+		event.setCourseSingleId(homework.getCourseSingleId());
+		event.setHomeworkId(homework.getHomeworkId());
+		event.setHomeworkName(homework.getHomeworkName());
+		event.setStartTime(homework.getStartTime());
+		event.setCloseTime(homework.getCloseTime());
+		event.setHomeworkType(homework.getHomeworkType());
+		event.setStudentIds(users.stream().map(SimpleUser::getUserId).collect(toList()));
+		return event;
+	}
+
+	/**
+	 * 构造激励信息
+	 */
+	private DynamicInfo buildDynamicInfo(Homework homework) {
+		DynamicInfo dynamicInfo = new DynamicInfo();
+		dynamicInfo.setTypeId(IncentiveTypes.TEACHER.REP_ASSIGN);
+		dynamicInfo.setTitle(homework.getHomeworkName());
+		dynamicInfo.setUserId(homework.getTeacherId());
+		dynamicInfo.setUserName(homework.getTeacherName());
+		dynamicInfo.setRoleId(RoleCst.TEACHER);
+		dynamicInfo.setSchoolId(homework.getSchoolId());
+		return dynamicInfo;
+	}
+
+	/**
+	 * 发送资源使用通知
+	 */
+	private void sendArrangeTimes(LayerAssign assign) {
+		this.sendArrangeTimesByResId(assign, HomeworkCst.HOMEWORK_RES_COURSEWARE, this.resCoursewareUsedSender);
+		this.sendArrangeTimesByResId(assign, HomeworkCst.HOMEWORK_RES_MICROCOURSE, this.resMicrocourseUsedSender);
+		this.sendArrangeTimesByResId(assign, HomeworkCst.HOMEWORK_RES_PAPER, this.resPaperUsedSender);
+	}
+
+	private void sendArrangeTimesByResId(LayerAssign assign, int resType, MessageSender messageSender) {
+		List<Long> resIds = assign.getSections().stream().flatMap(v -> v.getResources().stream())
+				.filter(v -> v.getResType() == resType).map(AssignResource::getResId).distinct().collect(toList());
+		if (resIds.size() > 0) {
+				ResourceUsedMsg  resUserMsg = new ResourceUsedMsg();
+				resUserMsg.setResIds(resIds);
+				User user = new User();
+				user.setId(assign.getTeacherId());
+				user.setUserName(assign.getTeacherName());
+				user.setCurrentSchool(SchoolContext.getSchoolBySchoolId(assign.getSchoolId()));
+				resUserMsg.setUser(user);
+				messageSender.send(resUserMsg);
+		}
+	}
+
+	public List<SubmitInfo> syncStudentBeikeHwDtlWithTx(Long lessonId, Long userId) {
+		List<SubmitInfo> submitInfos = this.homeworkDao.findStudentSubmitInfoByLessonId(lessonId, userId);
+		if (submitInfos.stream().allMatch(v -> v.getHomeworkDtlId() != null)) {
+			return submitInfos;
+		}
+		List<Homework> homeworks = this.homeworkDao.findHomeworkByCourseSingleId(lessonId);
+		Map<Long, Homework> homeworkMap = homeworks.stream().collect(toMap(Homework::getHomeworkId, v -> v));
+		submitInfos.stream().filter(v -> v.getHomeworkDtlId() == null).forEach(submitInfo -> {
+			Homework homework = homeworkMap.get(submitInfo.getHomeworkId());
+			UserBase userBase = UserBaseContext.getUserBaseByUserId(userId);
+			HomeworkDtl homeworkDtl = new HomeworkDtl();
+			homeworkDtl.setHomeworkId(homework.getHomeworkId());
+			homeworkDtl.setStudentId(userId);
+			homeworkDtl.setStudentName(userBase.getUserName());
+			homeworkDtl.setSubmitStatus(HomeworkCst.HOMEWORK_SUBMIT_STATUS_NOT);
+			homeworkDtl.setSchoolId(homework.getSchoolId());
+			homeworkDtl.setOrderTime(homework.getCloseTime());
+			BaseModelHelper.fillInsertProps(homeworkDtl, userId);
+			this.homeworkDtlDao.saveHomeworkDtl(homeworkDtl);
+			this.homeworkDao.incrHomeworkTotalNum(homework.getHomeworkId(), 1);
+			submitInfo.setHomeworkDtlId(homeworkDtl.getHomeworkDtlId());
+			submitInfo.setSubmitStatus(0);
+		});
+		return submitInfos;
+	}
+
+	@Override
+	public void executeLessonBeikePkgWithTx(LessonBeikePkgMQ beikePkgMQ) {
+		logger.info("Lesson Beike: " + JsonUtils.toJSON(beikePkgMQ));
+
+		List<TodoEvent> events = Lists.newArrayList();
+		List<DynamicInfo> dynamicInfos = Lists.newArrayList();
+
+		LessonVM lesson = this.lessonRemoteService.getLessonVMByLessonId(beikePkgMQ.getLessonId());
+		Boolean isVisible = lesson.getIsEnd();
+		Boolean isStart = lesson.getStartTime().getTime() < System.currentTimeMillis(); // 开始时间小于当前时间，表示上课了
+		Boolean isEnd = lesson.getIsEnd();
+
+	
+
+
+		List<LessonBeikePkgResourceMQ> adds, mods, dels;
+		adds = beikePkgMQ.getResources().stream().filter(v -> v.getCmd() == CMD_ADD).collect(toList());
+		mods = beikePkgMQ.getResources().stream().filter(v -> v.getCmd() == CMD_UPDATE).collect(toList());
+		dels = beikePkgMQ.getResources().stream().filter(v -> v.getCmd() == CMD_DEL).collect(toList());
+
+		// 新增
+		if(CollectionUtils.isNotEmpty(adds)) {
+			LayerClazz layerClazz =  this.buildLayerClazzByClassId(lesson.getClassId());
+			adds.forEach(resource -> {
+				AddSingleHwForResource(beikePkgMQ, events, dynamicInfos, lesson, isVisible, isStart, isEnd, layerClazz,
+						resource);
+			});
+		}
+		// 变更
+		mods.forEach(resource -> {
+			// 修改字段：usePhase, startTime, closeTime,comboPhase
+			if(!isStart) {
+				if ( resource.getType() != HomeworkCst.HOMEWORK_RES_PAPER) {
+					updateBeikeResource(beikePkgMQ, lesson, resource);
+				} else {
+					Homework homework = this.homeworkDao.getHomeworkByBeikeGuid(resource.getOrigGuid(),
+							beikePkgMQ.getLessonId());
+					//原来有课前
+					if (PhaseUtils.validatePhase(homework.getComboPhase(), HOMEWORK_USE_PHASE_BEFORE)) {
+						if (resource.getPhases().contains(HOMEWORK_USE_PHASE_BEFORE)) {
+							updateBeikeResource(beikePkgMQ, lesson, resource);
+						} else {
+							homeworkDao.delLessonResource(lesson.getCourseSingleId(), resource.getDestGuid(),
+									Arrays.asList(HOMEWORK_USE_PHASE_BEFORE));
+							LayerClazz layerClazz = this.buildLayerClazzByClassId(lesson.getClassId());
+							AddSingleHwForResource(beikePkgMQ, events, dynamicInfos, lesson, isVisible, isStart, isEnd,
+									layerClazz, resource);
+						}
+					} else {
+						//原来有课中
+						updateBeikeResource(beikePkgMQ, lesson, resource);
+					}
+				}
+			} else {
+				//备课收藏的备课包编辑后，同步BeikeGuid
+				updateBeikeResource(beikePkgMQ, lesson, resource);
+			}
+		});
+
+		// 删除
+		dels.forEach(resource -> {
+			homeworkDao.delLessonResource(lesson.getCourseSingleId(), resource.getDestGuid(), null );
+		});
+
+		// 布置作业发送待办
+		NoticeHelper.todo(events);
+		if(!isEnd) {
+			if (CollectionUtils.isNotEmpty(homeworkDao.findPreviewHomeworkIdsByLessonId((beikePkgMQ.getLessonId())))) {
+				CsResourceAddEvent csResAddevent = new CsResourceAddEvent();
+				csResAddevent.setCourseSingleId(beikePkgMQ.getLessonId());
+				csResAddevent.setCloseTime(lesson.getEndTime());
+				csResAddevent.setStartTime(lesson.getStartTime());
+				NoticeHelper.todo(csResAddevent);
+			} else {
+				CsDelEvent csDelEvent = new CsDelEvent();
+				csDelEvent.setCourseSingleIds(Arrays.asList(beikePkgMQ.getLessonId()));
+				NoticeHelper.todo(csDelEvent);
+			}
+		}
+	}
+
+	/**
+	 * @param beikePkgMQ
+	 * @param lesson
+	 * @param resource
+	 */
+	private void updateBeikeResource(LessonBeikePkgMQ beikePkgMQ, LessonVM lesson, LessonBeikePkgResourceMQ resource) {
+		Homework homework = this.homeworkDao.getHomeworkByBeikeGuid(resource.getOrigGuid(),
+				beikePkgMQ.getLessonId());
+		updateBeikeResource(lesson, resource, homework);
+	}
+
+	/**
+	 * @param lesson
+	 * @param resource
+	 * @param homework
+	 */
+	private void updateBeikeResource(LessonVM lesson, LessonBeikePkgResourceMQ resource, Homework homework) {
+		homework.setComboPhase(PhaseUtils.combo(resource.getPhases()));
+		homework.setBeikeGuid(resource.getDestGuid());
+		homework.setUsePhase(Collections.min(resource.getPhases()));
+		this.fillHomeworkTimeInfo(homework, resource, lesson);
+		this.homeworkDao.updateHomeworkUsePhase(homework);
+	}
+
+	/**
+	 * @param beikePkgMQ
+	 * @param events
+	 * @param dynamicInfos
+	 * @param lesson
+	 * @param isVisible
+	 * @param isStart
+	 * @param isEnd
+	 * @param layerClazz
+	 * @param resource
+	 */
+	private void AddSingleHwForResource(LessonBeikePkgMQ beikePkgMQ, List<TodoEvent> events,
+			List<DynamicInfo> dynamicInfos, LessonVM lesson, Boolean isVisible, Boolean isStart, Boolean isEnd,
+			LayerClazz layerClazz, LessonBeikePkgResourceMQ resource) {
+		removePhase(isStart, isEnd, resource);
+		if(resource.getPhases().size() == 0) {
+			return;
+		}
+		Homework homework = new Homework();
+		homework.setHomeworkType(HomeworkType.CLASS_HOUR.value);
+		homework.setTeacherId(lesson.getTeacherId());
+		homework.setTeacherName(lesson.getTeacherName());
+		homework.setSchoolId(lesson.getSchoolId());
+		homework.setIsOpenAnswer(false);
+		homework.setOpenAnswerTime(null);
+		homework.setIsVisible(isVisible);
+		// 填充默认字段
+		this.fillHomeworkDefaultProps(homework);
+		// 填充资源信息
+		this.fillHomeworkResInfo(homework, new AssignResource(resource.getResId(), resource.getType()));
+		// 填充时间信息
+		this.fillHomeworkTimeInfo(homework, resource, lesson);
+		// 填充课程信息
+		homework.setBeikeGuid(resource.getDestGuid());
+		homework.setCourseSingleId(beikePkgMQ.getLessonId());
+		homework.setComboPhase(PhaseUtils.combo(resource.getPhases()));
+		//最小的阶段
+		homework.setUsePhase(Collections.min(resource.getPhases()));
+		BaseModelHelper.fillInsertProps(homework, lesson.getTeacherId());
+		// 填充班级信息
+		this.fillHomeworkClassInfo(homework, layerClazz);
+		// 保存班级作业&作业明细
+		List<SimpleUser> users = layerClazz.getUsers();
+		this.homeworkDao.insertHomework(homework);
+		if (!users.isEmpty()) {
+			this.homeworkDtlDao.insertHomeworkDtlBySimpleUser(homework, users);
+		}
+		
+		// 提取待办&动态等数据
+		if (isEnd && Collections.min(resource.getPhases()) == HomeworkCst.HOMEWORK_USE_PHASE_AFTER
+				&& resource.getType() == HomeworkCst.HOMEWORK_RES_PAPER) {
+			// 课后作业才有待办
+			events.add(this.buildHwAssignEvent(homework, users));
+		}
+		dynamicInfos.add(buildDynamicInfo(homework));
+	}
+
+	/**
+	 * @param isStart
+	 * @param isEnd
+	 * @param resource
+	 */
+	private void removePhase(Boolean isStart, Boolean isEnd, LessonBeikePkgResourceMQ resource) {
+		if (isEnd) {
+			resource.getPhases().removeIf(v -> !v.equals(HOMEWORK_USE_PHASE_AFTER));
+		} else if (isStart) {
+			resource.getPhases().removeIf(v -> v.equals(HOMEWORK_USE_PHASE_BEFORE));
+		}
+	}
+
+	// 填充时间信息
+	private void fillHomeworkTimeInfo(Homework homework, LessonBeikePkgResourceMQ resource, LessonVM lesson) {
+		boolean noFlow = homework.getResType() != HomeworkCst.HOMEWORK_RES_PAPER;
+		Date startTime, closeTime;
+		if (resource.getPhases().get(0) == HOMEWORK_USE_PHASE_BEFORE) {
+			startTime = HomeworkUtils.reckonHomeworkStartTime(lesson.getStartTime());
+			closeTime = lesson.getStartTime();
+		} else if (resource.getPhases().get(0) == HOMEWORK_USE_PHASE_LESSON) {
+			startTime = lesson.getStartTime();
+			closeTime = lesson.getEndTime();
+			if (noFlow) {
+				// 不需要向下一阶段流转的课中作业截止时间同课后作业
+				closeTime = HomeworkUtils.reckonHomeworkCloseTime(lesson.getStartTime());
+			}
+		} else {
+			startTime = lesson.getEndTime();
+			closeTime = HomeworkUtils.reckonHomeworkCloseTime(lesson.getStartTime());
+		}
+		homework.setStartTime(startTime);
+		homework.setCloseTime(closeTime);
+	}
+
+	@Override
+	public List<ResInfo> saveAssignHomework(VodHwAssignRemote assignRemote) {
+		List<TodoEvent> events = Lists.newArrayList();
+		for (ResInfo resInfo : assignRemote.getResInfos()) {
+			Homework homework = new Homework();
+			homework.setDutyMode(assignRemote.getDutyMode());
+			homework.setTeacherId(assignRemote.getTeacherId());
+			homework.setTeacherName(assignRemote.getTeacherName());
+			homework.setClassType(Clazz.CLAZZ_VIRTUAL);
+			homework.setClassId(assignRemote.getClassId());
+			homework.setClassName(assignRemote.getClassName());
+			homework.setIsVisible(true);
+			homework.setIsSnapshot(false);
+			homework.setHomeworkName(resInfo.getResName());
+			homework.setHomeworkType(HomeworkType.VOD.value);
+			homework.setStartTime(assignRemote.getStartTime());
+			homework.setCloseTime(assignRemote.getCloseTime());
+			homework.setSchoolId(assignRemote.getSchoolId());
+
+			// 资源信息
+			PaperDTO paperDTO = PaperContext.getPaperDTO(resInfo.getResId());
+			homework.setPaperId(resInfo.getResId());
+			homework.setPaperType(paperDTO.getPaperType());
+			homework.setSubjectId(paperDTO.getSubjectId());
+			homework.setSubjectName(paperDTO.getSubjectName());
+			homework.setSubjective(paperDTO.getSubjective());
+			homework.setResType(HomeworkCst.HOMEWORK_RES_PAPER);
+			homework.setRawType(ResRawType.fromPaperType(paperDTO.getPaperType()).icon);
+			
+			this.fillHomeworkDefaultProps(homework);
+			BaseModelHelper.fillInsertProps(homework, assignRemote.getTeacherId());
+			homeworkDao.insertHomework(homework);
+			resInfo.setHomeworkId(homework.getHomeworkId());
+
+			events.add(this.buildHwAssignEvent(homework, Collections.emptyList()));
+		}
+
+		// 布置作业发送待办
+		NoticeHelper.todo(events);
+		// 资源使用通知
+		resPaperUsedSender.send(assignRemote.getResInfos().stream().map(ResInfo::getResId).collect(toList()));
+		return assignRemote.getResInfos();
+	}
+
+	@Override
+	public void createStuVodHwWithTx(List<Long> homeworkIds, User user) {
+		if (CollectionUtils.isEmpty(homeworkIds)) {
+			return;
+		}
+		for (Long homeworkId : homeworkIds) {
+			this.resolveStuVodHwWithTx(homeworkId, user);
+		}
+	}
+
+	@Override
+	public HomeworkDtl resolveStuVodHwWithTx(Long homeworkId, User user) {
+		// 查询点播作业及衍生作业中有没有该学生
+		HomeworkDtl homeworkDtl = this.homeworkDtlDao.getHomeworkDtlByParentIdAndStudentId(homeworkId, user.getId());
+		if (homeworkDtl != null) {
+			// 直接找到作业，立即返回
+			return homeworkDtl;
+		}
+		Homework homework = this.homeworkDao.getHomeworkById(homeworkId);
+		if (homework.getDutyMode() != 2) {
+			// 如果作业没有设置为行政班老师批改，直接生成学生作业并返回
+			return this.createStudentVodHomework(homework, user);
+		} else {
+			Clazz clazz = this.klassRemoteService.getDeptClazzByStudentId(user.getId());
+			if (clazz == null) {
+				// 学生没有行政班，按dutyMode == 1 处理
+				return this.createStudentVodHomework(homework, user);
+			}
+			List<Long> teacherIds = this.klassRemoteService.findTeacherIdsByClassIdAndSubjectId(clazz.getClassId(),
+					homework.getSubjectId());
+			if (CollectionUtils.isEmpty(teacherIds)) {
+				// 学生行政班没有设置老师，按dutyMode == 1 处理
+				return this.createStudentVodHomework(homework, user);
+			}
+			Long teacherId = teacherIds.get(0);
+			// 已经确定了学生行政班和老师，找出对应作业
+			Homework homework2 = this.homeworkDao.getVodDerivedHomeworkByParentId(homework.getHomeworkId(),
+					clazz.getClassId(), teacherId);
+			if (homework2 == null) {
+				// 如果没有找出行政班作业
+				UserBase userBase = UserBaseContext.getUserBaseByUserId(teacherId);
+				homework2 = this.derivedCreateTeacherVodHomework(homework, userBase, clazz, user);
+			}
+			// 根据衍生作业，创建学生点播作业
+			return this.createStudentVodHomework(homework2, user);
+		}
+	}
+
+	private HomeworkDtl createStudentVodHomework(Homework homework, User user) {
+		HomeworkDtl homeworkDtl = new HomeworkDtl();
+		homeworkDtl.setHomeworkId(homework.getHomeworkId());
+		homeworkDtl.setStudentId(user.getId());
+		homeworkDtl.setStudentName(user.getUserName());
+		homeworkDtl.setSubmitStatus(HomeworkCst.HOMEWORK_SUBMIT_STATUS_NOT);
+		homeworkDtl.setSchoolId(homework.getSchoolId());
+		homeworkDtl.setOrderTime(homework.getCloseTime());
+		BaseModelHelper.fillInsertProps(homeworkDtl, user.getId());
+		this.homeworkDtlDao.saveHomeworkDtl(homeworkDtl);
+		this.homeworkDao.updateHomeworkTotalNum(homework.getHomeworkId());
+		return homeworkDtl;
+	}
+
+	// 衍生创建一份新的点播作业。
+	private Homework derivedCreateTeacherVodHomework(Homework homework, UserBase teacher, Clazz clazz, User student) {
+		Homework homework2 = new Homework();
+		homework2.setTeacherId(teacher.getId());
+		homework2.setTeacherName(teacher.getUserName());
+		homework2.setDutyMode(homework.getDutyMode());
+		homework2.setParentId(homework.getHomeworkId());
+		homework2.setPaperId(homework.getPaperId());
+		homework2.setSubjectId(homework.getSubjectId());
+		homework2.setSubjectName(homework.getSubjectName());
+		homework2.setSubjective(homework.getSubjective());
+		homework2.setPaperType(homework.getPaperType());
+		homework2.setClassType(clazz.getType());
+		homework2.setClassId(clazz.getClassId());
+		homework2.setClassName(clazz.getClassName());
+		homework2.setHomeworkName(homework.getHomeworkName());
+		homework2.setHomeworkType(homework.getHomeworkType());
+		homework2.setStartTime(homework.getStartTime());
+		homework2.setCloseTime(homework.getCloseTime());
+		homework2.setSchoolId(homework.getSchoolId());
+		homework2.setTotalNum(0);
+		homework2.setFinishNum(0);
+		homework2.setDelayNum(0);
+		homework2.setCorrectNum(0);
+		
+		homework2.setIsOpenAnswer(homework.getIsOpenAnswer());
+		homework2.setOpenAnswerTime(homework.getOpenAnswerTime());
+		homework2.setResType(homework.getResType());
+		homework2.setRawType(homework.getRawType());
+		homework2.setIsSnapshot(homework.getIsSnapshot());
+		homework2.setIsVisible(homework.getIsVisible());
+		homework2.setExam(homework.getExam());
+		BaseModelHelper.fillInsertProps(homework2, homework.getTeacherId());
+		this.homeworkDao.insertHomework(homework2);
+		return homework2;
+	}
+}

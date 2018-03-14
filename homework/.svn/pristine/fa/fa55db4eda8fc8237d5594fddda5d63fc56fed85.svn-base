@@ -1,0 +1,19 @@
+function bindEvent(){
+	$(".c-kemu li").on({
+		"touchstart":function(event){
+			$(this).attr("class",$(this).attr("class")+"-touch");
+		},
+		"touchend":function(){
+			$(this).attr("class",$(this).data("c"));
+		},
+		"touchcancel":function(){
+			$(this).attr("class",$(this).data("c"));
+		},
+		"click":function(){
+			var subjectId = $(this).data("i");
+			window.location.href = Leke.domain.diagServerName+"/auth/m/student/homework/subjectManager.htm?subjectId="+subjectId;
+		}
+		
+	});
+}
+bindEvent();

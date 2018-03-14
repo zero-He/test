@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.monitor.core.dao.mybatis.ILessonBehaviorDao">
+	
+	
+	<select id="getCourseSingleIdBySchool" parameterType="cn.strong.leke.monitor.core.model.lesson.TeacherLessonDto"
+	resultType="java.lang.Long">
+		SELECT  ll.courseSingleId
+		FROM lesson.ls_lesson ll
+		LEFT OUTER JOIN lesson.ls_klass c 
+		ON c.classId = ll.classId
+		LEFT OUTER JOIN lesson.ls_klass_subject ls 
+		ON ls.classSubjId= ll.classSubjId
+		LEFT OUTER JOIN tutor.tutor_school tts
+		ON tts.schoolId = ll.schoolId
+		LEFT OUTER JOIN tutor.tutor_schoolStage e 
+		ON c.schoolStageId = e.schoolStageId
+		WHERE ll.isDeleted = 0
+		<if test="schoolName != null and schoolName != ''">
+			AND tts.schoolName LIKE CONCAT(CONCAT('%',#{schoolName},'%'))
+		</if>
+		<if test="schoolStageId != null  and schoolStageId != 0">
+			AND c.schoolStageId =#{schoolStageId}
+		</if>
+		<if test="gradeName != null and gradeName != '' and gradeName != '全部'">
+			AND c.gradeName =#{gradeName}
+		</if>
+		<if test="schoolStageName != null and schoolStageName != ''">
+			AND e.schoolStageName =#{schoolStageName}
+		</if>
+		<if test="teacherName != null and teacherName != ''">
+			AND ll.teacherName LIKE CONCAT(CONCAT('%',#{teacherName},'%'))
+		</if>
+		<if test="subjectName != null and subjectName != '' and subjectName != '全部'">
+			AND ls.subjectName =#{subjectName}
+		</if>
+		<if test="fromDate != null and fromDate != ''">
+		<![CDATA[
+			AND ll.startTime >= #{fromDate}
+		]]>
+		</if>
+		<if test="endDate != null and endDate != ''">
+		<![CDATA[
+			AND ll.startTime <= DATE_ADD(#{endDate},INTERVAL 1 DAY)   
+		]]>
+		</if>
+	</select>
+	
+	<select id="getTeacherLessonDto" resultType="cn.strong.leke.monitor.core.model.lesson.TeacherLessonDto">
+		SELECT c.gradeName ,tu.loginName,tts.schoolName,tts.schoolStageName
+		FROM lesson.ls_lesson ll
+		LEFT OUTER JOIN tutor.tutor_user tu
+		ON ll.teacherId = tu.userId
+		LEFT OUTER JOIN lesson.ls_klass c
+		ON c.classId = ll.classId
+		LEFT OUTER JOIN (SELECT s.schoolId,ss.schoolStageId,s.schoolName,ss.schoolStageName 
+		FROM tutor.tutor_school_stage ss,tutor.tutor_school s
+		WHERE ss.schoolId = s.schoolId AND ss.isDeleteD =0) tts
+		ON c.schoolId = tts.schoolId AND tts.schoolStageId = c.schoolStageId
+		WHERE ll.courseSingleId = #{0}
+	</select>
+	
+	<select id="getGradeNameBySchool" parameterType="cn.strong.leke.monitor.core.model.lesson.TeacherLessonDto"
+	resultType="cn.strong.leke.monitor.core.model.lesson.TeacherLessonDto">
+		SELECT gradeName FROM tutor.tutor_grade tg RIGHT  JOIN 
+		(SELECT * FROM tutor.tutor_schoolStage_grade WHERE isDeleted  = 0 AND schoolStageId=
+		(SELECT schoolStageId FROM tutor.tutor_school_stage  
+		WHERE isDeleted  = 0 AND schoolName = #{schoolName}  AND schoolStageName= #{schoolStageName} )) tt
+		ON tg.gradeId = tt.gradeId
+	</select>
+	
+	<select id="getSubjectNameBySchool" parameterType="cn.strong.leke.monitor.core.model.lesson.TeacherLessonDto" 
+	resultType="cn.strong.leke.monitor.core.model.lesson.TeacherLessonDto">
+		SELECT subjectName FROM tutor.tutor_subject tg RIGHT  JOIN 
+		(SELECT * FROM tutor.tutor_schoolStage_subject WHERE isDeleted  = 0 AND schoolStageId=
+		(SELECT schoolStageId FROM tutor.tutor_school_stage  
+		WHERE isDeleted  = 0 AND schoolName = #{schoolName}  AND schoolStageName= #{schoolStageName} )) tt
+		ON tg.subjectId = tt.subjectId
+	</select>
+</mapper>

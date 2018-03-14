@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.question.dao.mybatis.question.IQuestionShareLogDao">
+	<insert id="add" useGeneratedKeys="true" keyProperty="shareLogId"
+		parameterType="cn.strong.leke.question.model.question.QuestionShareLog">
+		INSERT INTO que_question_share_log (
+			questionId, userId, schoolId, shareScope, checkLogId,
+			isDeleted, createdBy, createdOn, modifiedBy, modifiedOn
+		) VALUES (
+			#{questionId}, #{userId}, #{schoolId}, #{shareScope}, #{checkLogId},
+			0, #{createdBy}, now(), #{modifiedBy}, now()
+		)
+	</insert>
+	
+	<insert id="insertBatchQuestionShareLog" parameterType="map">
+		INSERT INTO que_question_share_log (
+			questionId, userId, schoolId, shareScope,
+			isDeleted, createdBy, createdOn, modifiedBy, modifiedOn
+		) VALUES 
+		<foreach collection="shareLogs" item="log" separator=",">
+		(
+			#{log.questionId}, #{log.userId}, #{log.schoolId}, #{log.shareScope},
+			0, #{log.createdBy}, NOW(), #{log.modifiedBy}, NOW()
+		)
+		</foreach>
+	</insert>
+	
+	<update id="remove" parameterType="map">
+		UPDATE que_question_share_log
+		<set>
+			isDeleted = 1,
+			modifiedBy = #{modifiedBy},
+			modifiedOn = now()
+		</set>
+		WHERE shareLogId = #{shareLogId}
+		AND isDeleted = 0
+	</update>
+	
+	<update id="updateSchoolCheckLogId" parameterType="map">
+		UPDATE que_question_share_log
+		<set>
+			checkLogId = #{checkLogId},
+			modifiedBy = #{modifiedBy},
+			modifiedOn = now()
+		</set>
+		WHERE questionId = #{questionId}
+		AND schoolId = #{schoolId}
+		AND shareScope = 2
+		AND isDeleted = 0
+	</update>
+	
+	<select id="getQuestionShareLog" parameterType="long" 
+		resultType="cn.strong.leke.question.model.question.QuestionShareLog">
+		SELECT 
+			a.* 
+		FROM 
+			que_question_share_log a
+		WHERE 
+			a.isDeleted = 0 
+		AND
+			a.shareLogId = #{shareLogId}
+	</select>
+	
+	<select id="queryQuestionShareLog" parameterType="cn.strong.leke.question.model.question.query.QuestionShareLogQuery" 
+		resultType="cn.strong.leke.question.model.question.QuestionShareLog">
+		SELECT 
+			a.* 
+		FROM 
+			que_question_share_log a
+		JOIN que_question b ON a.questionId = b.questionId	
+		WHERE 
+			a.isDeleted = 0 
+		AND 
+			b.isDeleted = 0
+		AND
+			a.createdBy = #{userId}
+		<if test="shareScope != null and shareScope != ''">
+			AND a.shareScope = #{shareScope}
+		</if>
+	</select>
+</mapper>

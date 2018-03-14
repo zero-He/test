@@ -1,0 +1,130 @@
+
+/** 提示 */
+.c-tips {position: absolute; width: 100%; top: 0; right: 0; left: 0; bottom: 0; margin: 0; background: #fff; text-align: center;}
+.c-tips:before {content: ""; display: inline-block; width: 84px; height: 84px; margin-top: 120px; background: url("../../../images/mobile/homework/tips.png") no-repeat; background-size: 100%;}
+.c-tips .msg {margin: 10px auto; width: 160px; color: #999; font-size: 14px;}
+/* 作业管理容器 */
+.c-kemu-body {position: absolute; width: 100%; height: 100%; color: #555; font-size: 14px; background:#f5f7f8; overflow: auto;}
+/** 孩子列表 */
+.c-child-box {height: 46px; background: #fff; padding: 0 16px; border-bottom: 1px solid #e7e7e7;}
+.c-child-box ul {overflow: auto; white-space: nowrap;}
+.c-child-box ul li {display: inline-block; min-width: 80px; height: 45px; line-height: 45px; font-weight: bold; text-align: center; border-bottom: 2px solid transparent; padding: 0 15px;}
+.c-child-box ul li.current {color: #4ea375; border-bottom: 2px solid #4ea375;}
+.c-kemu-box {position: relative;}
+/* 科目 */
+.c-kemu{padding:10px 1px;}
+.c-kemu a{float:left;width:33.33%;}
+.c-kemu li{position:relative;margin:8px auto; padding:10px 0 0 12px; width:90px; height:81px; font-size:15px; color:#5A5A5A; border-radius:4px; background-color:#fff;}
+.c-kemu:after{content:""; display:block; width:0; height:0; clear:both;}
+.c-kemu .unfinish{display:block;margin-top:19px;font-size:12px;color:#999;}
+.c-kemu .unfinish-num{position:absolute;top:49px;left:37px;display:block;background:#ff7766;width:24px;height:14px;line-height:17px;text-align:center;font-size:10px;color:#fff;border-radius:5px;z-index:999;}
+/* title */
+.c-kemu .title {color: #5a5a5a; display: block; height: 36px; overflow: hidden;}
+.c-kemu .touch .title, .c-kemu .touch .title2, .c-kemu .touch .title1, .c-kemu .touch .title3, .c-kemu .touch .title41, .c-kemu .touch .title10{color:#4ea375;}
+.c-kemu .touch .title5, .c-kemu .touch .title6, .c-kemu .touch .title4{color:#ff931e;}
+.c-kemu .touch .title7, .c-kemu .touch .title8, .c-kemu .touch .title9{color:#65baf7;}
+.c-kemu .touch .title29, .c-kemu .touch .title28, .c-kemu .touch .title30{color:#bdccd4;}
+/* 未点击情况 */
+.c-kemu .icon{content:""; display:block; position:absolute; right:0; bottom:0; width:41px; height:41px; background:url(../../../images/mobile/homework/kemu.png) no-repeat; background-size:350px 300px;border-bottom-right-radius:4px;background-position:-90px -180px;}
+.c-kemu .icon1{background-position:-45px 0;}
+.c-kemu .icon2{background-position:0 0;}
+.c-kemu .icon3{background-position:-90px 0;}
+.c-kemu .icon5{background-position:0 -45px;}
+.c-kemu .icon6{background-position:-45px -45px;}
+.c-kemu .icon4{background-position:0px -45px;}
+.c-kemu .icon7{background-position:0 -90px;}
+.c-kemu .icon8{background-position:-45px -90px;}
+.c-kemu .icon9{background-position:-90px -90px;}
+.c-kemu .icon29{background-position:0 -135px;}
+.c-kemu .icon28{background-position:-45px -135px;}
+.c-kemu .icon30{background-position:-90px -135px;}
+.c-kemu .icon41{background-position:0 -180px;}
+.c-kemu .icon10{background-position:-45px -180px;}
+/* 点击时 */
+.c-kemu .touch .icon{background-position:-225px -180px;}
+.c-kemu .touch .icon1{background-position:-180px 0;}
+.c-kemu .touch .icon2{background-position:-135px 0;}
+.c-kemu .touch .icon3{background-position:-225px 0;}
+.c-kemu .touch .icon5{background-position:-135px -45px;}
+.c-kemu .touch .icon6{background-position:-180px -45px;}
+.c-kemu .touch .icon4{background-position:-225px -45px;}
+.c-kemu .touch .icon7{background-position:-135px -90px;}
+.c-kemu .touch .icon8{background-position:-180px -90px;}
+.c-kemu .touch .icon9{background-position:-225px -90px;}
+.c-kemu .touch .icon29{background-position:-135px -135px;}
+.c-kemu .touch .icon28{background-position:-180px -135px;}
+.c-kemu .touch .icon30{background-position:-225px -135px;}
+.c-kemu .touch .icon41{background-position:-135px -180px;}
+.c-kemu .touch .icon10{background-position:-180px -180px;}
+
+/* 没有数据 */
+.c-nodata {position: fixed; width: 100%; top: 0; right: 0; left: 0; bottom: 0; margin: 0; background: #fff; text-align: center;}
+.c-nodata:before {content: ""; display: inline-block; width: 168px; height: 168px; margin-top: 240px; background: url("../../../images/mobile/v1.3/nodata.png") no-repeat;}
+.c-nodata .msg {margin: 20px 20px 0; color: #999;}
+/* 作业列表：主体背景 */
+.c-worklist {position: absolute; top: 0; bottom: 0; left: 0; right: 0; color: #555; font-size: 14px; background: #f5f7f8; overflow: auto;}
+/* 作业列表：搜索区 */
+.c-search-box {height: 45px; padding: 6px 12px; background: #fff; border-bottom: 1px solid #e7e7e7; position: relative;}
+.c-search-box .input-wrapper {height: 33px; width: 100%; padding: 0 36px; border-radius: 4px; background: #e7e7e7;}
+.c-search-box input {height: 33px; width: 100%; background: #e7e7e7; border: none;}
+.c-search-box input[type="search"] {-webkit-appearance: none;}
+.c-search-box input::-webkit-search-cancel-button {display: none;}
+.c-search-box i {position: absolute; display: block; width: 30px; height: 30px;}
+.c-search-box i.search {top: 8px; left: 16px; background: url('../../../images/mobile/homework/c-an-search.png') no-repeat center; background-size: 50%;}
+.c-search-box i.delete {top: 8px; right: 16px; background: url('../../../images/mobile/homework/input-delete.png') no-repeat center; background-size: 50%;}
+.c-search-box i.delete:hover {background: url('../../../images/mobile/homework/input-delete-on.png') no-repeat center; background-size: 50%;}
+/* 作业列表：过滤区 */
+.c-search-filter {height: 39px; background: #fff; padding: 0 50px; border-bottom: 1px solid #e7e7e7;}
+.c-search-filter ul {overflow: hidden;}
+.c-search-filter ul li {float: left; width: 50%; height: 38px; line-height: 38px; font-weight: bold; text-align: center; border-bottom: 2px solid transparent;}
+.c-search-filter ul li.current {color: #4ea375; border-bottom: 2px solid #4ea375;}
+/* 可滚动区域 */
+.c-scroll-box {width: 100%; height: calc(100% - 84px); overflow: auto; position: relative;}
+.c-scroll-box .pulldown {position: absolute; top: -40px; left: 0; right: 0; height: 40px; line-height: 40px;}
+.c-scroll-box .scrollbar {position: absolute; width: 100%;}
+
+.c-scroll-box .scroll-tips {width: 100%; height: 48px; text-align: center; padding: 12px; font-size: 14px;}
+.c-scroll-box .scroll-tips span {display: inline-block; color: #999; height: 24px; line-height: 24px; vertical-align: top;}
+.c-scroll-box .scroll-tips span.loading {content: ""; display: inline-block; width: 24px; height: 24px; line-height: 24px; margin-right: 16px; background: url("../../../images/mobile/homework/loading.gif") no-repeat;}
+.c-scroll-box .scroll-tips span.letalk {content: ""; display: block; margin: auto; margin-top: 60px; width: 84px; height: 84px; margin-top: 80px; background: url("../../../images/mobile/homework/tips.png") no-repeat; background-size: 100%;}
+
+/* 作业列表：数据区 */
+.c-result-box {background: #f5f7f8;}
+/* 作业列表：数据块 */
+.c-workitem {height: 136px; background: #fff; margin-top: 10px; padding: 0 16px;}
+.c-workitem-head {border-bottom: 1px solid #e7e7e7; height: 32px; line-height: 32px; font-size: 12px; color: #999;}
+.c-workitem-head span.teacher {display: inline-block; width: 60px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;}
+.c-workitem-head span.close-time {display: inline-block; width: 150px; padding-left: 10px; vertical-align: top;}
+.c-workitem-head span.status {display: inline-block; width: 50px; color: #4ea375; text-align: right; float: right;}
+.c-workitem-body {position: relative; height: 72px; padding: 6px 0;}
+.c-workitem-body .icon {position: absolute; width: 42px; height: 42px; left: 0; top: 50%; margin-top: -21px;}
+.c-workitem-body .type-1 {width: 42px;; height: 42px;; background: url('../../../images/mobile/homework/lesson-before.png') no-repeat center; background-size: 100%;}
+.c-workitem-body .type-2 {width: 42px;; height: 42px;; background: url('../../../images/mobile/homework/lesson-on.png') no-repeat center; background-size: 100%;}
+.c-workitem-body .type-3 {width: 42px;; height: 42px;; background: url('../../../images/mobile/homework/lesson-after.png') no-repeat center; background-size: 100%;}
+.c-workitem-body .type-5 {width: 42px;; height: 42px;; background: url('../../../images/mobile/homework/lesson-dianbo.png') no-repeat center; background-size: 100%;}
+.c-workitem-body .type-6 {width: 42px;; height: 42px;; background: url('../../../images/mobile/homework/lesson-push.png') no-repeat center; background-size: 100%;}
+.c-workitem-body .score {position: absolute; width: 34px; height: 34px; right: 0; top: 35%; margin-top: -17px;}
+.c-workitem-body .c-score-box {width: 100px; float: right; text-align: right;}
+.c-workitem-body .middle {width: 100%; padding-left: 50px; padding-right: 20px;}
+.c-workitem-body .name {height: 20px; line-height: 20px; padding-right: 50px; font-size: 14px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;}
+.c-workitem-body .flags {height: 20px; line-height: 20px;}
+.c-workitem-body .submit-time {height: 20px; line-height: 20px; font-size: 12px;}
+.c-workitem-body .flag-box {margin-right: 7px; padding: 1px 2px 0; border: 1px solid #f85959; border-radius: 2px; color: #f85959; font-size: 10px;}
+.c-workitem-body .submit-time .flag-box {margin-left: 5px; margin-right: 0;}
+.c-workitem-foot {height: 32px; padding: 4px 0; border-top: 1px solid #e7e7e7;}
+.c-workitem-foot a {float: right; margin-left: 15px; border: 1px solid #999; border-radius: 2px; padding: 3px; min-width: 50px; font-size: 12px; line-height: 12px; text-align: center; color: #555;}
+/* 作业列表：得分区 */
+.c-score-box span {display: inline-block; width: 10px; height: 25px; vertical-align: top; background: url('../../../images/mobile/homework/an-grades.png') no-repeat -3px 4px;}
+.c-score-box span.state-null {background:url('../../../images/mobile/homework/grade-null.png') no-repeat center; margin-right: 2px;}
+.c-score-box span.state-0{background-position:-25px 2px}
+.c-score-box span.state-1{background-position:-46px 4px}
+.c-score-box span.state-2{background-position:-66px 2px}
+.c-score-box span.state-3{background-position:-86px 5px}
+.c-score-box span.state-4{width:12px;background-position:-104px 3px}
+.c-score-box span.state-5{width:12px;background-position:-126px 3px}
+.c-score-box span.state-6{width:12px;background-position:-146px 3px}
+.c-score-box span.state-7{width:12px;height:21px;margin-top:4px;background-position:-126px -21px}
+.c-score-box span.state-8{background-position:-6px -19px}
+.c-score-box span.state-9{background-position:-25px -19px}
+.c-score-box span.state-point{width:4px;background-position:-8px 2px}
+.c-score-box span.state-score{width:25px;height:30px;background-position:-154px -15px}

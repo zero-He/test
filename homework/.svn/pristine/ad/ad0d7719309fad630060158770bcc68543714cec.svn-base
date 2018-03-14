@@ -1,0 +1,147 @@
+package cn.strong.leke.homework.model.query;
+
+
+public class ApiHomeworkListQuery {
+
+	private Long userId;
+	private Integer start;
+	private Integer limit;
+	private Long flagHomeworkId ;
+	private String homeworkName;
+	// 作业类型 3 课时作业  5 点播作业  6 推送作业
+	private Integer homeworkType;
+	//资源类型，1：课件 2：微课 3：试卷
+	private Integer resType;
+	/**
+	 * null:全部
+	 * 1：非作废的
+	 * 2:已作废的
+	 */
+	private Integer businessType;
+	
+	/**
+	 * null:全部
+	 * 1：待批改
+	 * 2：待复批
+	 */
+	private Integer type;
+	
+
+	public Long getUserId() {
+		return userId;
+	}
+
+	public void setUserId(Long userId) {
+		this.userId = userId;
+	}
+
+
+
+	/**
+	 * @return the limit
+	 */
+	public Integer getLimit() {
+		return limit;
+	}
+
+	/**
+	 * @param limit the limit to set
+	 */
+	public void setLimit(Integer limit) {
+		this.limit = limit;
+	}
+
+
+	/**
+	 * @return the start
+	 */
+	public Integer getStart() {
+		return start;
+	}
+
+	/**
+	 * @param start the start to set
+	 */
+	public void setStart(Integer start) {
+		this.start = start;
+	}
+
+	/**
+	 * @return the type
+	 */
+	public Integer getType() {
+		return type;
+	}
+
+	/**
+	 * @param type the type to set
+	 */
+	public void setType(Integer type) {
+		this.type = type;
+	}
+
+	/**
+	 * @return the flagHomeworkId
+	 */
+	public Long getFlagHomeworkId() {
+		return flagHomeworkId;
+	}
+
+	/**
+	 * @param flagHomeworkId the flagHomeworkId to set
+	 */
+	public void setFlagHomeworkId(Long flagHomeworkId) {
+		this.flagHomeworkId = flagHomeworkId;
+	}
+
+	/**
+	 * @return the homeworkName
+	 */
+	public String getHomeworkName() {
+		return homeworkName;
+	}
+
+	/**
+	 * @param homeworkName the homeworkName to set
+	 */
+	public void setHomeworkName(String homeworkName) {
+		this.homeworkName = homeworkName;
+	}
+
+	/**
+	 * @return the homeworkType
+	 */
+	public Integer getHomeworkType() {
+		return homeworkType;
+	}
+
+	/**
+	 * @param homeworkType the homeworkType to set
+	 */
+	public void setHomeworkType(Integer homeworkType) {
+		this.homeworkType = homeworkType;
+	}
+
+	/**
+	 * @return the businessType
+	 */
+	public Integer getBusinessType() {
+		return businessType;
+	}
+
+	/**
+	 * @param businessType the businessType to set
+	 */
+	public void setBusinessType(Integer businessType) {
+		this.businessType = businessType;
+	}
+
+	public Integer getResType() {
+		return resType;
+	}
+
+	public void setResType(Integer resType) {
+		this.resType = resType;
+	}
+
+}

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.diag.dao.teachingMonitor.InteractXDao">
+
+	<sql id="baseSql">
+		<if test="subjectId != null and subjectId != -1">
+			AND EXISTS (SELECT 1 FROM lesson.ls_klass_subject ks WHERE ks.classSubjId = l.classSubjId AND ks.subjectId = #{subjectId})
+		</if>
+		AND EXISTS (
+			SELECT 1 FROM lesson.ls_klass k WHERE k.classId = l.classId AND k.isExpired = 0 AND k.isDeleted = 0
+			<if test="gradeId != null and gradeId != -1">
+				AND k.gradeId = #{gradeId}
+			</if>
+		)
+		AND EXISTS (
+			SELECT 1 FROM lesson.ls_klass k, lesson.ls_klass_teacher kt
+			WHERE kt.userId = l.teacherId
+			AND k.classId = kt.classId
+			AND k.isExpired = 0
+			AND k.isDeleted = 0
+			AND k.type = 1
+			AND kt.roleId = 101
+			AND k.schoolId = #{schoolId}
+			<if test="gradeId != null and gradeId != -1">
+				AND k.gradeId = #{gradeId}
+			</if>
+			<if test="subjectId != null and subjectId != -1">
+				AND kt.subjectId = #{subjectId}
+			</if>
+		)
+	</sql>
+
+	<!--根据schoolId、gradeId查courseSingleIds-->
+	<select id="selectSingleIdsBySchoolIdGradeId" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo" resultType="java.lang.Long">
+		SELECT
+			l.courseSingleId
+		FROM
+			lesson.ls_lesson l,
+			lesson.ls_klass k
+		WHERE k.classId = l.classId
+			AND l.schoolId = #{schoolId}
+			<if test="classId != null">
+				AND k.classId = #{classId}
+			</if>
+			AND l.isDeleted = 0
+			<include refid="baseSql"/>
+	</select>
+
+</mapper>

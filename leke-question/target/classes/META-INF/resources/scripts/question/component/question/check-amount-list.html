@@ -1,0 +1,43 @@
+<div class="detail">
+	<div class="m-search-box">
+		<div class="item">
+			<label class="title">审核日期：</label>
+			<input type="text" class="Wdate u-ipt u-ipt-nm"
+				data-bind="datepicker: {
+							value: query.minCreatedOn,
+							maxDate : query.maxCreatedOn,
+							dateFmt: 'yyyy-MM-dd'
+						}"/>
+			- 
+			<input type="text" class="Wdate u-ipt u-ipt-nm" 
+				data-bind="datepicker: {
+							value: query.maxCreatedOn,
+							minDate : query.minCreatedOn,
+							dateFmt: 'yyyy-MM-dd'
+						}"/>
+		</div>
+	</div>
+	<div class="base_view1">
+		<div class="m-table">
+			<table>
+				<thead>
+					<tr>
+						<th>待审核量</th>
+						<th>已审核量</th>
+					</tr>
+				</thead>
+				<tbody>
+					<!-- ko if: !query.minCreatedOn() || !query.maxCreatedOn() -->
+					<tr><td colspan="2" align="center">请选择日期查询</td></tr>
+					<!-- /ko -->
+					<!-- ko if: query.minCreatedOn() && query.maxCreatedOn() -->
+					<tr>
+						<td data-bind="text: unchecked"></td>
+						<td data-bind="text: checked"></td>
+					</tr>
+					<!-- /ko -->
+				</tbody>
+			</table>
+		</div>
+	</div>
+</div>

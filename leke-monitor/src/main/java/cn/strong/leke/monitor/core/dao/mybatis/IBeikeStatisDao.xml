@@ -1,0 +1,792 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.monitor.core.dao.mybatis.IBeikeStatisDao">
+	<!-- 全网备课开始 -->
+	<select id="selectAllCoursewareData" parameterType="cn.strong.leke.monitor.core.model.BeikeStatisDTO"
+		resultType="cn.strong.leke.monitor.core.model.BeikeStatisDTO">
+		<!-- 课前课中的课件上传、引用、编辑引用数量,typeId 1:上传 2:引用 3:编辑引用 ,beikePhase:1:课前 2：课中 -->
+		SELECT SUM(CASE WHEN beikePhase=1 AND typeID=1 THEN cou ELSE 0 END) AS beforeCwUpNums,
+		SUM(CASE WHEN beikePhase=1 AND
+		typeID=2 THEN cou ELSE 0 END) AS beforeCwQuoteNums,
+		SUM(CASE WHEN beikePhase=1 AND typeID=3 THEN cou ELSE 0 END) AS
+		beforeCwEditNums,
+		SUM(CASE WHEN beikePhase=2 AND typeID=1 THEN cou ELSE 0 END) AS InClassCwUpNums,
+		SUM(CASE WHEN
+		beikePhase=2 AND typeID=2 THEN cou ELSE 0 END) AS inClassCwQuoteNums,
+		SUM(CASE WHEN beikePhase=2 AND typeID=3 THEN cou
+		ELSE 0 END) AS inClassCwEditNums
+		FROM (
+		SELECT co.sourceId, co.createdBy AS coCreate, re.createdBy AS reCreate,
+		re.beikePhase,re.resourceType,COUNT(*) AS cou,
+		(CASE WHEN (co.sourceId IS NULL AND co.createdBy = re.createdBy) OR
+		(coo.createdBy=re.createdBy) THEN 1
+		WHEN (co.sourceId IS NULL AND co.createdBy != re.createdBy) OR
+		(co.sourceId IS NOT NULL AND coo.createdBy!=re.createdBy AND co.createdBy != re.createdBy) THEN 2
+		WHEN co.sourceId IS NOT NULL AND co.createdBy=re.createdBy AND coo.createdBy!=re.createdBy THEN 3 ELSE 0 END) AS
+		typeID,ls.schoolId
+		FROM beike.bk_beike_resource re
+		LEFT JOIN
+		beike.bk_courseware co ON co.coursewareId = re.relationId AND co.isDeleted=0 AND re.isDeleted=0 AND
+		(re.beikePhase = 1
+		OR re.beikePhase=2) AND re.resourceType = 1
+		LEFT JOIN beike.bk_courseware coo ON co.sourceId=coo.coursewareId AND
+		co.sourceId IS NOT NULL
+		LEFT JOIN lesson.ls_lesson ls ON re.courseSingleId=ls.courseSingleId
+		WHERE co.createdBy IS NOT NULL AND ls.isDeleted=0 AND ls.isEnd=1
+		<if test="fromDate != null and fromDate != ''">
+		<![CDATA[
+			AND ls.startTime >= DATE_FORMAT(#{fromDate},'%Y-%m-%d') 
+		]]>
+		</if>
+		<if test="endDate != null and endDate != ''">
+		<![CDATA[
+			AND ls.startTime < DATE_ADD(#{endDate},INTERVAL 1 DAY)   
+		]]></if>
+		GROUP BY co.sourceId, co.createdBy, re.createdBy,re.beikePhase,re.resourceType,ls.schoolId) t
+	</select>
+
+	<select id="selectAllHomeworkData" parameterType="cn.strong.leke.monitor.core.model.BeikeStatisDTO" resultType="cn.strong.leke.monitor.core.model.BeikeStatisDTO">
+		<!-- 课前课中的作业上传、引用、编辑引用数量,typeId 1:上传 2:引用 3:编辑引用, beikePhase:1:课前 2：课中 -->
+		SELECT SUM(CASE WHEN beikePhase=1 AND typeID=1 THEN cou ELSE 0 END) AS beforeHwUpNums,
+       SUM(CASE WHEN beikePhase=1 AND typeID=2 THEN cou ELSE 0 END) AS beforeHwQuoteNums,
+       SUM(CASE WHEN beikePhase=1 AND typeID=3 THEN cou ELSE 0 END) AS beforeHwEditNums,
+       SUM(CASE WHEN beikePhase=2 AND typeID=1 THEN cou ELSE 0 END) AS inClassHwUpNums,
+       SUM(CASE WHEN beikePhase=2 AND typeID=2 THEN cou ELSE 0 END) AS inClassHwQuoteNums,
+       SUM(CASE WHEN beikePhase=2 AND typeID=3 THEN cou ELSE 0 END) AS inClassHwEditNums,
+       SUM(CASE WHEN beikePhase=3 AND typeID=1 THEN cou ELSE 0 END) AS afterHwUpNums,
+       SUM(CASE WHEN beikePhase=3 AND typeID=2 THEN cou ELSE 0 END) AS afterHwQuoteNums,
+       SUM(CASE WHEN beikePhase=3 AND typeID=3 THEN cou ELSE 0 END) AS afterHwEditNums
+		FROM (
+		SELECT pa.sourceId, pa.createdBy AS coCreate, re.createdBy AS reCreate,
+		re.beikePhase,COUNT(*) AS cou,
+		(CASE WHEN (pa.sourceId IS NULL AND pa.createdBy = re.createdBy) OR
+		(paa.createdBy=re.createdBy) THEN 1
+		WHEN (pa.sourceId IS NULL AND pa.createdBy != re.createdBy) OR
+		(pa.sourceId IS NOT NULL AND paa.createdBy!=re.createdBy AND pa.createdBy != re.createdBy) THEN 2
+		WHEN pa.sourceId IS NOT NULL AND pa.createdBy=re.createdBy AND paa.createdBy!=re.createdBy THEN 3 ELSE 0 END) AS
+		typeID,
+		ls.schoolId
+		FROM beike.bk_beike_resource re
+		LEFT JOIN
+		homework.HW_HOMEWORK hw ON re.relationId=hw.homeworkId AND re.isDeleted=0 AND hw.isDeleted=0 AND (re.beikePhase = 1 OR
+		re.beikePhase=2 or re.beikePhase=3) AND re.resourceType = 3
+		LEFT JOIN paper.pap_paper pa ON pa.paperId = hw.paperId AND pa.isDeleted=0
+		LEFT JOIN paper.pap_paper paa ON pa.sourceId=paa.paperId AND pa.sourceId IS NOT NULL
+		LEFT JOIN lesson.ls_lesson ls ON
+		re.courseSingleId=ls.courseSingleId
+		WHERE pa.createdBy IS NOT NULL and ls.isDeleted=0 AND ls.isEnd=1
+		<if test="fromDate != null and fromDate != ''">
+		<![CDATA[
+			AND ls.startTime >= DATE_FORMAT(#{fromDate},'%Y-%m-%d') 
+		]]>
+		</if>
+		<if test="endDate != null and endDate != ''">
+		<![CDATA[
+			AND ls.startTime <= DATE_ADD(#{endDate},INTERVAL 1 DAY)   
+		]]></if>
+		GROUP BY pa.sourceId, pa.createdBy, re.createdBy,re.beikePhase,ls.schoolId) t
+	</select>
+
+	<select id="selectAllWkData" parameterType="cn.strong.leke.monitor.core.model.BeikeStatisDTO" resultType="cn.strong.leke.monitor.core.model.BeikeStatisDTO">
+		<!-- 微课上传、引用数量,typeId 1:上传 2:引用 -->
+		SELECT SUM(CASE WHEN beikePhase=1 AND typeID=1 THEN cou ELSE 0 END) AS beforeWkUpNums,
+     		   SUM(CASE WHEN beikePhase=1 AND typeID=2 THEN cou ELSE 0 END) AS beforeWkQuoteNums,
+      		   SUM(CASE WHEN beikePhase=3 AND typeID=1 THEN cou ELSE 0 END) AS afterWkUpNums,
+      		   SUM(CASE WHEN beikePhase=3 AND typeID=2 THEN cou ELSE 0 END) AS afterWkQuoteNums
+		FROM (
+		SELECT co.createdBy AS coCreate, re.createdBy AS reCreate, re.beikePhase, COUNT(*) AS cou,
+		(CASE WHEN
+		co.createdBy = re.createdBy THEN 1 ELSE 2 END) AS typeID,ls.schoolId
+		FROM beike.bk_beike_resource re LEFT JOIN
+		beike.bk_microcourse co ON co.microcourseId = re.relationId
+		AND re.isDeleted=0 AND re.resourceType = 2 and (re.beikePhase=1 or re.beikePhase=3)
+		LEFT JOIN
+		lesson.ls_lesson ls ON re.courseSingleId=ls.courseSingleId
+		WHERE co.createdBy IS NOT NULL AND ls.isDeleted=0 AND ls.isEnd=1
+		<if test="fromDate != null and fromDate != ''">
+		<![CDATA[
+			AND ls.startTime >= DATE_FORMAT(#{fromDate},'%Y-%m-%d') 
+		]]>
+		</if>
+		<if test="endDate != null and endDate != ''">
+		<![CDATA[
+			AND ls.startTime < DATE_ADD(#{endDate},INTERVAL 1 DAY)   
+		]]></if>
+		GROUP BY co.createdBy, re.createdBy,re.beikePhase,ls.schoolId ) t
+	</select>
+
+	<select id="selectAllBkgData" parameterType="cn.strong.leke.monitor.core.model.BeikeStatisDTO" resultType="cn.strong.leke.monitor.core.model.BeikeStatisDTO">
+		<!-- 备课包上传、引用数量,typeId 1:上传 2:引用 3:编辑引用 -->
+		SELECT SUM(CASE WHEN typeID=1 THEN 1 ELSE 0 END) AS bkgUpNums,
+		SUM(CASE WHEN typeID=2 THEN 1 ELSE 0 END) AS
+		bkgQuoteNums,
+		SUM(CASE WHEN typeID=3 THEN 1 ELSE 0 END) AS bkgEditNums
+		FROM (
+		SELECT
+		re.beikePkgId,
+		(CASE WHEN (pkg.sourceId IS NULL AND pkg.createdBy = re.createdBy) OR
+		(pkg2.createdBy=re.createdBy) THEN 1
+		WHEN (pkg.sourceId IS NULL AND pkg.createdBy != re.createdBy) OR
+		(pkg.sourceId IS NOT NULL AND pkg.createdBy != re.createdBy AND pkg2.createdBy!=re.createdBy) THEN 2
+		WHEN pkg.sourceId IS NOT NULL AND pkg.createdBy=re.createdBy AND pkg2.createdBy!=re.createdBy THEN 3 ELSE 0 END) AS
+		typeID,COUNT(*) AS cou
+		FROM beike.bk_beike_resource re
+		LEFT JOIN beike.bk_beike_pkg pkg ON re.beikePkgId = pkg.beikePkgId
+		LEFT JOIN beike.bk_beike_pkg pkg2 ON pkg.sourceId =
+		pkg2.beikePkgId AND pkg.sourceId IS NOT NULL
+		LEFT JOIN lesson.ls_lesson ls ON re.courseSingleId=ls.courseSingleId
+		WHERE
+		re.isDeleted=0  AND pkg.isDeleted=0 and ls.isDeleted=0 AND ls.isEnd=1
+		<if test="fromDate != null and fromDate != ''">
+		<![CDATA[
+			AND ls.startTime >= DATE_FORMAT(#{fromDate},'%Y-%m-%d') 
+		]]>
+		</if>
+		<if test="endDate != null and endDate != ''">
+		<![CDATA[
+			AND ls.startTime <= DATE_ADD(#{endDate},INTERVAL 1 DAY)   
+		]]></if>
+		GROUP BY re.beikePkgId,re.courseSingleId
+		) t
+	</select>
+
+	<select id="selectSchoolNums" parameterType="cn.strong.leke.monitor.core.model.BeikeStatisDTO" resultType="cn.strong.leke.monitor.core.model.BeikeStatisDTO">
+		SELECT COUNT(*) AS schoolNums
+		FROM
+		(SELECT ls.schoolId, COUNT(*)
+		FROM lesson.ls_lesson ls
+		LEFT JOIN tutor.tutor_school sc ON ls.schoolId=sc.schoolId
+		WHERE ls.isdeleted = 0 AND ls.isEnd=1 AND sc.isDeleted=0	
+		<if test="fromDate != null and fromDate != ''">
+		<![CDATA[
+			AND ls.startTime >= DATE_FORMAT(#{fromDate},'%Y-%m-%d') 
+		]]>
+		</if>
+		<if test="endDate != null and endDate != ''">
+		<![CDATA[
+			AND ls.startTime <= DATE_ADD(#{endDate},INTERVAL 1 DAY)   
+		]]></if>
+		GROUP BY ls.schoolId) t
+	</select>
+
+	<select id="selectLessonNums" parameterType="cn.strong.leke.monitor.core.model.BeikeStatisDTO" resultType="cn.strong.leke.monitor.core.model.BeikeStatisDTO">
+
+		SELECT
+		SUM(CASE WHEN isPrepared=1 or isPrepared=0 or isPrepared is null THEN cou ELSE 0 END) AS mustLessons,
+		SUM(CASE
+		WHEN isPrepared=1 THEN cou ELSE 0 END) AS beikeLessons
+		FROM (
+		SELECT schoolId,isPrepared,COUNT(*) AS cou
+		FROM
+		lesson.ls_lesson ls WHERE ls.isDeleted=0 AND ls.isEnd=1
+		<if test="fromDate != null and fromDate != ''">
+		<![CDATA[
+			AND ls.startTime >= DATE_FORMAT(#{fromDate},'%Y-%m-%d') 
+		]]>
+		</if>
+		<if test="endDate != null and endDate != ''">
+		<![CDATA[
+			AND ls.startTime <= DATE_ADD(#{endDate},INTERVAL 1 DAY)   
+		]]></if>
+		GROUP BY schoolId,isPrepared
+		) t
+	</select>
+	<select id="selectAllCwLessonNums" parameterType="cn.strong.leke.monitor.core.model.BeikeStatisDTO" resultType="cn.strong.leke.monitor.core.model.BeikeStatisDTO">
+		SELECT COUNT(*) as cwLessonNums FROM (
+		SELECT ls.courseSingleId,ls.schoolId FROM beike.bk_beike_resource re
+		LEFT JOIN lesson.ls_lesson ls ON ls.courseSingleId=re.courseSingleId
+		WHERE re.isDeleted = 0 AND ls.isDeleted=0 AND ls.isEnd=1
+		AND re.resourceType =1 AND ls.isPrepared=1 
+		<if test="fromDate != null and fromDate != ''">
+		<![CDATA[
+			AND ls.startTime >= DATE_FORMAT(#{fromDate},'%Y-%m-%d') 
+		]]>
+		</if>
+		<if test="endDate != null and endDate != ''">
+		<![CDATA[
+			AND ls.startTime <= DATE_ADD(#{endDate},INTERVAL 1 DAY)   
+		]]></if>
+		AND re.createdBy IS NOT NULL
+		GROUP BY ls.courseSingleId,ls.schoolId
+		) t 
+	</select>
+	<select id="selectAllHwLessonNums" parameterType="cn.strong.leke.monitor.core.model.BeikeStatisDTO" resultType="cn.strong.leke.monitor.core.model.BeikeStatisDTO">
+		SELECT COUNT(*) as hwLessonNums FROM (
+		SELECT ls.courseSingleId,ls.schoolId  FROM beike.bk_beike_resource re
+		LEFT JOIN lesson.ls_lesson ls ON ls.courseSingleId=re.courseSingleId
+		WHERE re.isDeleted = 0 AND ls.isDeleted=0 AND ls.isEnd=1
+		AND re.resourceType =3 AND ls.isPrepared=1 
+		<if test="fromDate != null and fromDate != ''">
+		<![CDATA[
+			AND ls.startTime >= DATE_FORMAT(#{fromDate},'%Y-%m-%d') 
+		]]>
+		</if>
+		<if test="endDate != null and endDate != ''">
+		<![CDATA[
+			AND ls.startTime <= DATE_ADD(#{endDate},INTERVAL 1 DAY)   
+		]]></if>
+		AND re.createdBy IS NOT NULL
+		GROUP BY ls.courseSingleId,ls.schoolId 
+		) t 
+	</select>
+	<!-- 全网备课结束 -->
+
+
+	<!-- 学校历史备课开始 -->
+	<select id="selectSchoolBeikeList" parameterType="cn.strong.leke.monitor.core.model.BeikeStatisDTO" resultType="cn.strong.leke.monitor.core.model.BeikeStatisDTO">
+		SELECT schoolId,schoolName,
+		SUM(CASE WHEN isPrepared=1 OR isPrepared=0 OR isPrepared IS NULL THEN cou ELSE 0 END) AS
+		mustLessons,
+		SUM(CASE WHEN isPrepared=1 THEN cou ELSE 0 END) AS beikeLessons
+		FROM (
+		SELECT
+		ls.schoolId,s.schoolName,isPrepared,COUNT(*) AS cou
+		FROM lesson.ls_lesson ls 
+		LEFT JOIN tutor.tutor_school s ON ls.schoolId=s.schoolId
+		WHERE ls.isDeleted=0 AND s.isDeleted=0 AND ls.isEnd=1
+		<if test="fromDate != null and fromDate != ''">
+		<![CDATA[
+			AND ls.startTime >= DATE_FORMAT(#{fromDate},'%Y-%m-%d') 
+		]]>
+		</if>
+		<if test="endDate != null and endDate != ''">
+		<![CDATA[
+			AND ls.startTime < DATE_ADD(#{endDate},INTERVAL 1 DAY)   
+		]]></if>
+		<if test="schoolId != null and schoolId != ''">
+		<![CDATA[
+			AND ls.schoolId=#{schoolId}  
+		]]></if>
+		GROUP BY ls.schoolId,isPrepared,s.schoolName
+		) t
+		GROUP BY schoolId,schoolName
+		ORDER BY schoolId
+	</select>
+	<select id="selectCoursewareData" parameterType="map" resultType="cn.strong.leke.monitor.core.model.BeikeStatisDTO">
+		<!-- 课前课中的课件上传、引用、编辑引用数量,typeId 1:上传 2:引用 3:编辑引用 ,beikePhase:1:课前 2：课中 -->
+		SELECT schoolId,
+		SUM(CASE WHEN beikePhase=1 AND typeID=1 THEN cou ELSE 0 END) AS beforeCwUpNums,
+		SUM(CASE WHEN
+		beikePhase=1 AND typeID=2 THEN cou ELSE 0 END) AS beforeCwQuoteNums,
+		SUM(CASE WHEN beikePhase=1 AND typeID=3 THEN cou
+		ELSE 0 END) AS beforeCwEditNums,
+		SUM(CASE WHEN beikePhase=2 AND typeID=1 THEN cou ELSE 0 END) AS inClassCwUpNums,
+		SUM(CASE WHEN beikePhase=2 AND typeID=2 THEN cou ELSE 0 END) AS inClassCwQuoteNums,
+		SUM(CASE WHEN beikePhase=2 AND
+		typeID=3 THEN cou ELSE 0 END) AS inClassCwEditNums
+		FROM (
+		SELECT co.sourceId, co.createdBy AS coCreate, re.createdBy AS
+		reCreate, re.beikePhase,re.resourceType,COUNT(*) AS cou,
+		(CASE WHEN (co.sourceId IS NULL AND co.createdBy =
+		re.createdBy) OR (coo.createdBy=re.createdBy) THEN 1
+		WHEN (co.sourceId IS NULL AND co.createdBy != re.createdBy) OR
+		(co.sourceId IS NOT NULL AND coo.createdBy!=re.createdBy AND co.createdBy != re.createdBy) THEN 2
+		WHEN co.sourceId IS NOT NULL AND co.createdBy=re.createdBy AND coo.createdBy!=re.createdBy THEN 3 ELSE 0 END) AS
+		typeID,ls.schoolId
+		FROM beike.bk_beike_resource re
+		LEFT JOIN
+		beike.bk_courseware co ON co.coursewareId = re.relationId AND co.isDeleted=0 AND re.isDeleted=0 AND
+		(re.beikePhase = 1
+		OR re.beikePhase=2) AND re.resourceType = 1
+		LEFT JOIN beike.bk_courseware coo ON co.sourceId=coo.coursewareId AND
+		co.sourceId IS NOT NULL
+		LEFT JOIN lesson.ls_lesson ls ON re.courseSingleId=ls.courseSingleId
+		WHERE co.createdBy IS NOT NULL AND ls.isDeleted=0 AND ls.isEnd=1
+		<if test="fromDate != null and fromDate != ''">
+		<![CDATA[
+			AND ls.startTime >= DATE_FORMAT(#{fromDate},'%Y-%m-%d') 
+		]]>
+		</if>
+		<if test="endDate != null and endDate != ''">
+		<![CDATA[
+			AND ls.startTime <= DATE_ADD(#{endDate},INTERVAL 1 DAY)   
+		]]></if>
+		AND ls.schoolId in
+		<foreach item="item" index="index" collection="schoolIds" open="(" separator="," close=")">
+			#{item}
+		</foreach>
+		GROUP BY co.sourceId, co.createdBy, re.createdBy,re.beikePhase,re.resourceType,ls.schoolId) t
+		GROUP BY schoolId
+	</select>
+
+	<select id="selectHomeworkData" parameterType="map" resultType="cn.strong.leke.monitor.core.model.BeikeStatisDTO">
+		<!-- 课前课中的作业上传、引用、编辑引用数量,typeId 1:上传 2:引用 3:编辑引用, beikePhase:1:课前 2：课中 -->
+		SELECT schoolId,
+		SUM(CASE WHEN beikePhase=1 AND typeID=1 THEN cou ELSE 0 END) AS beforeHwUpNums,
+       SUM(CASE WHEN beikePhase=1 AND typeID=2 THEN cou ELSE 0 END) AS beforeHwQuoteNums,
+       SUM(CASE WHEN beikePhase=1 AND typeID=3 THEN cou ELSE 0 END) AS beforeHwEditNums,
+       SUM(CASE WHEN beikePhase=2 AND typeID=1 THEN cou ELSE 0 END) AS inClassHwUpNums,
+       SUM(CASE WHEN beikePhase=2 AND typeID=2 THEN cou ELSE 0 END) AS inClassHwQuoteNums,
+       SUM(CASE WHEN beikePhase=2 AND typeID=3 THEN cou ELSE 0 END) AS inClassHwEditNums,
+       SUM(CASE WHEN beikePhase=3 AND typeID=1 THEN cou ELSE 0 END) AS afterHwUpNums,
+       SUM(CASE WHEN beikePhase=3 AND typeID=2 THEN cou ELSE 0 END) AS afterHwQuoteNums,
+       SUM(CASE WHEN beikePhase=3 AND typeID=3 THEN cou ELSE 0 END) AS afterHwEditNums
+		FROM (
+		SELECT pa.sourceId, pa.createdBy AS coCreate, re.createdBy AS
+		reCreate, re.beikePhase,COUNT(*) AS cou,
+		(CASE WHEN (pa.sourceId IS NULL AND pa.createdBy = re.createdBy) OR
+		(paa.createdBy=re.createdBy) THEN 1
+		WHEN (pa.sourceId IS NULL AND pa.createdBy != re.createdBy) OR
+		(pa.sourceId IS NOT NULL AND paa.createdBy!=re.createdBy AND pa.createdBy != re.createdBy) THEN 2
+		WHEN pa.sourceId IS NOT NULL AND pa.createdBy=re.createdBy AND paa.createdBy!=re.createdBy THEN 3 ELSE 0 END) AS
+		typeID,
+		ls.schoolId
+		FROM beike.bk_beike_resource re
+		LEFT JOIN
+		homework.HW_HOMEWORK hw ON re.relationId=hw.homeworkId AND re.isDeleted=0 AND hw.isDeleted=0 AND (re.beikePhase = 1 OR
+		re.beikePhase=2 or re.beikePhase=3) AND re.resourceType = 3
+		LEFT JOIN paper.pap_paper pa ON pa.paperId = hw.paperId AND pa.isDeleted=0
+		LEFT JOIN paper.pap_paper paa ON pa.sourceId=paa.paperId AND pa.sourceId IS NOT NULL
+		LEFT JOIN lesson.ls_lesson ls ON
+		re.courseSingleId=ls.courseSingleId
+		WHERE pa.createdBy IS NOT NULL and ls.isDeleted=0 AND ls.isEnd=1
+		<if test="fromDate != null and fromDate != ''">
+		<![CDATA[
+			AND ls.startTime >= DATE_FORMAT(#{fromDate},'%Y-%m-%d') 
+		]]>
+		</if>
+		<if test="endDate != null and endDate != ''">
+		<![CDATA[
+			AND ls.startTime <= DATE_ADD(#{endDate},INTERVAL 1 DAY)   
+		]]></if>
+		AND ls.schoolId in
+		<foreach item="item" index="index" collection="schoolIds" open="(" separator="," close=")">
+			#{item}
+		</foreach>
+		GROUP BY pa.sourceId, pa.createdBy, re.createdBy,re.beikePhase,ls.schoolId) t
+		GROUP BY schoolId
+	</select>
+
+	<select id="selectWkData" parameterType="map" resultType="cn.strong.leke.monitor.core.model.BeikeStatisDTO">
+		<!-- 微课上传、引用数量,typeId 1:上传 2:引用 -->
+		SELECT schoolId,
+			   SUM(CASE WHEN beikePhase=1 AND typeID=1 THEN cou ELSE 0 END) AS beforeWkUpNums,
+     		   SUM(CASE WHEN beikePhase=1 AND typeID=2 THEN cou ELSE 0 END) AS beforeWkQuoteNums,
+      		   SUM(CASE WHEN beikePhase=3 AND typeID=1 THEN cou ELSE 0 END) AS afterWkUpNums,
+      		   SUM(CASE WHEN beikePhase=3 AND typeID=2 THEN cou ELSE 0 END) AS afterWkQuoteNums
+		FROM (
+		SELECT co.createdBy AS coCreate, re.createdBy AS reCreate, re.beikePhase, COUNT(*) AS cou,
+		(CASE WHEN
+		co.createdBy = re.createdBy THEN 1 ELSE 2 END) AS typeID,ls.schoolId
+		FROM beike.bk_beike_resource re LEFT JOIN
+		beike.bk_microcourse co ON co.microcourseId = re.relationId
+		AND re.isDeleted=0 AND re.resourceType = 2 and (re.beikePhase=1 or re.beikePhase=3)
+		LEFT JOIN
+		lesson.ls_lesson ls ON re.courseSingleId=ls.courseSingleId
+		WHERE co.createdBy IS NOT NULL AND ls.isDeleted=0 AND ls.isEnd=1
+		<if test="fromDate != null and fromDate != ''">
+		<![CDATA[
+			AND ls.startTime >= DATE_FORMAT(#{fromDate},'%Y-%m-%d') 
+		]]>
+		</if>
+		<if test="endDate != null and endDate != ''">
+		<![CDATA[
+			AND ls.startTime <= DATE_ADD(#{endDate},INTERVAL 1 DAY)   
+		]]></if>
+		AND ls.schoolId in
+		<foreach item="item" index="index" collection="schoolIds" open="(" separator="," close=")">
+			#{item}
+		</foreach>
+		GROUP BY co.createdBy, re.createdBy,re.beikePhase,ls.schoolId ) t GROUP BY schoolId
+	</select>
+
+	<select id="selectBkgData" parameterType="map" resultType="cn.strong.leke.monitor.core.model.BeikeStatisDTO">
+		<!-- 备课包上传、引用数量,typeId 1:上传 2:引用 3:编辑引用 -->
+		SELECT schoolId,
+		SUM(CASE WHEN typeID=1 THEN 1 ELSE 0 END) AS bkgUpNums,
+		SUM(CASE WHEN typeID=2 THEN 1 ELSE 0 END)
+		AS bkgQuoteNums,
+		SUM(CASE WHEN typeID=3 THEN 1 ELSE 0 END) AS bkgEditNums
+		FROM (
+		SELECT
+		re.beikePkgId,
+		(CASE WHEN (pkg.sourceId IS NULL AND pkg.createdBy = re.createdBy) OR
+		(pkg2.createdBy=re.createdBy) THEN 1
+		WHEN (pkg.sourceId IS NULL AND pkg.createdBy != re.createdBy) OR
+		(pkg.createdBy != re.createdBy AND pkg2.createdBy!=re.createdBy) THEN 2
+		WHEN pkg.sourceId IS NOT NULL AND pkg.createdBy=re.createdBy AND
+		pkg2.createdBy!=re.createdBy THEN 3 ELSE 0 END) AS
+		typeID,
+		ls.schoolId,COUNT(*) AS cou
+		FROM beike.bk_beike_resource re
+		LEFT JOIN beike.bk_beike_pkg pkg ON re.beikePkgId = pkg.beikePkgId
+		LEFT JOIN beike.bk_beike_pkg pkg2 ON pkg.sourceId =
+		pkg2.beikePkgId AND pkg.sourceId IS NOT NULL
+		LEFT JOIN lesson.ls_lesson ls ON re.courseSingleId=ls.courseSingleId
+		WHERE
+		re.isDeleted=0 AND re.beikePhase=1 AND pkg.isDeleted=0  and ls.isDeleted=0 AND ls.isEnd=1
+		<if test="fromDate != null and fromDate != ''">
+		<![CDATA[
+			AND ls.startTime >= DATE_FORMAT(#{fromDate},'%Y-%m-%d') 
+		]]>
+		</if>
+		<if test="endDate != null and endDate != ''">
+		<![CDATA[
+			AND ls.startTime <= DATE_ADD(#{endDate},INTERVAL 1 DAY)   
+		]]></if>
+		AND ls.schoolId in
+		<foreach item="item" index="index" collection="schoolIds" open="(" separator="," close=")">
+			#{item}
+		</foreach>
+		GROUP BY re.beikePkgId,ls.schoolId,re.courseSingleId
+		) t GROUP BY schoolId
+	</select>
+	<select id="selectSchoolCwLessonNums" parameterType="map" resultType="cn.strong.leke.monitor.core.model.BeikeStatisDTO">
+		SELECT t.schoolId,COUNT(*) as cwLessonNums FROM (
+		SELECT ls.schoolId,ls.courseSingleId FROM beike.bk_beike_resource re
+		LEFT JOIN lesson.ls_lesson ls ON ls.courseSingleId=re.courseSingleId
+		WHERE re.isDeleted = 0 AND ls.isDeleted=0 AND ls.isEnd=1 AND ls.isPrepared=1 
+		AND re.resourceType =1 
+		<if test="fromDate != null and fromDate != ''">
+		<![CDATA[
+			AND ls.startTime >= DATE_FORMAT(#{fromDate},'%Y-%m-%d') 
+		]]>
+		</if>
+		<if test="endDate != null and endDate != ''">
+		<![CDATA[
+			AND ls.startTime <= DATE_ADD(#{endDate},INTERVAL 1 DAY)   
+		]]></if>
+		AND ls.schoolId in
+		<foreach item="item" index="index" collection="schoolIds" open="(" separator="," close=")">
+			#{item}
+		</foreach>
+		AND re.createdBy IS NOT NULL
+		GROUP BY ls.schoolId,ls.courseSingleId
+		) t
+		GROUP BY t.schoolId
+	</select>
+	<select id="selectSchoolHwLessonNums" parameterType="map" resultType="cn.strong.leke.monitor.core.model.BeikeStatisDTO">
+		SELECT t.schoolId,COUNT(*) as hwLessonNums FROM (
+		SELECT ls.schoolId,ls.courseSingleId FROM beike.bk_beike_resource re
+		LEFT JOIN lesson.ls_lesson ls ON ls.courseSingleId=re.courseSingleId
+		WHERE re.isDeleted = 0 AND ls.isDeleted=0 AND ls.isEnd=1 AND ls.isPrepared=1 
+		AND re.resourceType =3 
+		<if test="fromDate != null and fromDate != ''">
+		<![CDATA[
+			AND ls.startTime >= DATE_FORMAT(#{fromDate},'%Y-%m-%d') 
+		]]>
+		</if>
+		<if test="endDate != null and endDate != ''">
+		<![CDATA[
+			AND ls.startTime <= DATE_ADD(#{endDate},INTERVAL 1 DAY)   
+		]]></if>
+		AND ls.schoolId in
+		<foreach item="item" index="index" collection="schoolIds" open="(" separator="," close=")">
+			#{item}
+		</foreach>
+		AND re.createdBy IS NOT NULL
+		GROUP BY ls.schoolId,ls.courseSingleId
+		) t
+		GROUP BY t.schoolId
+	</select>
+	<!-- 学校历史备课结束 -->
+
+	<!-- 年级学科备课开始 -->
+	<select id="selectGradeBeikeList" parameterType="map" resultType="cn.strong.leke.monitor.core.model.BeikeStatisDTO">
+		SELECT schoolId,schoolName,gradeName,subjectName,IFNULL(gradeId,0) AS gradeId,subjectId,
+		SUM(CASE WHEN isPrepared=1 OR isPrepared=0 OR
+		isPrepared IS NULL THEN cou ELSE 0 END) AS mustLessons,
+		SUM(CASE WHEN isPrepared=1 THEN cou ELSE 0 END) AS beikeLessons
+		FROM (
+		SELECT ls.schoolId,s.schoolName,isPrepared,gradeName,tu.subjectName,gradeId,tu.subjectId,COUNT(*) AS cou
+		FROM lesson.ls_lesson ls LEFT JOIN
+		lesson.ls_klass lk ON ls.classId=lk.classId
+		LEFT JOIN lesson.ls_klass_subject sub ON
+		ls.classSubjId = sub.classSubjId AND sub.isDeleted = 0
+		LEFT JOIN tutor.tutor_school s ON ls.schoolId=s.schoolId
+		LEFT JOIN tutor.tutor_subject tu ON sub.subjectId=tu.subjectId AND tu.isDeleted=0
+		WHERE ls.isDeleted=0 AND s.isDeleted=0 AND ls.isEnd=1  AND lk.isDeleted = 0
+		and ls.schoolId=#{schoolId}
+		<if test="fromDate != null and fromDate != ''">
+		<![CDATA[
+			AND ls.startTime >= DATE_FORMAT(#{fromDate},'%Y-%m-%d') 
+		]]>
+		</if>
+		<if test="endDate != null and endDate != ''">
+		<![CDATA[
+			AND ls.startTime <= DATE_ADD(#{endDate},INTERVAL 1 DAY)   
+		]]></if>
+		<if test="gradeId != null and gradeId != ''">
+		<![CDATA[
+			AND lk.gradeId = #{gradeId}   
+		]]></if>
+		<if test="subjectId != null and subjectId != ''">
+		<![CDATA[
+			AND tu.subjectId = #{subjectId}    
+		]]></if>
+		GROUP BY ls.schoolId,isPrepared,s.schoolName,gradeName,tu.subjectName,gradeId,tu.subjectId) t
+		GROUP BY
+		schoolId,schoolName,gradeName,subjectName,gradeId,subjectId
+		ORDER BY schoolId
+	</select>
+
+	<select id="selectGradeCoursewareData" parameterType="map" resultType="cn.strong.leke.monitor.core.model.BeikeStatisDTO">
+		<!-- 课前课中的课件上传、引用、编辑引用数量,typeId 1:上传 2:引用 3:编辑引用 ,beikePhase:1:课前 2：课中 -->
+		SELECT schoolId,gradeName,subjectName,IFNULL(gradeId,0) AS gradeId,subjectId,
+		SUM(CASE WHEN beikePhase=1 AND typeID=1 THEN cou ELSE 0 END)
+		AS beforeCwUpNums,
+		SUM(CASE WHEN beikePhase=1 AND typeID=2 THEN cou ELSE 0 END) AS beforeCwQuoteNums,
+		SUM(CASE WHEN
+		beikePhase=1 AND typeID=3 THEN cou ELSE 0 END) AS beforeCwEditNums,
+		SUM(CASE WHEN beikePhase=2 AND typeID=1 THEN cou
+		ELSE 0 END) AS inClassCwUpNums,
+		SUM(CASE WHEN beikePhase=2 AND typeID=2 THEN cou ELSE 0 END) AS inClassCwQuoteNums,
+		SUM(CASE WHEN beikePhase=2 AND typeID=3 THEN cou ELSE 0 END) AS inClassCwEditNums
+		FROM (
+		SELECT co.sourceId,
+		co.createdBy AS coCreate, re.createdBy AS reCreate, re.beikePhase,re.resourceType,COUNT(*) AS cou,
+		(CASE WHEN
+		(co.sourceId IS NULL AND co.createdBy = re.createdBy) OR (coo.createdBy=re.createdBy) THEN 1
+		WHEN (co.sourceId IS NULL AND co.createdBy != re.createdBy) OR 
+		(co.sourceId IS NOT NULL AND coo.createdBy!=re.createdBy AND co.createdBy != re.createdBy) THEN 2
+		WHEN co.sourceId IS NOT NULL AND co.createdBy=re.createdBy AND coo.createdBy!=re.createdBy THEN 3 ELSE 0 END) AS
+		typeID,ls.schoolId,lk.gradeName
+		,tu.subjectName ,lk.gradeId ,tu.subjectId
+		FROM beike.bk_beike_resource re
+		LEFT JOIN beike.bk_courseware co ON co.coursewareId = re.relationId AND co.isDeleted=0 AND
+		re.isDeleted=0 AND (re.beikePhase = 1 OR re.beikePhase=2) AND re.resourceType = 1
+		LEFT JOIN beike.bk_courseware coo ON co.sourceId=coo.coursewareId AND co.sourceId IS NOT NULL
+		LEFT JOIN lesson.ls_lesson ls ON re.courseSingleId=ls.courseSingleId
+		LEFT JOIN lesson.ls_klass lk ON ls.classId=lk.classId AND lk.isDeleted = 0
+		LEFT JOIN lesson.ls_klass_subject sub ON ls.classSubjId = sub.classSubjId AND sub.isDeleted = 0
+		LEFT JOIN tutor.tutor_subject tu ON sub.subjectId=tu.subjectId AND tu.isDeleted=0
+		WHERE co.createdBy IS NOT NULL AND ls.isDeleted=0 AND ls.isEnd=1
+		<if test="fromDate != null and fromDate != ''">
+		<![CDATA[
+			AND ls.startTime >= DATE_FORMAT(#{fromDate},'%Y-%m-%d') 
+		]]>
+		</if>
+		<if test="endDate != null and endDate != ''">
+		<![CDATA[
+			AND ls.startTime <= DATE_ADD(#{endDate},INTERVAL 1 DAY)   
+		]]></if>
+		and ls.schoolId=#{schoolId}
+		AND lk.gradeId in
+		<foreach item="item" index="index" collection="gradeIds" open="(" separator="," close=")">
+			#{item}
+		</foreach>
+		AND tu.subjectId in
+		<foreach item="item" index="index" collection="subjectIds" open="(" separator="," close=")">
+			#{item}
+		</foreach>
+		GROUP BY co.sourceId, co.createdBy,
+		re.createdBy,re.beikePhase,re.resourceType,ls.schoolId,lk.gradeId,lk.gradeName,tu.subjectId,tu.subjectName) t
+		GROUP BY schoolId,gradeName,subjectName,gradeId,subjectId
+	</select>
+
+	<select id="selectGradeHomeworkData" parameterType="map" resultType="cn.strong.leke.monitor.core.model.BeikeStatisDTO">
+		<!-- 课前课中的作业上传、引用、编辑引用数量,typeId 1:上传 2:引用 3:编辑引用, beikePhase:1:课前 2：课中 -->
+		SELECT schoolId,gradeName,subjectName,IFNULL(gradeId,0) AS gradeId,subjectId,
+		SUM(CASE WHEN beikePhase=1 AND typeID=1 THEN cou ELSE 0 END) AS beforeHwUpNums,
+       SUM(CASE WHEN beikePhase=1 AND typeID=2 THEN cou ELSE 0 END) AS beforeHwQuoteNums,
+       SUM(CASE WHEN beikePhase=1 AND typeID=3 THEN cou ELSE 0 END) AS beforeHwEditNums,
+       SUM(CASE WHEN beikePhase=2 AND typeID=1 THEN cou ELSE 0 END) AS inClassHwUpNums,
+       SUM(CASE WHEN beikePhase=2 AND typeID=2 THEN cou ELSE 0 END) AS inClassHwQuoteNums,
+       SUM(CASE WHEN beikePhase=2 AND typeID=3 THEN cou ELSE 0 END) AS inClassHwEditNums,
+       SUM(CASE WHEN beikePhase=3 AND typeID=1 THEN cou ELSE 0 END) AS afterHwUpNums,
+       SUM(CASE WHEN beikePhase=3 AND typeID=2 THEN cou ELSE 0 END) AS afterHwQuoteNums,
+       SUM(CASE WHEN beikePhase=3 AND typeID=3 THEN cou ELSE 0 END) AS afterHwEditNums
+		FROM (
+		SELECT pa.sourceId,
+		pa.createdBy AS coCreate, re.createdBy AS reCreate, re.beikePhase,COUNT(*) AS cou,
+		(CASE WHEN (pa.sourceId IS NULL AND
+		pa.createdBy = re.createdBy) OR (paa.createdBy=re.createdBy) THEN 1
+		WHEN (pa.sourceId IS NULL AND pa.createdBy != re.createdBy) OR
+		(pa.sourceId IS NOT NULL AND paa.createdBy!=re.createdBy AND pa.createdBy != re.createdBy) THEN 2
+		WHEN pa.sourceId IS NOT NULL AND pa.createdBy=re.createdBy AND paa.createdBy!=re.createdBy THEN 3 ELSE 0 END) AS
+		typeID,
+		ls.schoolId,lk.gradeId,lk.gradeName,tu.subjectId,tu.subjectName
+		FROM beike.bk_beike_resource re
+		LEFT JOIN
+		homework.HW_HOMEWORK hw ON re.relationId=hw.homeworkId AND re.isDeleted=0 AND hw.isDeleted=0 AND (re.beikePhase = 1 OR
+		re.beikePhase=2 or re.beikePhase=3) AND re.resourceType = 3
+		LEFT JOIN paper.pap_paper pa ON pa.paperId = hw.paperId AND pa.isDeleted=0
+		LEFT JOIN paper.pap_paper paa ON pa.sourceId=paa.paperId AND pa.sourceId IS NOT NULL
+		LEFT JOIN lesson.ls_lesson ls ON re.courseSingleId=ls.courseSingleId
+		LEFT JOIN lesson.ls_klass lk ON ls.classId=lk.classId AND lk.isDeleted = 0
+		LEFT JOIN lesson.ls_klass_subject sub ON ls.classSubjId = sub.classSubjId AND sub.isDeleted = 0
+		LEFT JOIN tutor.tutor_subject tu ON sub.subjectId=tu.subjectId AND tu.isDeleted=0
+		WHERE pa.createdBy IS NOT NULL  and ls.isDeleted=0 AND ls.isEnd=1
+		<if test="fromDate != null and fromDate != ''">
+		<![CDATA[
+			AND ls.startTime >= DATE_FORMAT(#{fromDate},'%Y-%m-%d') 
+		]]>
+		</if>
+		<if test="endDate != null and endDate != ''">
+		<![CDATA[
+			AND ls.startTime <= DATE_ADD(#{endDate},INTERVAL 1 DAY)   
+		]]></if>
+		and ls.schoolId=#{schoolId}
+		AND lk.gradeId in
+		<foreach item="item" index="index" collection="gradeIds" open="(" separator="," close=")">
+			#{item}
+		</foreach>
+		AND tu.subjectId in
+		<foreach item="item" index="index" collection="subjectIds" open="(" separator="," close=")">
+			#{item}
+		</foreach>
+		GROUP BY pa.sourceId, pa.createdBy,
+		re.createdBy,re.beikePhase,ls.schoolId,lk.gradeId,lk.gradeName,tu.subjectId,tu.subjectName ) t
+		GROUP BY
+		schoolId,gradeName,subjectName,gradeId,subjectId
+	</select>
+
+	<select id="selectGradeWkData" parameterType="map" resultType="cn.strong.leke.monitor.core.model.BeikeStatisDTO">
+		<!-- 微课上传、引用数量,typeId 1:上传 2:引用 -->
+		SELECT schoolId,gradeName,subjectName,IFNULL(gradeId,0) AS gradeId,subjectId,
+			SUM(CASE WHEN beikePhase=1 AND typeID=1 THEN cou ELSE 0 END) AS beforeWkUpNums,
+     		   SUM(CASE WHEN beikePhase=1 AND typeID=2 THEN cou ELSE 0 END) AS beforeWkQuoteNums,
+      		   SUM(CASE WHEN beikePhase=3 AND typeID=1 THEN cou ELSE 0 END) AS afterWkUpNums,
+      		   SUM(CASE WHEN beikePhase=3 AND typeID=2 THEN cou ELSE 0 END) AS afterWkQuoteNums
+		FROM (
+		SELECT co.createdBy AS coCreate, re.createdBy AS
+		reCreate, re.beikePhase, COUNT(*) AS cou,
+		(CASE WHEN co.createdBy = re.createdBy THEN 1 ELSE 2 END) AS
+		typeID,ls.schoolId,lk.gradeId,lk.gradeName,tu.subjectId,tu.subjectName
+		FROM beike.bk_beike_resource re LEFT JOIN
+		beike.bk_microcourse co ON co.microcourseId = re.relationId
+		AND re.isDeleted=0 AND re.resourceType = 2 and (re.beikePhase=1 or re.beikePhase=3)
+		LEFT JOIN lesson.ls_lesson ls ON re.courseSingleId=ls.courseSingleId
+		LEFT JOIN lesson.ls_klass lk ON ls.classId=lk.classId AND lk.isDeleted = 0
+		LEFT JOIN lesson.ls_klass_subject sub ON ls.classSubjId = sub.classSubjId AND sub.isDeleted = 0
+		LEFT JOIN tutor.tutor_subject tu ON sub.subjectId=tu.subjectId AND tu.isDeleted=0
+		WHERE co.createdBy IS NOT NULL AND ls.isDeleted=0 AND ls.isEnd=1
+		<if test="fromDate != null and fromDate != ''">
+		<![CDATA[
+			AND ls.startTime >= DATE_FORMAT(#{fromDate},'%Y-%m-%d') 
+		]]>
+		</if>
+		<if test="endDate != null and endDate != ''">
+		<![CDATA[
+			AND ls.startTime <= DATE_ADD(#{endDate},INTERVAL 1 DAY)   
+		]]></if>
+		and ls.schoolId=#{schoolId}
+		AND lk.gradeId in
+		<foreach item="item" index="index" collection="gradeIds" open="(" separator="," close=")">
+			#{item}
+		</foreach>
+		AND tu.subjectId in
+		<foreach item="item" index="index" collection="subjectIds" open="(" separator="," close=")">
+			#{item}
+		</foreach>
+		GROUP BY co.createdBy, re.createdBy,re.beikePhase,ls.schoolId,lk.gradeId,lk.gradeName,tu.subjectId,tu.subjectName )
+		t
+		GROUP BY schoolId,gradeName,subjectName,gradeId,subjectId
+	</select>
+
+	<select id="selectGradeBkgData" parameterType="map" resultType="cn.strong.leke.monitor.core.model.BeikeStatisDTO">
+		<!-- 备课包上传、引用数量,typeId 1:上传 2:引用 3:编辑引用 -->
+		SELECT schoolId,IFNULL(gradeId,0) AS gradeId,subjectId,
+		SUM(CASE WHEN typeID=1 THEN 1 ELSE 0 END) AS bkgUpNums,
+		SUM(CASE WHEN typeID=2 THEN 1 ELSE 0 END) AS bkgQuoteNums,
+		SUM(CASE WHEN typeID=3 THEN 1 ELSE 0 END) AS bkgEditNums
+		FROM (
+		SELECT re.beikePkgId,
+		(CASE WHEN (pkg.sourceId IS NULL AND pkg.createdBy =
+		re.createdBy) OR (pkg2.createdBy=re.createdBy) THEN 1
+		WHEN (pkg.sourceId IS NULL AND pkg.createdBy != re.createdBy) OR
+		(pkg.createdBy != re.createdBy AND pkg2.createdBy!=re.createdBy) THEN 2
+		WHEN pkg.sourceId IS NOT NULL AND pkg.createdBy=re.createdBy AND
+		pkg2.createdBy!=re.createdBy THEN 3 ELSE 0 END) AS
+		typeID,
+		ls.schoolId,lk.gradeId
+		,sub.subjectId ,COUNT(*) AS cou
+		FROM beike.bk_beike_resource re
+		LEFT JOIN beike.bk_beike_pkg pkg ON re.beikePkgId =
+		pkg.beikePkgId
+		LEFT JOIN beike.bk_beike_pkg pkg2 ON pkg.sourceId = pkg2.beikePkgId AND pkg.sourceId IS NOT NULL
+		LEFT
+		JOIN lesson.ls_lesson ls ON re.courseSingleId=ls.courseSingleId
+		LEFT JOIN lesson.ls_klass lk ON ls.classId=lk.classId
+		AND lk.isDeleted = 0
+		LEFT JOIN lesson.ls_klass_subject sub ON ls.classSubjId = sub.classSubjId AND sub.isDeleted = 0
+		WHERE re.isDeleted=0  AND re.beikePhase=1 AND pkg.isDeleted=0  AND ls.isDeleted=0 AND ls.isEnd=1
+		<if test="fromDate != null and fromDate != ''">
+		<![CDATA[
+			AND ls.startTime >= DATE_FORMAT(#{fromDate},'%Y-%m-%d') 
+		]]>
+		</if>
+		<if test="endDate != null and endDate != ''">
+		<![CDATA[
+			AND ls.startTime <= DATE_ADD(#{endDate},INTERVAL 1 DAY)   
+		]]></if>
+		AND ls.schoolId=#{schoolId}
+		AND lk.gradeId IN
+		<foreach item="item" index="index" collection="gradeIds" open="(" separator="," close=")">
+			#{item}
+		</foreach>
+		AND sub.subjectId IN
+		<foreach item="item" index="index" collection="subjectIds" open="(" separator="," close=")">
+			#{item}
+		</foreach>
+		GROUP BY
+		re.beikePkgId,ls.schoolId,lk.gradeId,sub.subjectId,re.courseSingleId
+		) t
+		GROUP BY schoolId,gradeId,subjectId
+		
+	</select>
+	<select id="selectGradeCwLessonNums" parameterType="map" resultType="cn.strong.leke.monitor.core.model.BeikeStatisDTO">
+		SELECT t.schoolId,t.gradeId,t.subjectId,COUNT(*) as cwLessonNums FROM (
+		SELECT ls.schoolId,ls.courseSingleId,lk.gradeId,sub.subjectId FROM beike.bk_beike_resource re
+		LEFT JOIN lesson.ls_lesson ls ON ls.courseSingleId=re.courseSingleId
+		LEFT JOIN lesson.ls_klass lk ON ls.classId=lk.classId AND lk.isDeleted = 0
+		LEFT JOIN lesson.ls_klass_subject sub ON ls.classSubjId = sub.classSubjId AND sub.isDeleted = 0
+		WHERE re.isDeleted = 0 AND ls.isDeleted=0 AND ls.isEnd=1
+		AND re.resourceType =1 AND ls.isPrepared=1 
+		<if test="fromDate != null and fromDate != ''">
+		<![CDATA[
+			AND ls.startTime >= DATE_FORMAT(#{fromDate},'%Y-%m-%d') 
+		]]>
+		</if>
+		<if test="endDate != null and endDate != ''">
+		<![CDATA[
+			AND ls.startTime <= DATE_ADD(#{endDate},INTERVAL 1 DAY)   
+		]]></if>
+		and ls.schoolId=#{schoolId}
+		AND lk.gradeId in
+		<foreach item="item" index="index" collection="gradeIds" open="(" separator="," close=")">
+			#{item}
+		</foreach>
+		AND sub.subjectId in
+		<foreach item="item" index="index" collection="subjectIds" open="(" separator="," close=")">
+			#{item}
+		</foreach>
+		AND re.createdBy IS NOT NULL
+		GROUP BY ls.schoolId,ls.courseSingleId,lk.gradeId,sub.subjectId
+		) t
+		GROUP BY t.schoolId,t.gradeId,t.subjectId
+	</select>
+	
+	<select id="selectGradeHwLessonNums" parameterType="map" resultType="cn.strong.leke.monitor.core.model.BeikeStatisDTO">
+		SELECT t.schoolId,t.gradeId,t.subjectId,COUNT(*) as hwLessonNums FROM (
+		SELECT ls.schoolId,ls.courseSingleId,lk.gradeId,sub.subjectId FROM beike.bk_beike_resource re
+		LEFT JOIN lesson.ls_lesson ls ON ls.courseSingleId=re.courseSingleId
+		LEFT JOIN lesson.ls_klass lk ON ls.classId=lk.classId AND lk.isDeleted = 0
+		LEFT JOIN lesson.ls_klass_subject sub ON ls.classSubjId = sub.classSubjId AND sub.isDeleted = 0
+		WHERE re.isDeleted = 0 AND ls.isDeleted=0 AND ls.isEnd=1
+		AND re.resourceType =3 AND ls.isPrepared=1 
+		<if test="fromDate != null and fromDate != ''">
+		<![CDATA[
+			AND ls.startTime >= DATE_FORMAT(#{fromDate},'%Y-%m-%d') 
+		]]>
+		</if>
+		<if test="endDate != null and endDate != ''">
+		<![CDATA[
+			AND ls.startTime <= DATE_ADD(#{endDate},INTERVAL 1 DAY)   
+		]]></if>
+		and ls.schoolId=#{schoolId}
+		AND lk.gradeId in
+		<foreach item="item" index="index" collection="gradeIds" open="(" separator="," close=")">
+			#{item}
+		</foreach>
+		AND sub.subjectId in
+		<foreach item="item" index="index" collection="subjectIds" open="(" separator="," close=")">
+			#{item}
+		</foreach>
+		AND re.createdBy IS NOT NULL
+		GROUP BY ls.schoolId,ls.courseSingleId,lk.gradeId,sub.subjectId
+		) t
+		GROUP BY t.schoolId,t.gradeId,t.subjectId
+	</select>
+	<!-- 年级学科备课结束 -->
+</mapper>

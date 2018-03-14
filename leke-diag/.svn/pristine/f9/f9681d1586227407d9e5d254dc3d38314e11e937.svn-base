@@ -1,0 +1,61 @@
+<%@ page pageEncoding="UTF-8"%>
+<%@ include file="/pages/common/tags.jsp"%>
+<!DOCTYPE html>
+<html>
+<head>
+<title>作业完成详情<c:if test="${device != 'hd'}"> - 乐课网</c:if></title>
+<meta name="viewport" content="width=1280">
+<%@ include file="/pages/common/meta.jsp"%>
+<link rel="stylesheet" href="${assets}/styles/diag/analyse.css">
+</head>
+<body>
+	<%@ include file="/pages/header/header.jsp"%>
+	<div class="g-bd">
+		<div class="g-mn">
+			<h3 class="f-mb10">${reportCycle.label}作业完成详情</h3>
+			<form id="jTableForm">
+				<input type="hidden" name="submitStatus" value="1" id="jSubmitStatus" />
+				<input type="hidden" name="cycleId" value="${reportCycle.id}" />
+			</form>
+			<div class="m-tab">
+				<ul id="jStatusTab">
+					<li data-status="1" data-tips="暂无数据，有作业就要及时完成哦！" class="active"><a>正常提交</a></li>
+					<li data-status="2" data-tips="不错哦！无延迟提交作业"><a>延迟提交</a></li>
+					<li data-status="0" data-tips="真棒！无未提交作业"><a>未提交</a></li>
+				</ul>
+			</div>
+			<div class="m-table m-table-center">
+				<table>
+					<thead>
+						<tr>
+							<th width="60%">作业名称</th>
+							<th width="20%">截止时间</th>
+							<th width="20%">提交时间</th>
+						</tr>
+					</thead>
+					<tbody id="jTableBody"></tbody>
+				</table>
+				<div id="jTablePage"></div>
+			</div>
+		</div>
+	</div>
+	<script>
+		seajs.use('diag/report/stuanaly/person-behavior-homework');
+	</script>
+	<script id="jTemplate" type="text/mustache">
+	{{#.}}
+		<tr>
+			<td>{{homeworkName}}</td>
+			<td>{{fmt closeTime 'yyyy-MM-dd HH:mm'}}</td>
+			<td>
+				{{#cif 'this.submitTime != null'}}
+					{{fmt submitTime 'yyyy-MM-dd HH:mm'}}
+				{{else}}
+					--
+				{{/cif}}
+			</td>
+		</tr>
+	{{/.}}
+	</script>
+</body>
+</html>

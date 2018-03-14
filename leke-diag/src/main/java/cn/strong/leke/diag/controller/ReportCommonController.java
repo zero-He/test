@@ -1,0 +1,126 @@
+package cn.strong.leke.diag.controller;
+
+import java.net.URLEncoder;
+import java.util.List;
+
+import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
+import cn.strong.leke.common.serialize.support.json.JsonUtils;
+import cn.strong.leke.model.base.Clazz;
+import cn.strong.leke.remote.service.lesson.IKlassRemoteService;
+
+@Controller
+@RequestMapping
+public class ReportCommonController {
+
+	@Resource
+	private IKlassRemoteService klassRemoteService;
+
+	@RequestMapping("/auth/common/report/klass/score")
+	public String tchanalyWebIndex() {
+		return "redirect:/auth/common/report/tchanaly/klass-score.htm";
+	}
+
+	@RequestMapping("/auth/hd/report/klass/score")
+	public String tchanalPadIndex() {
+		return "redirect:/auth/hd/report/tchanaly/klass-score.htm";
+	}
+
+	@RequestMapping("/auth/common/report/person/combined")
+	public String stuanalyWebIndex() {
+		return "redirect:/auth/common/report/stuanaly/person-combined.htm";
+	}
+
+	@RequestMapping("/auth/hd/report/person/combined")
+	public String stuanalyPadIndex() {
+		return "redirect:/auth/hd/report/stuanaly/person-combined.htm";
+	}
+
+	@SuppressWarnings("deprecation")
+	@RequestMapping("/auth/teacher/quick/assign")
+	public String score2(@RequestParam("data") String data, HttpServletRequest request) {
+		PaperRule rule = JsonUtils.fromJSON(data, PaperRule.class);
+		Clazz clazz = this.klassRemoteService.getClazzByClassId(rule.getClassId());
+		rule.setClassId(clazz.getClassId());
+		rule.setGradeId(clazz.getGradeId());
+		rule.setSchoolStageId(clazz.getSchoolStageId());
+		String domain = request.getServletContext().getInitParameter("paperServerName");
+		String url = domain + "/auth/common/paper/add/manual.htm?curScope=1&curResGrpId=&action=create&scene=content";
+		url += "&dataJson=" + URLEncoder.encode(JsonUtils.toJSON(rule));
+		return "redirect:" + url;
+	}
+
+	static class PaperRule {
+		private Long subjectId;
+		private Long schoolStageId;
+		private Long gradeId;
+		private Long classId;
+		private List<PaperRuleKno> homeworkQuestionRule;
+
+		public Long getSubjectId() {
+			return subjectId;
+		}
+
+		public void setSubjectId(Long subjectId) {
+			this.subjectId = subjectId;
+		}
+
+		public Long getSchoolStageId() {
+			return schoolStageId;
+		}
+
+		public void setSchoolStageId(Long schoolStageId) {
+			this.schoolStageId = schoolStageId;
+		}
+
+		public Long getGradeId() {
+			return gradeId;
+		}
+
+		public void setGradeId(Long gradeId) {
+			this.gradeId = gradeId;
+		}
+
+		public Long getClassId() {
+			return classId;
+		}
+
+		public void setClassId(Long classId) {
+			this.classId = classId;
+		}
+
+		public List<PaperRuleKno> getHomeworkQuestionRule() {
+			return homeworkQuestionRule;
+		}
+
+		public void setHomeworkQuestionRule(List<PaperRuleKno> homeworkQuestionRule) {
+			this.homeworkQuestionRule = homeworkQuestionRule;
+		}
+	}
+
+	static class PaperRuleKno {
+		private Long knoId;
+		private Integer diff;
+
+		public Long getKnoId() {
+			return knoId;
+		}
+
+		public void setKnoId(Long knoId) {
+			this.knoId = knoId;
+		}
+
+		public Integer getDiff() {
+			return diff;
+		}
+
+		public void setDiff(Integer diff) {
+			this.diff = diff;
+		}
+	}
+}

@@ -1,0 +1,36 @@
+<%@ page pageEncoding="UTF-8"%>
+<%@ include file="/pages/common/tags.jsp"%>
+<!DOCTYPE html >
+<html>
+<head>
+<title>查看微课 - 乐课网</title>
+<%@ include file="/pages/common/meta.jsp"%>
+
+</head>
+<body>
+	<%@ include file="/pages/header/header.jsp"%>
+	<div class="g-bd">
+		<div data-bind="component: 'scope-title'"></div>
+		<div class="g-mn">
+			<div class="z-resource-review">
+                <div class="content">
+                    <div class="courseware"><div id="jPreviewDiv"></div></div>
+                </div>
+            </div>
+		</div>
+	</div>
+	<script>
+		seajs.use('homework/micro/viewMicro',function(view){
+			var id = 'jPreviewDiv';
+			var userId = '${userId}';
+			var filePath = '${microcourseFile.cwUrl}';
+			// var isMedia = '${isMedia}';
+			var taskId = '${microcourseFile.taskId}';
+			var fileSuffix = '${microcourseFile.cwSuffix}';
+			var microId = '${microcourse.microcourseId}';
+			var holidayId= '${holidayId}';
+			view.init(id, userId, fileSuffix, filePath, taskId,holidayId,microId);
+		});
+	</script>
+</body>
+</html>

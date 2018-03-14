@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8" ?>   
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.homework.dao.mybatis.HomeworkStatusExportDao">
+
+	<select id = "findExportStatus" parameterType="cn.strong.leke.homework.model.query.ClassHomeworkQuery" resultType="cn.strong.leke.homework.model.ExportStatus" >
+		<![CDATA[
+			SELECT hh.homeworkId,hhd.studentId,hhd.studentName,hhd.submitStatus 
+			from HW_HOMEWORK hh, HW_HOMEWORK_DTL hhd
+			where hh.homeworkId = hhd.homeworkId 
+			and hh.schoolId = #{schoolId}
+			and hh.isExam = 0
+			and hh.isDeleted = 0 and hhd.isDeleted = 0 and hh.status=1
+			and hhd.studentId IS NOT NULL
+			and hh.classId in
+		]]>
+			<foreach collection="classId" item ="item" open="(" separator="," close=")" >
+				#{item}
+			</foreach>
+			
+			<if test="homeworkType != null and homeworkType != 0">
+			and hh.homeworkType = #{homeworkType}
+			</if>
+			<if test="subjectId != null">
+			and hh.subjectId = #{subjectId}
+			</if>
+			<if test="teacherName != null and teacherName != ''">
+			and hh.teacherName like concat('%',#{teacherName},'%')
+			</if>
+			<if test="homeworkName != null and homeworkName != ''">
+			and hh.homeworkName like concat('%',#{homeworkName},'%')
+			</if>
+			<if test="startTime != null">
+			<![CDATA[
+			and hh.startTime >= #{startTime}
+			]]> 
+			</if>
+			<if test="closeTime != null">
+			<![CDATA[
+			and hh.closeTime <= #{closeTime}
+			]]> 
+			</if>
+			ORDER BY studentId desc , homeworkId desc
+	</select>
+	
+	<select id="countExportStatus" parameterType="cn.strong.leke.homework.model.query.ClassHomeworkQuery" resultType="int">
+		SELECT count(1)
+			from HW_HOMEWORK hh, HW_HOMEWORK_DTL hhd
+			where hh.homeworkId = hhd.homeworkId 
+			and hh.schoolId = #{schoolId}
+			and hh.isExam = 0
+			and hh.isDeleted = 0 and hhd.isDeleted = 0 and hh.status=1
+			and hh.classId in
+			<foreach collection="classId" item ="item" open="(" separator="," close=")" >
+				#{item}
+			</foreach>
+			<if test="homeworkType != null and homeworkType != 0">
+			and hh.homeworkType = #{homeworkType}
+			</if>
+			<if test="subjectId != null">
+			and hh.subjectId = #{subjectId}
+			</if>
+			<if test="teacherName != null and teacherName != ''">
+			and hh.teacherName like concat('%',#{teacherName},'%')
+			</if>
+			<if test="homeworkName != null and homeworkName != ''">
+			and hh.homeworkName like concat('%',#{homeworkName},'%')
+			</if>
+			<if test="startTime != null">
+			<![CDATA[
+			and hh.startTime >= #{startTime}
+			]]> 
+			</if>
+			<if test="closeTime != null">
+			<![CDATA[
+			and hh.closeTime <= #{closeTime}
+			]]> 
+			</if>
+			
+	</select>
+	
+	<select id="findHomeWorkByClassId" parameterType="cn.strong.leke.homework.model.query.ClassHomeworkQuery" resultType="cn.strong.leke.homework.model.Homework">
+		select hh.homeworkId,hh.homeworkName,hh.className
+		from HW_HOMEWORK hh
+		where hh.isDeleted = 0 and hh.status=1 and hh.schoolId = #{schoolId}
+		and hh.isExam = 0
+		and hh.classId in 
+		<foreach collection="classId" open="(" separator="," close=")" item="item" >
+		 	#{item}
+		</foreach>
+			<if test="homeworkType != null and homeworkType != 0">
+			and hh.homeworkType = #{homeworkType}
+			</if>
+			<if test="subjectId != null">
+			and hh.subjectId = #{subjectId}
+			</if>
+			<if test="teacherName != null and teacherName != ''">
+			and hh.teacherName like concat('%',#{teacherName},'%')
+			</if>
+			<if test="homeworkName != null and homeworkName != ''">
+			and hh.homeworkName like concat('%',#{homeworkName},'%')
+			</if>
+			<if test="startTime != null">
+			<![CDATA[
+			and hh.startTime >= #{startTime}
+			]]> 
+			</if>
+			<if test="closeTime != null">
+			<![CDATA[
+			and hh.closeTime <= #{closeTime}
+			]]> 
+			</if>
+	</select>
+</mapper>   

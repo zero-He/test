@@ -1,0 +1,105 @@
+<%@ page pageEncoding="UTF-8"%>
+<%@ include file="/pages/common/tags.jsp"%>
+<!DOCTYPE html>
+<html>
+<head>
+ <link rel="stylesheet" type="text/css" href="${assets}/styles/homework/homework.css?t=20171115">
+<title><locale:message code="common.page.nav.ac.myassignment" /> - <locale:message code="common.page.header.leke" /></title>
+<%@ include file="/pages/common/meta.jsp"%>
+
+</head>
+<body>
+<%@ include file="/pages/header/header.jsp"%>
+<div class="g-bd">
+	<%@ include file="/pages/navigate/navigate.jsp"%>
+	<div class="g-mn">
+		<form action="" method="post" id="formPage" autocomplete="off">
+	        <!-- 作业批改 -->
+	        <div class="m-search-box">
+	        	<!-- 班级 -->
+	            <c:if test="${ classId eq null}">
+	            <label for="" class="title">班级：</label>
+	            <input type="text" name="className"  class="u-ipt u-ipt-nm" />
+	            </c:if>
+	            <c:if test="${classId != null }">
+	             <label for="" class="title">班级：${className}</label>
+	             <input type="hidden" name="classId" value="${classId }" />
+	            </c:if>
+	            <label for="" class="title"><locale:message code="homework.homework.homeworktype" />：</label>
+	            <select id="jHomeworkType" name="homeworkType" class="u-select u-select-nm"></select>
+	
+	            <label for="" class="title"><locale:message code="homework.homework.homeworktitle" />：</label>
+	            <input type="text" name="homeworkName" class="u-ipt u-ipt-nm">
+	
+	            <button class="u-btn u-btn-nm u-btn-bg-turquoise" id="bHomeworkList"><locale:message code="homework.common.search" /></button>
+	        </div>
+	
+	        <div class="z-homework-grade z-homework-grade-teach">
+	            <div class="m-tab c-tab">
+	                <ul>
+	                    <li  class="active" ><a href="javascript:;">复批作业</a></li>
+	                </ul>
+	            </div>
+				<ul id="homeworkListContext"></ul>
+				<div class="page" id="divPage">
+				<div class="f-hide tips f-tac " id="f_emptyDataContainer">未能查询到相关作业~</div>
+				</div>
+	        </div>
+		</form>
+	</div>
+</div>
+
+<script id="homeworkContext_tpl" type="text/handlebars">
+
+	{{#dataList}} 
+	<li class="item">
+	    <div class="title">
+			{{#cif 'this.homeworkType != 6'}}
+	        <a href="${initParam.paperServerName}/auth/common/paper/view.htm?paperId={{paperId}}" 
+	        	target="_blank"  class="name">
+				[{{homeworkTypeStr}}]{{homeworkName}}</a>
+			{{else}}
+			<span class="name-nolink">[{{homeworkTypeStr}}]{{homeworkName}}</span>
+			{{/cif}}
+	        <span class="class-name">{{className}}</span>
+	        <div class="m-btns m-btns-one c-btns">
+	            <div class="init-btn">
+	                <a href="/auth/teacher/homework/reCorrectHomeworkDetail.htm?homeworkId={{homeworkId}}&isExam=false" target="_blank" class="link">详情</a><b><i></i></b>
+	            </div>
+	        </div>
+	    </div>
+	
+	    <div class="tips">
+	        <span>待复批：<b class="cur">{{correctNum}}</b></span>
+	        <p class="time">开始/截止时间：{{fmtTime createdOn}} / {{fmtTime closeTime}}</p>
+	    </div>
+	</li>	
+	{{/dataList}}
+</script>
+
+<script id="jHomeworkEditTpl" type="x-mustache">
+<div class="m-form f-ml80">
+	<ul>
+		<li>
+			<label class="title"><locale:message code="homework.homework.startTime" />：</label>
+			<div class="con">
+				<input type="text" id="jEditStartTime" class="u-ipt u-ipt-lg" readonly="readonly">
+			</div>
+		</li>
+		<li>
+			<label class="title"><locale:message code="homework.homework.closeTime" />：</label>
+			<div class="con">
+				<input type="text" id="jEditCloseTime" class="u-ipt u-ipt-lg" readonly="readonly">
+			</div>
+		</li>
+	</ul>
+</div>
+</script>
+
+<leke:pref />
+<script type="text/javascript">
+	seajs.use('homework/homework/reCorrectHomeworkList');
+</script>
+
+</body>
+</html>

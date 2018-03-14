@@ -1,0 +1,145 @@
+package cn.strong.leke.question.controller.material;
+
+import java.util.List;
+
+import javax.annotation.Resource;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
+
+import cn.strong.leke.common.serialize.support.json.JsonUtils;
+import cn.strong.leke.common.utils.CollectionUtils;
+import cn.strong.leke.context.base.SchoolContext;
+import cn.strong.leke.context.base.SchoolStageContext;
+import cn.strong.leke.context.question.MaterialContext;
+import cn.strong.leke.context.question.PressContext;
+import cn.strong.leke.context.user.UserContext;
+import cn.strong.leke.context.user.UserPrefContext;
+import cn.strong.leke.context.user.model.UserDataAuthority;
+import cn.strong.leke.context.user.model.UserPref;
+import cn.strong.leke.framework.exceptions.ValidateException;
+import cn.strong.leke.framework.web.JsonResult;
+import cn.strong.leke.model.base.School;
+import cn.strong.leke.model.base.SchoolCst;
+import cn.strong.leke.model.question.Material;
+import cn.strong.leke.model.question.querys.MaterialFilter;
+import cn.strong.leke.model.user.User;
+import cn.strong.leke.question.core.material.cmd.ITeacherMaterialRecordHandler;
+import cn.strong.leke.question.core.material.query.IMaterialFileQueryService;
+import cn.strong.leke.question.core.material.query.ITeacherMaterialRecordQueryService;
+import cn.strong.leke.question.model.base.MaterialDTO;
+import cn.strong.leke.question.model.material.MaterialFile;
+import cn.strong.leke.question.model.material.TeacherMaterialRecord;
+import cn.strong.leke.remote.model.question.PressRemote;
+import cn.strong.leke.remote.model.tukor.SchoolStageRemote;
+import cn.strong.leke.remote.model.tukor.SubjectRemote;
+
+@Controller
+@RequestMapping("/auth/teacher/material")
+public class TeacherMaterialController {
+
+	private static final Logger logger = LoggerFactory.getLogger(TeacherMaterialController.class);
+
+	@Resource
+	private ITeacherMaterialRecordHandler teacherMaterialRecordHandler;
+	@Resource
+	private ITeacherMaterialRecordQueryService teacherMaterialRecordQueryService;
+	@Resource
+	private IMaterialFileQueryService materialFileQueryService;
+
+
+	@RequestMapping("callMaterial")
+	public void callMaterial(Model model) {
+		User user = UserContext.user.get();
+		logger.info("call material:" + JsonUtils.toJSON(user));
+		Long userId = user.getId();
+		UserPref userPref = UserPrefContext.getUserPref();
+		logger.info("call material:" + JsonUtils.toJSON(userPref));
+		UserDataAuthority authority = userPref.getAuthority();
+		List<SchoolStageRemote> schoolStages = authority.getSchoolStages();
+		// 判断用户是否有个人老师角色
+		if(CollectionUtils.isNotEmpty(user.getSchoolList())){
+			for(School school:user.getSchoolList()){
+				School school2 = SchoolContext.getSchoolBySchoolId(school.getId());
+				if (school2.getSchoolNature() != null && school2.getSchoolNature().equals(SchoolCst.NATURE_UNIT)) {
+					schoolStages = SchoolStageContext.findSchoolStages();
+					break;
+				}
+			}
+		}
+		model.addAttribute("schoolStages", JsonUtils.toJSON(schoolStages));
+		TeacherMaterialRecord teacherMaterialRecord = teacherMaterialRecordQueryService.getNewest(userId);
+		Long materialId = null;
+		if (teacherMaterialRecord != null) {
+			Long materialFileId = teacherMaterialRecord.getMaterialFileId();
+			MaterialFile materialFile = materialFileQueryService.get(materialFileId);
+			if (materialFile != null) {
+				materialId = materialFile.getMaterialId();
+			}
+		}
+		if (materialId == null && CollectionUtils.isNotEmpty(schoolStages)) {
+			materialId = getMaterialId(schoolStages);
+		}
+		if (materialId == null) {
+			throw new ValidateException("请初始化学段学科对应教材版本！");
+		}
+		initData(materialId, model);
+	}
+
+	private Long getMaterialId(List<SchoolStageRemote> schoolStages) {
+		SchoolStageRemote schoolStageRemote = schoolStages.get(0);
+		List<SubjectRemote> subjectRemotes = schoolStageRemote.getSubjects();
+		Long materialId = null;
+		if (CollectionUtils.isNotEmpty(subjectRemotes)) {
+			Long schoolStageId=schoolStageRemote.getSchoolStageId();
+			Long subjectId = subjectRemotes.get(0).getSubjectId();
+			List<PressRemote> pressRemotes = PressContext.findPresses(schoolStageId, subjectId);
+			if (CollectionUtils.isNotEmpty(pressRemotes)) {
+				Long pressId = pressRemotes.get(0).getPressId();
+				MaterialFilter filter = new MaterialFilter();
+				filter.setSchoolStageId(schoolStageId);
+				filter.setSubjectId(subjectId);
+				filter.setPressId(pressId);
+				List<Material> materials = MaterialContext.findMaterials(filter);
+				if (CollectionUtils.isNotEmpty(materials)) {
+					materialId = materials.get(0).getMaterialId();
+				}
+			}
+		}
+		return materialId;
+	}
+	private void initData(Long materialId, Model model) {
+		Material material = MaterialContext.getMaterial(materialId);
+		Long schoolStageId = material.getSchoolStageId();
+		Long subjectId = material.getSubjectId();
+		List<PressRemote> currentPress = PressContext.findPresses(schoolStageId, subjectId);
+		model.addAttribute("currentPress", currentPress);
+		model.addAttribute("material", material);
+		model.addAttribute("materialJson", JsonUtils.toJSON(material));
+	}
+
+	@ResponseBody
+	@RequestMapping("findTeacherMaterial")
+	public JsonResult findTeacherMaterial(MaterialFilter filter) {
+		User user = UserContext.user.get();
+		List<MaterialDTO> materials = materialFileQueryService.findTeacherMaterialFile(filter, user);
+		return new JsonResult().addDatas("materials", materials);
+	}
+
+	@ResponseBody
+	@RequestMapping("saveTeacherMaterial")
+	public JsonResult saveTeacherMaterial(Long materialFileId, Long curPage) {
+		TeacherMaterialRecord assoc = new TeacherMaterialRecord();
+		Long userId = UserContext.user.getUserId();
+		assoc.setMaterialFileId(materialFileId);
+		assoc.setTeacherId(userId);
+		assoc.setCurPage(curPage);
+		teacherMaterialRecordHandler.save(assoc);
+		return new JsonResult();
+	}
+
+}

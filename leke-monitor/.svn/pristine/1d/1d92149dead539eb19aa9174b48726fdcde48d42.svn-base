@@ -1,0 +1,151 @@
+package cn.strong.leke.monitor.core.service.activeuser.impl;
+
+import java.text.NumberFormat;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+
+import javax.annotation.Resource;
+
+import org.springframework.stereotype.Service;
+
+import cn.strong.leke.monitor.core.service.activeuser.IPlatformActiveUserService;
+import cn.strong.leke.monitor.mongo.course.model.query.PlatformActiveStat;
+import cn.strong.leke.monitor.mongo.online.model.query.ActiveUserQuery;
+import cn.strong.leke.monitor.mongo.online.service.IPlatformActiveUserDao;
+
+@Service
+public class PlatformActiveUserServiceImpl implements IPlatformActiveUserService{
+	
+	@Resource
+	private  IPlatformActiveUserDao iPlatformActiveUserDao;
+	
+	@Override
+	
+	public List<PlatformActiveStat> getPlatformActiveUserInfo(ActiveUserQuery query) {
+		List<PlatformActiveStat> platformActiveStats = aggregatePlatformActiveUserInfo(query);
+		return platformActiveStats;
+		
+	}
+	
+	private List<PlatformActiveStat> aggregatePlatformActiveUserInfo(ActiveUserQuery query) {
+		List<PlatformActiveStat> result = new ArrayList<>();
+		switch (query.getCycle()) {
+			case "日":
+				Set<Integer> staDay = iPlatformActiveUserDao.getStaDay(parseTime(query.getEndDate()), parseTime(query.getFromDate()));
+				for (Integer date : staDay) { 
+					query.setDay(date);
+					int validUserNums = iPlatformActiveUserDao.countActiveUsersSince(query);
+					if(validUserNums != 0){
+						int activeUsersCount = iPlatformActiveUserDao.getActiveUsersCount(query);
+						String activePro = percent(activeUsersCount, validUserNums);
+						PlatformActiveStat platformActiveStat = new PlatformActiveStat();
+						platformActiveStat.setAllValidUser(validUserNums);
+						platformActiveStat.setActiveUsersCount(activeUsersCount);
+						platformActiveStat.setActivePro(activePro);
+						platformActiveStat.setTs(date);
+						result.add(platformActiveStat);
+					}else{
+
+					}
+				}
+				break;
+				
+			case "周":
+				Set<Integer> staWeek = iPlatformActiveUserDao.getStaWeek(parseTime(query.getStartWeek()), parseTime(query.getEndWeek()));
+				for (Integer week : staWeek) { 
+					query.setWeek(week);
+					int validUserNums = iPlatformActiveUserDao.countActiveUsersSince(query);
+					if(validUserNums != 0){
+					int activeUsersCount = iPlatformActiveUserDao.getActiveUsersCount(query);
+					String activePro = percent(activeUsersCount, validUserNums);
+					PlatformActiveStat platformActiveStat = new PlatformActiveStat();
+					platformActiveStat.setAllValidUser(validUserNums);
+					platformActiveStat.setActiveUsersCount(activeUsersCount);
+					platformActiveStat.setActivePro(activePro);
+					platformActiveStat.setTs(week);
+					result.add(platformActiveStat);
+					}else{
+
+					}
+				}
+				break;
+				
+			case "月":
+				Set<Integer> staMonth = iPlatformActiveUserDao.getStaMonth(parseTime(query.getStartMonth()), parseTime(query.getEndMonth()));
+				for (Integer month : staMonth) { 
+					query.setMonth(month);
+					int validUserNums = iPlatformActiveUserDao.countActiveUsersSince(query);
+					if(validUserNums != 0){
+					int activeUsersCount = iPlatformActiveUserDao.getActiveUsersCount(query);
+					String activePro = percent(activeUsersCount, validUserNums);
+					PlatformActiveStat platformActiveStat = new PlatformActiveStat();
+					platformActiveStat.setAllValidUser(validUserNums);
+					platformActiveStat.setActiveUsersCount(activeUsersCount);
+					platformActiveStat.setActivePro(activePro);
+					platformActiveStat.setTs(month);
+					result.add(platformActiveStat);
+					}else{
+
+					}
+				}
+				break;
+		}
+		
+		return result;
+	}
+	/**
+	 * 解析时间
+	 * 结果：2017-09-13变成20170913
+	 * @param str
+	 * @return
+	 */
+	public static int parseTime(String str){
+		String[] split = str.split("-");
+		String string = "";
+		for (int i = 0; i < split.length; i++) {
+			string += split[i];
+		}
+		return Integer.valueOf(string);
+	}
+	
+	/**
+	 * 求a.b的百分比
+	 * 
+	 * @param a
+	 * @param b
+	 * @return
+	 */
+	public static String percent(int a, int b) {
+		String probability = "";
+		if (b != 0) {
+			// 创建一个数值格式化对象
+			NumberFormat numberFormat = NumberFormat.getInstance();
+			// 设置精确到小数点后2位
+			numberFormat.setMaximumFractionDigits(2);
+			probability = numberFormat.format((float) a / (float) b * 100) + "%";
+		}else {
+			probability = "0%";
+		}
+		return probability;
+	}
+	
+	
+	public static ActiveUserQuery setParam(ActiveUserQuery query){
+		Integer ts = query.getTs();
+		switch (query.getCycle()) {
+		case "日":
+			query.setDay(ts);
+			break;
+		case "周":
+			query.setWeek(ts);
+			break;
+		case "月":
+			query.setMonth(ts);
+			break;
+		}
+		return query;
+	}
+	
+
+}

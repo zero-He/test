@@ -1,0 +1,38 @@
+<%@ page pageEncoding="UTF-8"%>
+<%@ include file="/pages/common/tags.jsp"%>
+<!DOCTYPE html>
+<html>
+<head>
+<title>乐课网课件 - 布置作业</title>
+<%@ include file="/pages/common/meta.jsp"%>
+<link rel="stylesheet" type="text/css"
+	href="${assets}/styles/resource/resource.css?t=${_t}">
+</head>
+<body class="m-middlepage">
+	<div class="g-head">
+		<%@ include file="/pages/header/header.jsp"%>
+	</div>
+	<div class="con">
+		<div class="msg">
+			<div class="m-tiptext m-tiptext-block m-tiptext-success">
+				<i class="iconfont icon">󰅂 </i>
+				<div class="msg">
+					<h6>作业布置成功！</h6>
+					<p>作业已经成功布置给你的学生...</p>
+					<p>
+						<a
+							href="${initParam.homeworkServerName }/auth/teacher/distribute/hwDistribute.htm">继续布置</a>
+						| <a
+							href="${initParam.homeworkServerName }/auth/teacher/homework/homeworkList.htm?ord=1">查看作业</a>
+						| <a
+							href="${initParam.lessonServerName }/auth/teacher/home/teacher.htm">返回我的乐课</a>
+					</p>
+				</div>
+			</div>
+		</div>
+	</div>
+    <div class="g-foot">
+	<%@ include file="/pages/common/foot.jsp"%>
+	</div>
+</body>
+</html>

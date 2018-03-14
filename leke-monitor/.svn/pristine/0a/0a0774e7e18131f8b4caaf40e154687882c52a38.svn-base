@@ -1,0 +1,82 @@
+/**
+ * 
+ */
+package cn.strong.leke.monitor.core.service.online.impl;
+
+import java.util.Date;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+
+import javax.annotation.Resource;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+
+import cn.strong.leke.common.utils.CollectionUtils;
+import cn.strong.leke.context.base.UserBaseContext;
+import cn.strong.leke.core.cas.TicketEncrypt;
+import cn.strong.leke.framework.exceptions.ValidateException;
+import cn.strong.leke.framework.exceptions.Validation;
+import cn.strong.leke.model.user.RoleSchool;
+import cn.strong.leke.model.user.UserBase;
+import cn.strong.leke.monitor.core.model.DeviceHeartbeat;
+import cn.strong.leke.monitor.core.service.online.IDeviceOnlineUserService;
+import cn.strong.leke.monitor.core.service.online.IspFinder;
+import cn.strong.leke.monitor.core.utils.SessionHelper;
+import cn.strong.leke.monitor.mongo.online.model.DeviceOnlineUser;
+import cn.strong.leke.monitor.mongo.online.service.IDeviceOnlineUserDao;
+
+/**
+ * @author liulongbiao
+ *
+ */
+@Service
+public class DeviceOnlineUserService implements IDeviceOnlineUserService {
+	private static final Logger LOG = LoggerFactory.getLogger(DeviceOnlineUserService.class);
+	@Resource
+	private IspFinder ispFinder;
+	@Resource(name = "monitorExecutor")
+	private ExecutorService monitorExecutor;
+	@Resource
+	private IDeviceOnlineUserDao deviceOnlineUserDao;
+
+	@Override
+	public void saveHeartbeat(DeviceHeartbeat hb) {
+		CompletableFuture.runAsync(() -> {
+			DeviceOnlineUser user = toDeviceOnlineUser(hb);
+			deviceOnlineUserDao.save(user);
+		}, monitorExecutor).whenComplete((t, ex) -> {
+			if (ex != null) {
+				LOG.error("保存设备心跳失败", ex);
+			}
+		});
+	}
+
+	private DeviceOnlineUser toDeviceOnlineUser(DeviceHeartbeat hb) {
+		if (hb == null || hb.getTicket() == null || hb.getD() == null) {
+			throw new ValidateException("心跳信息不完整");
+		}
+		String userId = TicketEncrypt.decode(hb.getTicket());
+		UserBase user = UserBaseContext.getUserBaseByUserId(Long.parseLong(userId));
+		Validation.notNull(user, "无法查找到用户信息");
+		DeviceOnlineUser result = new DeviceOnlineUser();
+		result.setTs(new Date());
+		result.setD(hb.getD());
+		result.setUserId(user.getId());
+		RoleSchool rs = CollectionUtils.getFirst(user.getRoleSchoolList());
+		if (rs != null) {
+			result.setSchoolId(rs.getSchoolId());
+		}
+		result.setModel(hb.getModel());
+		result.setOs(hb.getOs());
+		String ip = hb.getIp();
+		result.setIp(ip);
+		result.setIsp(ispFinder.getIsp(ip));
+
+		result.setRoleId(SessionHelper.getCurrentRoleId(userId, hb.getD()));
+
+		return result;
+	}
+
+}

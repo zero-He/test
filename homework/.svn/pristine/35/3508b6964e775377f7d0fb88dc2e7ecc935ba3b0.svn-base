@@ -1,0 +1,24 @@
+#### resources priviledge ####
+
+role.100 = /auth/student/**,/auth/m/student/**,/auth/hd/student/**,/auth/common/**,/auth/teacher/homework/**
+role.101 = /auth/teacher/**,/auth/m/teacher/**,/auth/common/**
+role.102 = /auth/parent/**,/auth/m/parent/**,/auth/common/**
+role.103 = /auth/**,/auth/m/classTeacher/**,/auth/common/**
+role.104 = /auth/**,/auth/common/**
+role.105 = /auth/**,/auth/common/**
+
+role.110 = /auth/provost/**,/auth/m/provost/**,/auth/technicalSupport/**,/auth/common/**
+role.112 = /auth/provost/**,/auth/m/provost/**,/auth/seller/**,/auth/common/**
+
+role.200 = /auth/**,/auth/common/**,/auth/schedule/**
+role.201 = /auth/**,/auth/common/**
+
+role.300 = /auth/**,/auth/common/**
+role.301 = /auth/**,/auth/common/**
+
+role.400 = /auth/**,/auth/common/**
+role.401 = /auth/**,/auth/common/**
+role.402 = /auth/**,/auth/common/**
+role.403 = /auth/**,/auth/common/**
+
+

@@ -1,0 +1,82 @@
+package cn.strong.leke.homework.model;
+
+/**
+ * 实体对象：随堂作业接口数据表
+ */
+public class HomeworkData {
+
+	// 数据标识
+	private Long dataId;
+	// 老师作业标识
+	private Long homeworkId;
+	// 是否为只做错题
+	private Boolean isRedo;
+	// 写入作业ID
+	private Long targetHomeworkId;
+	// 作业版本号
+	private Long version;
+	// 作业数据
+	private String answerData;
+	// 是否删除
+	private Boolean isDeleted;
+
+	public Long getDataId() {
+		return dataId;
+	}
+
+	public void setDataId(Long dataId) {
+		this.dataId = dataId;
+	}
+
+	public Long getHomeworkId() {
+		return homeworkId;
+	}
+
+	public void setHomeworkId(Long homeworkId) {
+		this.homeworkId = homeworkId;
+	}
+
+	public Boolean getIsRedo() {
+		return isRedo;
+	}
+
+	public void setIsRedo(Boolean isRedo) {
+		this.isRedo = isRedo;
+	}
+
+	public Long getTargetHomeworkId() {
+		return targetHomeworkId;
+	}
+
+	public void setTargetHomeworkId(Long targetHomeworkId) {
+		this.targetHomeworkId = targetHomeworkId;
+	}
+
+	public Long getVersion() {
+		return version;
+	}
+
+	public void setVersion(Long version) {
+		this.version = version;
+	}
+
+	public String getAnswerData() {
+		return answerData;
+	}
+
+	public void setAnswerData(String answerData) {
+		this.answerData = answerData;
+	}
+
+	public Boolean getIsDeleted() {
+		return isDeleted;
+	}
+
+	public void setIsDeleted(Boolean isDeleted) {
+		this.isDeleted = isDeleted;
+	}
+	
+	public void setetailList(String detailList) {
+		this.answerData = detailList;
+	}
+}

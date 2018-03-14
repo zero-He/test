@@ -1,0 +1,53 @@
+/**
+ * 
+ */
+package cn.strong.leke.monitor.mongo.appcenter.dao.impl;
+
+import static com.mongodb.client.model.Filters.eq;
+
+import java.util.Date;
+
+import javax.annotation.PostConstruct;
+import javax.annotation.Resource;
+
+import org.springframework.stereotype.Repository;
+import org.springframework.util.Assert;
+
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.UpdateOptions;
+
+import cn.strong.leke.data.mongo.BsonUtils;
+import cn.strong.leke.monitor.mongo.appcenter.dao.IPadSystemDao;
+import cn.strong.leke.monitor.mongo.appcenter.model.PadSystem;
+
+/**
+ * @author liulongbiao
+ *
+ */
+@Repository
+public class PadSystemDao implements IPadSystemDao {
+
+	@Resource(name = "monitorDb")
+	private MongoDatabase db;
+	private MongoCollection<PadSystem> coll;
+
+	@PostConstruct
+	public void init() {
+		Assert.notNull(db, "DB should not be null");
+		coll = db.getCollection("appcenter.padsystem", PadSystem.class);
+	}
+
+	@Override
+	public void save(PadSystem sys) {
+		if (sys.getTs() == null) {
+			sys.setTs(new Date());
+		}
+		coll.updateOne(eq("_id", sys.getImei()), BsonUtils.toUpdateSetDoc(sys), new UpdateOptions().upsert(true));
+	}
+
+	@Override
+	public PadSystem getByImei(String imei) {
+		return coll.find(eq("_id", imei)).first();
+	}
+}

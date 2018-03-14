@@ -1,0 +1,3 @@
+define(function (require, exports, module) {
+"use strict";var Utils=require("utils"),helper={Rates:{rateA:85,rateB:70,rateC:60,rateD:45},Colors:{submit:["#619eed","#ffd270","#ff6e6e"],score:["#31c46c","#74d64b","#5cc0ff","#ffcd61","#ff5656"]},toFixed:Utils.Number.toFixed,toRate:function(e,t,r){return 0==t?0:Utils.Number.toFixed(100*e/t,r||0)},toSecond:function(e){return e<60?1:Utils.Number.toFixed(e/60,1)},toLevel:function(e){return void 0==e||null==e?6:e>=85?1:e>=70?2:e>=60?3:e>=45?4:5},toLevelName:function(e){var t=helper.toLevel(e);return helper.levelNames[t-1]},levelNames:["优秀","良好","及格","较差","危险",null]};module.exports=helper;
+});

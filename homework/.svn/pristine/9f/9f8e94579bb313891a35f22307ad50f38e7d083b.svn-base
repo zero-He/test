@@ -1,0 +1,26 @@
+package cn.strong.leke.homework.dao.mybatis;
+
+import cn.strong.leke.homework.model.HomeworkData;
+
+public interface HomeworkDataDao {
+	
+	/**
+	 * 描述: 保存作业数据
+	 * @param homeworkData 作业数据
+	 */
+	public void insertHomeworkData(HomeworkData homeworkData);
+
+	/**
+	 * 描述: 根据数据标识删除作业数据
+	 * @param dataId 数据ID
+	 */
+	public void deleteHomeworkData(Long dataId);
+
+	/**
+	 * 根据数据标识，查询作业数据
+	 * @param dataId 数据ID
+	 * @return
+	 */
+	public HomeworkData getHomeworkDataByDataId(Long dataId);
+
+}

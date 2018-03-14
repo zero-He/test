@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context" xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.2.xsd
+                     http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.2.xsd
+                     http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-3.2.xsd">
+
+	<context:component-scan base-package="cn.strong.leke.homework.config" />
+
+	<bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+		<property name="basePackage" value="cn.strong.leke.homework.dao.mybatis" />
+	</bean>
+
+	<context:component-scan base-package="cn.strong.leke.homework.service" />
+	
+	<bean id="mongoDaoConsts" class="cn.strong.leke.homework.dao.mongo.MongoDaoConsts">
+		<property name="findBatchProgressByHomeworkId_MAP">
+			<value>
+			<![CDATA[
+			function() {
+				this.questions.forEach(function(question) {
+					emit(question.questionId, question.totalIsRight != null ? 1 : 0);
+				})
+			}
+			]]>
+			</value>
+		</property>
+		<property name="findBatchProgressByHomeworkId_REDUCE">
+			<value>
+			<![CDATA[
+			function(questionId, values) {
+				var val = 0;
+				for (var i = 0; i < values.length; i++) {
+					val += values[i];
+				}
+				return val;
+			}
+			]]>
+			</value>
+		</property>
+		<property name="findBatchProgressByHomeworkId_FINALIZE">
+			<value>
+			<![CDATA[
+			function(questionId, value) {
+				return {
+					questionId : questionId,
+					correctNum : value
+				}
+			}
+			]]>
+			</value>
+		</property>
+	</bean>
+
+</beans>

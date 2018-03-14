@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.question.dao.mybatis.question.ISchoolQuestionOutlineNodeDao">
+	
+	<insert id="add" useGeneratedKeys="true" keyProperty="assocId"
+		parameterType="cn.strong.leke.model.question.SchoolQuestionOutlineNode">
+		INSERT INTO que_school_question_outline_node(
+			questionId, schoolId, outlineId, outlineNodeId, path,
+			isDeleted, createdBy, createdOn,modifiedBy,modifiedOn
+		) VALUES (
+			#{questionId}, #{schoolId}, #{outlineId}, #{outlineNodeId}, #{path},
+			0, #{createdBy}, NOW(),#{modifiedBy},NOW()
+		)
+	</insert>
+	
+	<update id="delete">
+		UPDATE
+			que_school_question_outline_node a
+		SET
+			a.isDeleted = 1,
+			a.modifiedBy = #{userId},
+			a.modifiedOn = now()
+			
+		WHERE
+			a.questionId = #{questionId}
+		AND 
+			a.isDeleted = 0
+	</update>
+	
+	<select id="findOutlineNodeByQuestionId" parameterType="_long" resultType="cn.strong.leke.model.question.SchoolQuestionOutlineNode">
+		SELECT 
+			a.*
+		FROM
+			que_school_question_outline_node a
+		WHERE
+			a.isDeleted = 0
+		AND
+			a.questionId = #{questionId}
+	</select>
+
+</mapper>

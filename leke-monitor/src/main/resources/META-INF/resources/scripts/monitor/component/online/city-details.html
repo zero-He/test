@@ -1,0 +1,24 @@
+<header class="c-moniheader">
+	<h1 class="logo"><a href="//www.leke.cn"></a></h1>
+	<span class="title">乐课网动态监控</span>
+	<a class="back" 
+		data-bind="attr: {
+   			href: provinceId != cityId ? '#/province/' + provinceId + '/map' : '#/'
+   		}"></a>
+</header>
+<article class="g-swallow">
+    <section class="mw">
+        <div class="m2">
+            <div class="c-box">
+                <h2 class="title">
+                	学校明细(<span data-bind="text: stat.total().name">&nbsp;</span>)
+                </h2>
+                <carousel params="items: stat.details, columns: columns"></carousel>
+            </div>
+        </div>
+    </section>
+
+    <aside class="r">
+		<stat-total params="total: stat.total"></stat-total>
+    </aside>
+</article>

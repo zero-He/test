@@ -1,0 +1,65 @@
+<%@ page pageEncoding="UTF-8"%>
+<%@ include file="/pages/common/tags.jsp"%>
+<!DOCTYPE html >
+<html>
+<head>
+<title><locale:message code="homework.doubt.questionAnswer" /> - <locale:message code="common.page.header.leke" /></title>
+<%@ include file="/pages/common/meta.jsp"%>
+<link rel="stylesheet" type="text/css" href="${assets}/styles/homework/doubt/doubt.css?t=${_t}">
+<link rel="stylesheet" type="text/css" href="${assets}/styles/question/question.css?t=${_t}">
+</head>
+<body>
+	<%@ include file="/pages/header/header.jsp"%>
+	<div class="g-bd">
+		<%@ include file="/pages/navigate/navigate.jsp"%>
+		<div class="g-mn">
+			<form id="doubtListForm" method="post" autocomplete="off">
+				<div class="examination" id="divPageParent">
+						<ul class="m-tab">
+							<li class="active aIsSolve" data-value="false"><a><locale:message code="homework.doubt.unAnswer"/></a></li>
+							<li class="aIsSolve" data-value="true"><a><locale:message code="homework.doubt.doAnswer"/></a></li>
+						</ul>
+						<div class="m-search-box">
+							<label class="title"><locale:message code="homework.doubt.askTime"/>：</label>
+							<input type="text" id="tStartTime" name="startTime" class="Wdate u-ipt u-ipt-nm">
+							<locale:message code="homework.homework.form.search.to"/>
+							<input type="text" id="tEndTime" name="endTime" class="Wdate u-ipt u-ipt-nm">
+							<label class="title"><locale:message code="homework.doubt.asker"/>：</label>
+							<input type="text" id="iUserName" name="userName" class="u-ipt u-ipt-nm">
+							<label class="title"><locale:message code="homework.doubt.keyWord"/>：</label>
+							<input type="text" id="iDoubtTitle" name="doubtTitle" class="u-ipt u-ipt-nm">
+							<input type="hidden" name="resolved" id="hIsSolve" value="false">
+							<input class="u-btn u-btn-nm u-btn-bg-turquoise" id="bSeachDoubt" type="button" value="<locale:message code="homework.common.search"/>">
+						</div>
+						<div class="z-question">
+							<div class="m-tiptext m-tiptext-text m-tiptext-normal">
+		                        <i class="iconfont icon">󰅂 </i> 
+		                        <div class="msg">
+		                        	<a href="${initParam.staticServerName}/pages/help/help.html?class=how-to-title" target="_blank">韩愈：师者，所以传道受业解惑也。及时解答学生提问不但可以帮助学生还有乐豆奖励哦！</a>
+		                        </div>
+		                    </div>
+					    	<ul id="jDoubtBody">
+					    	</ul>
+							<div id="page" class="f-fr"></div>
+					    </div>
+				</div>
+			</form>
+		</div>
+	</div>
+	<script id="jDoubtListTpl"  type="x-mustache">
+	{{#dataList}}
+	<li>
+    	<p class="z-question-dec">
+			<a href="${ctx}/auth/teacher/myDoubt/getDoubtDetail.htm?doubtId={{doubtId}}" 
+			target="_black" data-id="{{doubtId}}">【{{doubtTypeStr}}】{{doubtTitle}}</a>
+		</p>
+        <p>{{userName}}  {{explainTimeOnString}}</p>
+  	</li>
+	{{/dataList}}
+	</script>
+	<script>
+		seajs.use("homework/doubt/teacherDoubtList");
+	</script>
+
+</body>
+</html>

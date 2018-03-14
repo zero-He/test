@@ -1,0 +1,354 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.diag.dao.teachingMonitor.ResourceXDao">
+
+	<!--汇总前一天老师创建的课件数量-->
+	<select id="selectYesterdayCreateCourseWareData" resultType="cn.strong.leke.diag.model.teachingMonitor.resource.ResourceBean">
+		SELECT
+		3 AS resType,
+		1 AS type,
+		c.schoolId,
+		c.schoolStageId,
+		c.schoolStageName,
+		c.subjectId,
+		c.subjectName,
+		c.createdBy,
+		c.createdName,
+		count(1) AS createCount,
+		SUBDATE(NOW(),1) AS startTime,
+		SUBDATE(NOW(),1) AS endTime,
+		NOW() AS createTime
+		FROM
+		beike.bk_courseware c
+		WHERE
+		c.isDeleted = 0
+		AND c.isDisabled = 0
+		AND c.sharePersonal = 1
+		AND c.schoolId IS NOT NULL
+		<![CDATA[
+			AND c.createdOn >= SUBDATE(CURDATE(),1)
+			AND c.createdOn < CURDATE()
+		]]>
+		GROUP BY
+		c.schoolId,
+		c.schoolStageId,
+		c.subjectId,
+		c.createdBy
+	</select>
+
+	<!--汇总前一天老师创建的微课数量-->
+	<select id="selectYesterdayCreateMicroCourseData" resultType="cn.strong.leke.diag.model.teachingMonitor.resource.ResourceBean">
+		SELECT
+		4 AS resType,
+		1 AS type,
+		m.schoolId,
+		m.schoolStageId,
+		m.schoolStageName,
+		m.subjectId,
+		m.subjectName,
+		m.createdBy,
+		m.createdName,
+		count(1) AS createCount,
+		SUBDATE(NOW(),1) AS startTime,
+		SUBDATE(NOW(),1) AS endTime,
+		NOW() AS createTime
+		FROM
+		beike.bk_microcourse m
+		WHERE
+		m.isDeleted = 0
+		AND m.isDisabled = 0
+		AND m.sharePersonal = 1
+		AND m.schoolId IS NOT NULL
+		<![CDATA[
+			AND m.createdOn >= SUBDATE(CURDATE(),1)
+			AND m.createdOn < CURDATE()
+		]]>
+		GROUP BY
+		m.schoolId,
+		m.schoolStageId,
+		m.subjectId,
+		m.createdBy
+	</select>
+
+	<!--汇总前一天老师创建的备课包数量-->
+	<select id="selectYesterdayCreateBeikePkgData" resultType="cn.strong.leke.diag.model.teachingMonitor.resource.ResourceBean">
+		SELECT
+		6 AS resType,
+		1 AS type,
+		p.schoolId,
+		p.schoolStageId,
+		p.schoolStageName,
+		p.subjectId,
+		p.subjectName,
+		p.createdBy,
+		p.createdName,
+		count(1) AS createCount,
+		SUBDATE(NOW(),1) AS startTime,
+		SUBDATE(NOW(),1) AS endTime,
+		NOW() AS createTime
+		FROM
+		beike.bk_beike_pkg p
+		WHERE
+		p.isDeleted = 0
+		AND p.isDisabled = 0
+		AND p.sharePersonal = 1
+		AND p.schoolId IS NOT NULL
+		<![CDATA[
+			AND p.createdOn >= SUBDATE(CURDATE(),1)
+			AND p.createdOn < CURDATE()
+		]]>
+		GROUP BY
+		p.schoolId,
+		p.schoolStageId,
+		p.subjectId,
+		p.createdBy
+	</select>
+
+	<!--汇总前一天老师创建的试卷数量-->
+	<select id="selectYesterdayCreatePaperData" resultType="cn.strong.leke.diag.model.teachingMonitor.resource.ResourceBean">
+		SELECT
+		2 AS resType,
+		1 AS type,
+		p.schoolId,
+		p.schoolStageId,
+		(SELECT ts.schoolStageName FROM tutor.tutor_schoolStage ts WHERE ts.schoolStageId = p.schoolStageId) AS schoolStageName,
+		p.subjectId,
+		p.subjectName,
+		p.createdBy,
+		(SELECT u.userName FROM tutor.tutor_user u WHERE u.userId = p.createdBy) AS createdName,
+		count(1) AS createCount,
+		SUBDATE(NOW(),1) AS startTime,
+		SUBDATE(NOW(),1) AS endTime,
+		NOW() AS createTime
+		FROM
+		paper.pap_paper p
+		WHERE
+		p.isDeleted = 0
+		AND p.isDisabled = 0
+		AND p.sharePersonal = 1
+		AND p.schoolId IS NOT NULL
+		<![CDATA[
+			AND p.createdOn >= SUBDATE(CURDATE(),1)
+			AND p.createdOn < CURDATE()
+		]]>
+		GROUP BY
+		p.schoolId,
+		p.schoolStageId,
+		p.subjectId,
+		p.createdBy
+	</select>
+
+	<!--汇总前一天老师创建的习题数量-->
+	<select id="selectYesterdayCreateQuestionData" resultType="cn.strong.leke.diag.model.teachingMonitor.resource.ResourceBean">
+		SELECT
+		1 AS resType,
+		1 AS type,
+		q.schoolId,
+		q.schoolStageId,
+		(SELECT ts.schoolStageName FROM tutor.tutor_schoolStage ts WHERE ts.schoolStageId = q.schoolStageId) AS schoolStageName,
+		q.subjectId,
+		(SELECT s.subjectName FROM tutor.tutor_subject s WHERE s.subjectId = q.subjectId) AS subjectName,
+		q.createdBy,
+		(SELECT u.userName FROM tutor.tutor_user u WHERE u.userId = q.createdBy) AS createdName,
+		count(1) AS createCount,
+		SUBDATE(NOW(),1) AS startTime,
+		SUBDATE(NOW(),1) AS endTime,
+		NOW() AS createTime
+		FROM
+		question.que_question q
+		WHERE
+		q.isDeleted = 0
+		AND q.isDisabled = 0
+		AND q.sharePersonal = 1
+		AND q.schoolId IS NOT NULL
+		<![CDATA[
+			AND q.createdOn >= SUBDATE(CURDATE(),1)
+			AND q.createdOn < CURDATE()
+		]]>
+		GROUP BY
+		q.schoolId,
+		q.schoolStageId,
+		q.subjectId,
+		q.createdBy
+	</select>
+
+	<!--汇总前一天老师分享的课件数量-->
+	<select id="selectYesterdayShareCourseWareData" resultType="cn.strong.leke.diag.model.teachingMonitor.resource.ResourceBean">
+		SELECT
+		3 AS resType,
+		2 AS type,
+		c.schoolId,
+		c.schoolStageId,
+		c.schoolStageName,
+		c.subjectId,
+		c.subjectName,
+		c.createdBy,
+		c.createdName,
+		count(1) AS createCount,
+		SUBDATE(NOW(),1) AS startTime,
+		SUBDATE(NOW(),1) AS endTime,
+		NOW() AS createTime
+		FROM
+		beike.bk_courseware c
+		LEFT JOIN beike.bk_school_courseware sc ON sc.coursewareId = c.coursewareId
+		WHERE
+		sc.schoolId = c.schoolId
+		AND sc.isDeleted = 0
+		AND c.isDeleted = 0
+		AND c.isDisabled = 0
+		AND c.schoolId IS NOT NULL
+		<![CDATA[
+			AND sc.createdOn >= SUBDATE(CURDATE(),1)
+			AND sc.createdOn < CURDATE()
+		]]>
+		GROUP BY
+		c.schoolId,
+		c.schoolStageId,
+		c.subjectId,
+		c.createdBy
+	</select>
+
+	<!--汇总前一天老师分享的微课数量-->
+	<select id="selectYesterdayShareMicroCourseData" resultType="cn.strong.leke.diag.model.teachingMonitor.resource.ResourceBean">
+		SELECT
+		4 AS resType,
+		2 AS type,
+		m.schoolId,
+		m.schoolStageId,
+		m.schoolStageName,
+		m.subjectId,
+		m.subjectName,
+		m.createdBy,
+		m.createdName,
+		count(1) AS createCount,
+		SUBDATE(NOW(),1) AS startTime,
+		SUBDATE(NOW(),1) AS endTime,
+		NOW() AS createTime
+		FROM
+		beike.bk_microcourse m
+		LEFT JOIN beike.bk_school_microcourse sm ON sm.microcourseId = m.microcourseId
+		WHERE
+		sm.schoolId = m.schoolId
+		AND sm.isDeleted = 0
+		AND	m.isDeleted = 0
+		AND m.isDisabled = 0
+		AND m.schoolId IS NOT NULL
+		<![CDATA[
+			AND sm.createdOn >= SUBDATE(CURDATE(),1)
+			AND sm.createdOn < CURDATE()
+		]]>
+		GROUP BY
+		m.schoolId,
+		m.schoolStageId,
+		m.subjectId,
+		m.createdBy
+	</select>
+
+	<!--汇总前一天老师分享的试卷数量-->
+	<select id="selectYesterdaySharePaperData" resultType="cn.strong.leke.diag.model.teachingMonitor.resource.ResourceBean">
+		SELECT
+		2 AS resType,
+		2 AS type,
+		p.schoolId,
+		p.schoolStageId,
+		(SELECT ts.schoolStageName FROM tutor.tutor_schoolStage ts WHERE ts.schoolStageId = p.schoolStageId) AS schoolStageName,
+		p.subjectId,
+		p.subjectName,
+		p.createdBy,
+		(SELECT u.userName FROM tutor.tutor_user u WHERE u.userId = p.createdBy) AS createdName,
+		count(1) AS createCount,
+		SUBDATE(NOW(),1) AS startTime,
+		SUBDATE(NOW(),1) AS endTime,
+		NOW() AS createTime
+		FROM
+		paper.pap_paper p
+		LEFT JOIN paper.pap_school_paper sp ON sp.paperId = p.paperId
+		WHERE
+		sp.schoolId = p.schoolId
+		AND sp.isDeleted = 0
+		AND	p.isDeleted = 0
+		AND p.isDisabled = 0
+		AND p.schoolId IS NOT NULL
+		<![CDATA[
+			AND sp.createdOn >= SUBDATE(CURDATE(),1)
+			AND sp.createdOn < CURDATE()
+		]]>
+		GROUP BY
+		p.schoolId,
+		p.schoolStageId,
+		p.subjectId,
+		p.createdBy
+	</select>
+
+	<!--汇总前一天老师分享的习题数量-->
+	<select id="selectYesterdayShareQuestionData" resultType="cn.strong.leke.diag.model.teachingMonitor.resource.ResourceBean">
+		SELECT
+		1 AS resType,
+		2 AS type,
+		q.schoolId,
+		q.schoolStageId,
+		(SELECT ts.schoolStageName FROM tutor.tutor_schoolStage ts WHERE ts.schoolStageId = q.schoolStageId) AS schoolStageName,
+		q.subjectId,
+		(SELECT s.subjectName FROM tutor.tutor_subject s WHERE s.subjectId = q.subjectId) AS subjectName,
+		q.createdBy,
+		(SELECT u.userName FROM tutor.tutor_user u WHERE u.userId = q.createdBy) AS createdName,
+		count(1) AS createCount,
+		SUBDATE(NOW(),1) AS startTime,
+		SUBDATE(NOW(),1) AS endTime,
+		NOW() AS createTime
+		FROM
+		question.que_question q
+		LEFT JOIN question.que_school_question sq ON sq.questionId = q.questionId
+		WHERE
+		sq.schoolId = q.schoolId
+		AND sq.isDeleted = 0
+		AND	q.isDeleted = 0
+		AND q.isDisabled = 0
+		AND q.schoolId IS NOT NULL
+		<![CDATA[
+			AND sq.createdOn >= SUBDATE(CURDATE(),1)
+			AND sq.createdOn < CURDATE()
+		]]>
+		GROUP BY
+		q.schoolId,
+		q.schoolStageId,
+		q.subjectId,
+		q.createdBy
+	</select>
+
+	<!--汇总前一天老师分享的备课包数量-->
+	<select id="selectYesterdayShareBeiKePkgData" resultType="cn.strong.leke.diag.model.teachingMonitor.resource.ResourceBean">
+		SELECT
+			6 AS resType,
+			2 AS type,
+			p.schoolId,
+			p.schoolStageId,
+			p.schoolStageName,
+			p.subjectId,
+			p.subjectName,
+			p.createdBy,
+			p.createdName,
+			count(1) AS createCount,
+			SUBDATE(NOW(),1) AS startTime,
+			SUBDATE(NOW(),1) AS endTime,
+			NOW() AS createTime
+		FROM
+			beike.bk_beike_pkg p
+			LEFT JOIN beike.bk_school_beike_pkg sbp ON sbp.beikePkgId = p.beikePkgId
+		WHERE
+			sbp.schoolId = p.schoolId
+			AND sbp.isDeleted = 0
+			AND	p.isDeleted = 0
+			AND p.isDisabled = 0
+			AND p.schoolId IS NOT NULL
+			<![CDATA[
+				AND sbp.createdOn >= SUBDATE(CURDATE(),1)
+				AND sbp.createdOn < CURDATE()
+			]]>
+		GROUP BY
+			p.schoolId,
+			p.schoolStageId,
+			p.subjectId,
+			p.createdBy
+	</select>
+</mapper>

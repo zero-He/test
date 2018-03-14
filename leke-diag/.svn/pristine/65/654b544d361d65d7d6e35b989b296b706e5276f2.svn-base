@@ -1,0 +1,220 @@
+package cn.strong.leke.diag.model.report;
+
+import java.util.List;
+import java.util.Map;
+
+import cn.strong.leke.diag.dao.homework.model.WorkFinishAnaly;
+import cn.strong.leke.diag.model.report.BehaviorRptView.BehaviorInfo;
+import cn.strong.leke.diag.model.report.BehaviorRptView.ViewFinishAnaly;
+import cn.strong.leke.lessonlog.model.AttendStatInfo;
+
+public class StuBehaviorTransferInfo {
+
+	private Long studentId;
+	private ReportCycle reportCycle;
+	private List<Long> courseSingleIds;
+	private BehaviorInfo behaviorInfo;
+	private ViewFinishAnaly viewFinishAnaly;
+	private WorkFinishAnaly workFinishAnaly;
+	private Map<Long, Integer> lekeVal;
+	private AttendStatInfo attendStatInfo;
+	private int attendRate;
+	private int calledRate;
+	private int evalRate;
+	private int top3Num;
+	private int raiseRate;
+	private int flowerNum;
+	private int previewRate;
+	private int reviewRate;
+	private int doubtNum;
+	private int practiceNum;
+	private int bugFixRate;
+	private int submitRate;
+	private int normalRate;
+	private int writeNoteNum;
+	private int killWrongNum;
+
+	public Long getStudentId() {
+		return studentId;
+	}
+
+	public void setStudentId(Long studentId) {
+		this.studentId = studentId;
+	}
+
+	public ReportCycle getReportCycle() {
+		return reportCycle;
+	}
+
+	public void setReportCycle(ReportCycle reportCycle) {
+		this.reportCycle = reportCycle;
+	}
+
+	public List<Long> getCourseSingleIds() {
+		return courseSingleIds;
+	}
+
+	public void setCourseSingleIds(List<Long> courseSingleIds) {
+		this.courseSingleIds = courseSingleIds;
+	}
+
+	public BehaviorInfo getBehaviorInfo() {
+		return behaviorInfo;
+	}
+
+	public void setBehaviorInfo(BehaviorInfo behaviorInfo) {
+		this.behaviorInfo = behaviorInfo;
+	}
+
+	public ViewFinishAnaly getViewFinishAnaly() {
+		return viewFinishAnaly;
+	}
+
+	public void setViewFinishAnaly(ViewFinishAnaly viewFinishAnaly) {
+		this.viewFinishAnaly = viewFinishAnaly;
+	}
+
+	public WorkFinishAnaly getWorkFinishAnaly() {
+		return workFinishAnaly;
+	}
+
+	public void setWorkFinishAnaly(WorkFinishAnaly workFinishAnaly) {
+		this.workFinishAnaly = workFinishAnaly;
+	}
+
+	public Map<Long, Integer> getLekeVal() {
+		return lekeVal;
+	}
+
+	public void setLekeVal(Map<Long, Integer> lekeVal) {
+		this.lekeVal = lekeVal;
+	}
+
+	public AttendStatInfo getAttendStatInfo() {
+		return attendStatInfo;
+	}
+
+	public void setAttendStatInfo(AttendStatInfo attendStatInfo) {
+		this.attendStatInfo = attendStatInfo;
+	}
+
+	public int getAttendRate() {
+		return attendRate;
+	}
+
+	public void setAttendRate(int attendRate) {
+		this.attendRate = attendRate;
+	}
+
+	public int getCalledRate() {
+		return calledRate;
+	}
+
+	public void setCalledRate(int calledRate) {
+		this.calledRate = calledRate;
+	}
+
+	public int getEvalRate() {
+		return evalRate;
+	}
+
+	public void setEvalRate(int evalRate) {
+		this.evalRate = evalRate;
+	}
+
+	public int getTop3Num() {
+		return top3Num;
+	}
+
+	public void setTop3Num(int top3Num) {
+		this.top3Num = top3Num;
+	}
+
+	public int getRaiseRate() {
+		return raiseRate;
+	}
+
+	public void setRaiseRate(int raiseRate) {
+		this.raiseRate = raiseRate;
+	}
+
+	public int getFlowerNum() {
+		return flowerNum;
+	}
+
+	public void setFlowerNum(int flowerNum) {
+		this.flowerNum = flowerNum;
+	}
+
+	public int getPreviewRate() {
+		return previewRate;
+	}
+
+	public void setPreviewRate(int previewRate) {
+		this.previewRate = previewRate;
+	}
+
+	public int getReviewRate() {
+		return reviewRate;
+	}
+
+	public void setReviewRate(int reviewRate) {
+		this.reviewRate = reviewRate;
+	}
+
+	public int getDoubtNum() {
+		return doubtNum;
+	}
+
+	public void setDoubtNum(int doubtNum) {
+		this.doubtNum = doubtNum;
+	}
+
+	public int getPracticeNum() {
+		return practiceNum;
+	}
+
+	public void setPracticeNum(int practiceNum) {
+		this.practiceNum = practiceNum;
+	}
+
+	public int getBugFixRate() {
+		return bugFixRate;
+	}
+
+	public void setBugFixRate(int bugFixRate) {
+		this.bugFixRate = bugFixRate;
+	}
+
+	public int getSubmitRate() {
+		return submitRate;
+	}
+
+	public void setSubmitRate(int submitRate) {
+		this.submitRate = submitRate;
+	}
+
+	public int getNormalRate() {
+		return normalRate;
+	}
+
+	public void setNormalRate(int normalRate) {
+		this.normalRate = normalRate;
+	}
+
+	public int getWriteNoteNum() {
+		return writeNoteNum;
+	}
+
+	public void setWriteNoteNum(int writeNoteNum) {
+		this.writeNoteNum = writeNoteNum;
+	}
+
+	public int getKillWrongNum() {
+		return killWrongNum;
+	}
+
+	public void setKillWrongNum(int killWrongNum) {
+		this.killWrongNum = killWrongNum;
+	}
+}

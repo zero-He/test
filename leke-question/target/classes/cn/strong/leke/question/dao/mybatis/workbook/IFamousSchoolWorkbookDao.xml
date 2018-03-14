@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.question.dao.mybatis.workbook.IFamousSchoolWorkbookDao">
+
+	<insert id="add" useGeneratedKeys="true" keyProperty="famousSchoolWorkbookId"
+		parameterType="cn.strong.leke.question.model.workbook.FamousSchoolWorkbook">
+		INSERT INTO que_famous_school_workbook(
+			workbookId, schoolId, status, editLog,
+			isDeleted, createdBy, createdOn, modifiedBy, modifiedOn
+		) VALUES (
+			#{workbookId}, #{schoolId}, #{status}, #{editLog},
+			0, #{createdBy}, now(), #{modifiedBy}, now()
+		)
+	</insert>
+	
+	<update id="remove" parameterType="cn.strong.leke.question.model.workbook.FamousSchoolWorkbook">
+		UPDATE que_famous_school_workbook
+		<set>
+			isDeleted = 1,
+			<if test="modifiedBy != null">
+			modifiedBy = #{modifiedBy},
+			</if>
+			modifiedOn = now()
+		</set>
+		<where>
+			AND workbookId = #{workbookId}
+			AND schoolId = #{schoolId}
+			AND isDeleted = 0
+		</where>
+	</update>
+	
+	<select id="getByWorkbookAndSchool" parameterType="map" 
+		resultType="cn.strong.leke.question.model.workbook.FamousSchoolWorkbook">
+		SELECT a.*
+		FROM que_famous_school_workbook a
+		<where>
+			AND workbookId = #{workbookId}
+			AND schoolId = #{schoolId}
+			AND isDeleted = 0
+		</where>
+	</select>
+	
+	<update id="updateStatus" parameterType="cn.strong.leke.question.model.workbook.FamousSchoolWorkbook">
+		UPDATE que_famous_school_workbook
+		<set>
+			status = #{status},
+			editLog = #{editLog},
+			<if test="modifiedBy != null">
+			modifiedBy = #{modifiedBy},
+			</if>
+			modifiedOn = now()
+		</set>
+		<where>
+			AND workbookId = #{workbookId}
+			AND schoolId = #{schoolId}
+			AND isDeleted = 0
+		</where>
+	</update>
+	
+	<select id="findByWorkbookIds" parameterType="map" 
+		resultType="cn.strong.leke.question.model.workbook.FamousSchoolWorkbook">
+		SELECT a.*
+		FROM que_famous_school_workbook a
+		<where>
+			AND workbookId IN
+			<foreach collection="workbookIds" item="workbookId" open="(" close=")" separator=",">
+				#{workbookId}
+			</foreach>
+			<if test="schoolId != null">
+			AND schoolId = #{schoolId}
+			</if>
+			AND isDeleted = 0
+		</where>
+	</select>
+	
+	<select id="queryMyAgencyFmsSchWorkbooks" resultType="long"
+		 parameterType="cn.strong.leke.question.model.workbook.query.AgencyFmsSchWorkbookQuery">
+		SELECT DISTINCT a.workbookId
+		FROM que_famous_school_workbook fsw
+		JOIN que_workbook a
+		ON fsw.workbookId = a.workbookId
+		<where>
+			<if test="famousSchoolId != null">
+			AND fsw.schoolId = #{famousSchoolId}
+			</if>
+			AND fsw.isDeleted = 0
+			AND a.isDeleted = 0
+			AND a.isDisabled = 0
+			AND a.createdBy = #{userId}
+			<if test="status != null">
+			AND fsw.status = #{status}
+			</if>
+			<if test="minCreatedOn != null">
+			<![CDATA[
+			AND fsw.createdOn >= #{minCreatedOn}
+			]]>
+			</if>
+			<if test="maxCreatedOn != null">
+			<![CDATA[
+			AND fsw.createdOn <= #{maxCreatedOn}
+			]]>
+			</if>
+			<if test="schoolStageId != null">
+			AND a.schoolStageId = #{schoolStageId}
+			</if>
+			<if test="subjectId != null">
+			AND a.subjectId = #{subjectId}
+			</if>
+		</where>
+		ORDER BY fsw.createdOn DESC
+	</select>
+</mapper>

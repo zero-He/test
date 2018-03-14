@@ -1,0 +1,9 @@
+
+<div class="tag-select-dialog">
+<!-- ko foreach: tags-->
+	<label>
+		<input name="tag" type="checkbox" data-bind="value: $data.officialTagId""/>
+		<span  data-bind="text: $data.officialTagName">&nbsp;</span>
+	</label>
+<!-- /ko -->
+</div>

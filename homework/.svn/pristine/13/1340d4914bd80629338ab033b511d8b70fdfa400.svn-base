@@ -1,0 +1,39 @@
+package cn.strong.leke.homework.controller;
+
+import java.util.Map;
+
+import javax.annotation.Resource;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
+
+import com.fasterxml.jackson.databind.util.JSONPObject;
+
+import cn.strong.leke.framework.web.JsonResult;
+import cn.strong.leke.homework.service.HomeworkDtlService;
+
+@Controller
+@RequestMapping("/auth/*")
+public class InternalController {
+
+	@Resource
+	private HomeworkDtlService homeworkDtlService;
+
+	/**
+	 * 根据老师ID获取未批改的作业数量和未解答的提问数量
+	 * @param teacherId 老师ID
+	 * @param jsoncallback
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping("teacher/internal/statistics")
+	public JSONPObject statistics(Long teacherId, String jsoncallback) {
+		JsonResult json = new JsonResult();
+		Map<String, Integer> uNums = homeworkDtlService.queryHwNum(teacherId);
+		json.addDatas("uncorrectHomeworkNum", uNums.get("uncorrectHomeworkNum"));
+		json.addDatas("unsolvedDoubtNum", uNums.get("unsolvedDoubtNum"));
+		return new JSONPObject(jsoncallback, json);
+	}
+
+}

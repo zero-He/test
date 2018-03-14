@@ -1,0 +1,95 @@
+package cn.strong.leke.homework.remote;
+
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.annotation.Resource;
+
+import org.springframework.stereotype.Component;
+
+import cn.strong.leke.common.utils.BeanUtils;
+import cn.strong.leke.common.utils.CollectionUtils;
+import cn.strong.leke.homework.model.Doubt;
+import cn.strong.leke.homework.model.StuSubjRes;
+import cn.strong.leke.homework.service.DoubtService;
+import cn.strong.leke.homework.service.HomeworkDtlService;
+import cn.strong.leke.homework.service.HomeworkService;
+import cn.strong.leke.homework.util.DiagHelp;
+import cn.strong.leke.model.user.User;
+import cn.strong.leke.notice.model.todo.HwAssignEvent;
+import cn.strong.leke.remote.model.homework.DoubtRemote;
+import cn.strong.leke.remote.model.homework.HomeworkAssignRemote;
+import cn.strong.leke.remote.model.homework.VodHwAssignRemote;
+import cn.strong.leke.remote.model.homework.VodHwAssignRemote.ResInfo;
+import cn.strong.leke.remote.service.homework.IHomeworkRemoteService;
+
+@Component
+public class HomeworkRemoteService implements IHomeworkRemoteService {
+
+	@Resource
+	private HomeworkService homeworkService;
+	@Resource
+	private DoubtService doubtService;
+	@Resource
+	private HomeworkDtlService homeworkDtlService;
+	
+	@Override
+	public List<Long> saveFastAssignHomework(List<Long> classIds, List<Long> paperIds, Date closeTime, User user) {
+		return this.homeworkService.saveFastAssignHomework(classIds, paperIds, closeTime, user);
+	}
+
+	@Override
+	public void saveAssignHomework(List<HomeworkAssignRemote> homeworkAssignList) {
+		this.homeworkService.saveAssignHomework(homeworkAssignList);
+	}
+
+	@Override
+	public List<ResInfo> saveAssignHomework(VodHwAssignRemote assignRemote){
+		return this.homeworkService.saveAssignHomework(assignRemote);
+	}
+
+	@Override
+	public void saveGaveupHomework(Long homeworkId) {
+		homeworkService.updateHomeworkInvalid(homeworkId);
+	}
+
+	@Override
+	public void updateHomeworkTimeByCourseSingle(Long courseSingleId, Date startTime, Date endTime) {
+		this.homeworkService.updateHomeworkTimeByCourseSingle(courseSingleId, startTime, endTime);
+	}
+
+	@Override
+	public List<Long> findPaperIdsByHomeworkIds(List<Long> homeworkIds) {
+		return this.homeworkService.findPaperIdsByHomeworkIds(homeworkIds);
+	}
+
+	@Override
+	public List<HwAssignEvent> findHwAssignEventsByCourseSingleId(Long courseSingleId) {
+		return this.homeworkService.findHwAssignEventsByCourseSingleId(courseSingleId);
+	}
+
+	@Override
+	public void saveStuHomework(User user, List<Long> homeworkIds) {
+		this.homeworkService.createStuVodHwWithTx(homeworkIds, user);
+	}
+
+	@Override
+	public void saveDoubt(DoubtRemote doubtRemote) {
+		Doubt doubt = BeanUtils.copyProperties(Doubt.class, doubtRemote);
+		this.doubtService.saveDoubt(doubt);
+	}
+	
+	@Override
+	public Map<String, Integer> findStuSubjResByStudentId(Long studentId, Long subjectId) {
+		List<StuSubjRes> list = homeworkDtlService.findStuSubjResByStudentId(studentId,subjectId,DiagHelp.getSemesterStarDate());
+		Map<String, Integer> map = new HashMap<String, Integer>();
+		if(CollectionUtils.isNotEmpty(list)){
+			StuSubjRes s = list.get(0);
+			map.put("bugFixNum", s.getBugFixNum()==null?0:s.getBugFixNum());
+			map.put("submitNum", s.getSubmitNum()==null?0:s.getSubmitNum());
+		}
+		return map;
+	}
+}

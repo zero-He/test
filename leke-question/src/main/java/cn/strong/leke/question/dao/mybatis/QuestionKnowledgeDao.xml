@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.1//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.question.dao.mybatis.QuestionKnowledgeDao">
+
+	<insert id="insertQuestionKnowledge" useGeneratedKeys="true" keyProperty="quesKnowledgeId"
+		parameterType="cn.strong.leke.model.question.QuestionKnowledge">
+		INSERT INTO que_question_knowledge(
+			questionId, materialNodeId, path, knowledgeId,
+			isDeleted, createdBy, createdOn, modifiedBy, modifiedOn
+		) VALUES (
+			#{questionId}, #{materialNodeId}, #{path}, #{knowledgeId},
+			0, #{createdBy}, now(), #{modifiedBy}, now()
+		)
+	</insert>
+	
+	<update id="deleteQuestionKnowledge" parameterType="cn.strong.leke.model.question.QuestionKnowledge">
+		UPDATE que_question_knowledge
+		<set>
+			isDeleted = 1,
+			<if test="modifiedBy != null">modifiedBy = #{modifiedBy},</if>
+			modifiedOn = now()
+		</set>
+		<where>
+			quesKnowledgeId = #{quesKnowledgeId}
+			AND isDeleted = 0
+		</where>
+	</update>
+	
+	<update id="deleteQuestionKnowledgeByQuestionId" parameterType="long">
+		UPDATE que_question_knowledge
+		<set>
+			isDeleted = 1
+		</set>
+		<where>
+			questionId= #{questionId}
+			AND isDeleted = 0
+		</where>
+	</update>
+	
+	<select id="findQuestionKnowledgeByQuestionId" parameterType="long"
+		resultType="cn.strong.leke.model.question.QuestionKnowledge">
+		SELECT 
+			quesKnowledgeId, questionId, materialNodeId, path, knowledgeId,
+			isDeleted, createdBy, createdOn, modifiedBy, modifiedOn
+		FROM que_question_knowledge
+		<where>
+			AND questionId = #{questionId}
+			AND isDeleted = 0
+		</where>
+	</select>
+	
+	<select id="getQuestionKnowledge" parameterType="long"
+		resultType="cn.strong.leke.model.question.QuestionKnowledge">
+		SELECT a.*
+		FROM que_question_knowledge a
+		WHERE a.quesKnowledgeId = #{quesKnowledgeId}
+	</select>	
+	
+	<select id="findKnowledgeQuestionTotal" resultType="map" >
+		select knowledgeId as id ,count(questionId) as total
+		from que_question_knowledge
+		where isDeleted = 0 and questionId in
+		<foreach collection="questionIds" item="item" open="(" separator="," close=")">
+			#{item}
+		</foreach>
+		group by knowledgeId
+	</select>
+</mapper>

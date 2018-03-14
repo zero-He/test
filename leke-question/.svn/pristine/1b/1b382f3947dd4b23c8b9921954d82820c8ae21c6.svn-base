@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.1//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.question.dao.mybatis.AnswerDao">
+
+	<insert id="insertAnswer" useGeneratedKeys="true" keyProperty="answerId"
+		parameterType="cn.strong.leke.model.question.Answer">
+		INSERT INTO que_answer(
+			questionId, ord, answerContent, isCorrect, isDeleted
+		) VALUES (
+			#{questionId}, #{ord}, #{answerContent}, #{isCorrect}, 0
+		)
+	</insert>
+	
+	<update id="deleteAnswerByQuestionId" parameterType="long">
+		UPDATE que_answer
+		<set>
+			isDeleted = 1
+		</set>
+		<where>
+			questionId= #{questionId}
+			AND isDeleted = 0
+		</where>
+	</update>
+	
+	<update id="deleteAnswer" parameterType="long">
+		UPDATE que_answer
+		<set>
+			isDeleted = 1
+		</set>
+		<where>
+			answerId= #{answerId}
+			AND isDeleted = 0
+		</where>
+	</update>
+	
+	<select id="findAnswersByQuestionId" parameterType="long"
+		resultType="cn.strong.leke.model.question.Answer">
+		SELECT 
+			answerId, questionId, ord, answerContent, isCorrect, isDeleted
+		FROM que_answer
+		<where>
+			questionId = #{questionId}
+			AND isDeleted = 0
+		</where>
+		ORDER BY ord ASC
+	</select>
+	
+	<update id="updateAnswer" parameterType="cn.strong.leke.model.question.Answer">
+		UPDATE que_answer
+		<set>
+			<if test="ord != null and ord != ''">
+				ord = #{ord},
+			</if>
+			<if test="isCorrect != null">
+				isCorrect = #{isCorrect},
+			</if>
+			answerContent = #{answerContent}
+		</set>
+		<where>
+			answerId= #{answerId}
+		</where>
+	</update>
+</mapper>

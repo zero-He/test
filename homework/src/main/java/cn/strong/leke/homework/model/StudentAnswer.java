@@ -1,0 +1,39 @@
+package cn.strong.leke.homework.model;
+
+import java.util.List;
+
+public class StudentAnswer implements java.io.Serializable {
+
+	private static final long serialVersionUID = -620162667999241985L;
+
+	// 学生标识
+	private Long studentId;
+	// 学生姓名
+	private String studentName;
+	// 答题信息列表
+	private List<AnswerInfo> answerInfos;
+
+	public Long getStudentId() {
+		return studentId;
+	}
+
+	public void setStudentId(Long studentId) {
+		this.studentId = studentId;
+	}
+
+	public String getStudentName() {
+		return studentName;
+	}
+
+	public void setStudentName(String studentName) {
+		this.studentName = studentName;
+	}
+
+	public List<AnswerInfo> getAnswerInfos() {
+		return answerInfos;
+	}
+
+	public void setAnswerInfos(List<AnswerInfo> answerInfos) {
+		this.answerInfos = answerInfos;
+	}
+}

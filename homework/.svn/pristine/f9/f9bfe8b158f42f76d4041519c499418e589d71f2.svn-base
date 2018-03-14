@@ -1,0 +1,443 @@
+	 /*
+	  *  前端交互S 
+	 * */
+	var interaction = {
+	    init : function () {
+	    	var _this = this;
+	    	_this.initMeta();
+	        //作业及微课tab切换
+	        $('.homework-hd-work-item').on('click', function () {
+	            var $index = $(this).index();
+	            $(this).addClass('homework-hd-work-item-on').siblings().removeClass('homework-hd-work-item-on');
+	            $('.homework-bd-work-item').eq($index).show().siblings().hide();
+	        });
+	        //选择试卷详情tab事件
+	        $('.assign-bd-nav').on('click', function () {
+	            var _this = this;
+	            if($(_this).hasClass('assign-bd-nav-active')){
+	                $('.assign-bd-nav').removeClass('assign-bd-nav-active');
+	                return;
+	            }else{
+	                $('.assign-bd-nav').removeClass('assign-bd-nav-active');
+	                $(_this).addClass('assign-bd-nav-active');
+	            }
+	        });
+	        $('.assign-hd-item').click(function(){
+	            var $index=$(this).index();
+	            var $dom=$('.assign-flow');
+	            if(!$dom.hasClass('assign-flow-time') && $index!=0){
+	                return;
+	            }
+	            switch ($index) {
+	                //选择试卷
+	                case 0 :
+	                    $dom.removeClass('assign-flow-student').removeClass('assign-flow-time');
+	                    break;
+	                //选择学生
+	                case 2 :
+	                    $dom.addClass('assign-flow-student').removeClass('assign-flow-time');
+	                    break;
+	                //选择时间
+	                case 4 :
+	                    $dom.addClass('assign-flow-time').removeClass('assign-flow-student');
+	                    break;
+	            }
+	        })
+
+	        //布置作业事件切换
+	        $('.assign-bottom-btn-item').on('click', function () {
+	            var $index = $(this).index();
+	            var $dom=$('.assign-flow');
+	            switch ($index) {
+	                case 0 :
+	                    win.snapshotData(1);
+	                    if(FORM_DATA.sections[0].paperIds.length ==0){
+	                    	Utils.Notice.print('请选择试卷',2000);
+	                    	return;
+	                    }
+	                    $dom.addClass('assign-flow-student');
+	                    break;
+	                case 1 :
+	                	if(FORM_DATA.sections[0].classes.length == 0 || FORM_DATA.sections[0].classes[0].users.length == 0){
+	                		Utils.Notice.print('请选择班级学生',2000);
+	                		return;
+	                	}
+	                	win.renderCheckedData();
+	                    $dom.addClass('assign-flow-time').removeClass('assign-flow-student');
+	                    break;
+	                case 2 :
+	                	if(FORM_DATA.sections[0].paperIds.length ==0){
+	                    	Utils.Notice.print('请选择试卷',2000);
+	                    	return;
+	                    }
+	                	if(FORM_DATA.sections[0].classes.length == 0 || FORM_DATA.sections[0].classes[0].users.length == 0){
+	                		Utils.Notice.print('请选择班级学生',2000);
+	                		return;
+	                	}
+	                	win.snapshotData(3);
+	                    break;
+	            }
+	        });
+	        //下拉选择事件
+	        $('body').click(function (ev) {
+	            var targetClass = $(ev.target).attr('class');
+	            if (targetClass &&  targetClass.indexOf('assign-bd-nav') == -1) {
+	                if (targetClass.indexOf('assign-testpaper-bank-li') > -1) {
+	                    $('.assign-testpaper-bank-li').removeClass('assign-testpaper-bank-li-active');
+	                    $(ev.target).addClass('assign-testpaper-bank-li-active');
+	                    $(ev.target).parents('.assign-bd-nav').find('.assign-bd-nav-text').html($(ev.target).html());
+	                    _this.selectCall(ev.target)//回调函数
+	                }
+	                $('.assign-bd-nav').removeClass('assign-bd-nav-active');
+	            }
+	        });
+	    },
+	    //按条件选择试卷成功回调函数
+	    selectCall : function (el) {
+    	   var $ul = $(el).parents('ul');
+	       if($ul.data('type') == 'scope'){
+	    	   win.queryParams.shareScope= $(el).data('v');
+	    	   win.loadGroup($(el).data('v'));
+	    	   $('.assign-bd-nav-group .assign-bd-nav-text').text('分组');
+	       }else if($ul.data('type') == 'group'){
+	    	   win.queryParams.userResGroupId= $(el).data('v');
+	       }else{
+	    	   var ids = $(el).data('v').split('_');
+	    	   win.queryParams.schoolStageId= ids[0];
+	    	   win.queryParams.subjectId= ids[1];
+	       }
+	       win.dropObj.opts.loadUpFn(win.dropObj);
+	    },
+	    initMeta : function (){
+	        var $devicePixelRatio=window.devicePixelRatio;
+	        if($devicePixelRatio==1.5){
+	            $('#homework-meta').attr('content','width=device-width,initial-scale=0.65, maximum-scale=0.65, minimum-scale=0.65')
+	        }else{
+	            $('#homework-meta').attr('content','width=1920px,initial-scale=0.5, maximum-scale=0.5, minimum-scale=0.5')
+	        }
+	    }
+};
+
+var FORM_DATA = {sections:[{classes:[],paperIds:[]}]};
+var CLAZZ_USERS= null;
+var CLAZZ_NO_USERIDS=[];
+var CLAZZ={};
+var CLAZZ_LIST =[];
+
+var win = {
+		queryParams:{
+			shareScope:1,
+			userResGroupId:null,
+			subjectId:null,
+			schoolStageId:null,
+			isPage:true,
+			curPage:1,
+			pageSize:10,
+			dataSize:null
+		},
+		tmpl :'{{#.}}<li class="assign-testpaper-bank-li" data-v="{{code}}">{{text}}</li>{{/.}}',
+		init:function(){
+			interaction.init();
+			this.initData();
+			this.dropObj.opts.loadUpFn(this.dropObj);
+		    this.bindEvent();
+		},
+		bindEvent:function(){
+			var _this = this;
+			$(document).on('click','.j-chk-paper',function(){
+				var $chk = $(this).find('.assign-bd-item-checkbox');
+			    $chk.toggleClass('assign-bd-item-checkbox-on');
+			});
+			$(document).on('click','.j-chk-clazz',function(){
+			
+				var $li = $(this);
+				var $chk = $(this).find('.assign-bd-item-checkbox');
+				$chk.toggleClass('assign-bd-item-checkbox-on');
+				CLAZZ.classId = $li.data('classid');
+				CLAZZ.className =  $li.data('classname');
+				CLAZZ.classType =  $li.data('classtype');
+				$.post('/auth/teacher/assign/users.htm?classId=' +  $li.data('classid'),function(json){
+					CLAZZ_USERS = json.datas;
+					var groups = json.datas.groups;
+					if(groups.length>0){
+						groups.unshift({groupId:-1,groupName:'全班'});
+					}
+					$('.j-ul-clazz-group').html(Mustache.render($('#j-tmpl-clazz-group').html(),groups));
+					var users = json.datas.users;
+					$('.j-ul-clazz-user').html(Mustache.render($('#j-tmpl-clazz-user').html(),users));
+					if($chk.hasClass('assign-bd-item-checkbox-on')){
+						$('.j-chk-clazz-group .assign-bd-item-checkbox').first().toggleClass('assign-bd-item-checkbox-on');
+						$('.j-chk-clazz-user .assign-bd-item-checkbox').toggleClass('assign-bd-item-checkbox-on');
+					}
+					_this.snapshotData(2);
+				})
+			});
+			//班级分组click
+			$(document).on('click','.j-chk-clazz-group',function(){
+				var $chk = $(this).find('.assign-bd-item-checkbox');
+				$chk.toggleClass('assign-bd-item-checkbox-on');
+				var isChecked = $chk.hasClass('assign-bd-item-checkbox-on');
+				var groupId= $(this).data('groupid');
+				if(groupId > 0){
+					$(this).parents('ul').find('.j-chk-clazz-group .assign-bd-item-checkbox').first().removeClass('assign-bd-item-checkbox-on');
+					var checkedGroup = [];
+					$('.j-chk-clazz-group').each(function(i,group){
+						if($(group).data('groupid') > 0 && $(group).find('.assign-bd-item-checkbox').hasClass('assign-bd-item-checkbox-on')){
+							checkedGroup.push($(group).data('groupid'));
+						}
+					});
+					if(checkedGroup.length > 0){
+						$('.j-ul-clazz-user .assign-bd-item-checkbox').addClass('assign-bd-item-checkbox-on');
+						var userIds = [];
+						$.each(CLAZZ_USERS.groups,function(i,n){
+							if(checkedGroup.indexOf(n.groupId) > -1){
+								userIds = userIds.concat(n.userIds);
+							}
+						});
+						var users = $.grep(CLAZZ_USERS.users,function(n){
+							if(userIds.indexOf(n.userId)>-1){
+								return true;
+							}}
+						);
+						$('.j-ul-clazz-user').html(Mustache.render($('#j-tmpl-clazz-user').html(),users));
+						$('.j-chk-clazz-user').each(function(i,n){
+							if(CLAZZ_NO_USERIDS.indexOf($(n).data('userid')) == -1){
+								$(n).find('.assign-bd-item-checkbox').addClass('assign-bd-item-checkbox-on');
+							}
+						});
+					}else{
+						$('.j-ul-clazz-user').html(Mustache.render($('#j-tmpl-clazz-user').html(),CLAZZ_USERS.users));
+						CLAZZ_NO_USERIDS = [];
+					}
+				}else{
+					$('.j-ul-clazz-user').html(Mustache.render($('#j-tmpl-clazz-user').html(),CLAZZ_USERS.users));
+					CLAZZ_NO_USERIDS = [];
+					if(isChecked){
+						$('.j-chk-clazz-user').find('.assign-bd-item-checkbox').addClass('assign-bd-item-checkbox-on');
+						$('.j-chk-clazz-group').each(function(i,group){
+							if($(group).data('groupid') > 0){
+								$(group).find('.assign-bd-item-checkbox').removeClass('assign-bd-item-checkbox-on');
+							}
+						});
+					}else{
+						$('.j-chk-clazz-user .assign-bd-item-checkbox').removeClass('assign-bd-item-checkbox-on');
+					}
+				}
+				_this.setClazzCheckState();
+				_this.snapshotData(2);
+			})
+			$(document).on('click','.j-chk-clazz-user',function(){
+				$(this).find('.assign-bd-item-checkbox').toggleClass('assign-bd-item-checkbox-on');
+				var userId = $(this).data('userid');
+				if(!$(this).find('.assign-bd-item-checkbox').hasClass('assign-bd-item-checkbox-on') && !$('.j-chk-clazz-group').first().hasClass('assign-bd-item-checkbox-on')){
+					CLAZZ_NO_USERIDS.push(userId);
+				}
+				if($(this).find('.assign-bd-item-checkbox').hasClass('assign-bd-item-checkbox-on') && !$('.j-chk-clazz-group .assign-bd-item-checkbox').first().hasClass('assign-bd-item-checkbox-on')){
+					CLAZZ_NO_USERIDS.splice(CLAZZ_NO_USERIDS.indexOf(userId),1);
+				}
+				_this.setClazzCheckState();
+				_this.snapshotData(2);
+			})
+			
+		},
+		initData:function(){
+			var _this = this;
+			var shareScope = $('.j-ul-scope li').first().data('v');
+			//分组
+			_this.loadGroup(shareScope);
+			//学段学科
+			_this.loadStageSubject();
+		},
+		renderCheckedData:function(){
+			var tmpl = '<li class="assign-bd-time-content f-fl">{{}}</li>';
+			$('.j-checked-paper').html(Mustache.render('{{#.}}<li class="assign-bd-time-content f-fl">{{.}}</li> {{/.}}',CLAZZ_LIST));
+			$('.j-checked-clazz').html(Mustache.render('{{#.}}<li class="assign-bd-time-content f-fl">{{className}}</li> {{/.}}',FORM_DATA.sections[0].classes));
+		},
+		setClazzCheckState :function(){
+			if($('.j-chk-clazz-user .assign-bd-item-checkbox-on').length > 0){
+				$('.j-chk-clazz').each(function(i,n){
+					if($(n).data('classid') == CLAZZ.classId){
+						$(n).find('.assign-bd-item-checkbox').addClass('assign-bd-item-checkbox-on');
+					}
+				});
+			}else{
+				$('.j-chk-clazz').each(function(i,n){
+					if($(n).data('classid') == CLAZZ.classId){
+						$(n).find('.assign-bd-item-checkbox').removeClass('assign-bd-item-checkbox-on');
+					}
+				});
+			}
+		},
+		snapshotData:function(type){
+			if(type == 1){
+				//保存选择试卷
+				FORM_DATA.sections[0].paperIds = [];
+				CLAZZ_LIST = [];
+				$('#j-body-paper .assign-bd-item-checkbox-on').each(function(i,n){
+					FORM_DATA.sections[0].paperIds.push($(n).data('paperid'));
+					CLAZZ_LIST.push($(n).data('title'));
+				});
+			}else if(type == 2){
+				//保存选择学生信息
+				$.each(FORM_DATA.sections[0].classes,function(i,n){
+					if(n.classId == CLAZZ.classId){
+						FORM_DATA.sections[0].classes.splice(i,1);
+					}
+				});
+				if($('.j-chk-clazz-user .assign-bd-item-checkbox-on').length == 0){
+					return;//没有选择学生，什么也不保存
+				}
+				var curClassInfo = {classId:CLAZZ.classId,className:CLAZZ.className};
+				curClassInfo.groups = [];
+				curClassInfo.users =[];
+				$('.j-chk-clazz-group .assign-bd-item-checkbox-on').each(function(i,n){
+					if($(n).data('groupid') > 0 ){
+						curClassInfo.groups.push({groupId:$(n).data('groupid'),groupName:$(n).data('groupname')});
+					}
+				});
+				$('.j-chk-clazz-user').find('.assign-bd-item-checkbox-on').each(function(i,n){
+					curClassInfo.users.push({userId:$(n).data('userid'),userName:$(n).data('username')});
+				});
+				FORM_DATA.sections[0].classes.push(curClassInfo);
+			}else{
+				//生成布置的作业
+				var start = $('.j-time-start').val();
+				var close = $('.j-time-end').val();
+				if(start == ''){
+					Utils.Notice.print('请选择作业开始时间',2000);
+					return;
+				}
+				if(close == ''){
+					Utils.Notice.print('请选择作业截止时间',2000);
+					return;
+				}
+				
+				FORM_DATA.startTime =new Date(start).getTime();
+				FORM_DATA.closeTime = new Date(close).getTime();
+				if(FORM_DATA.closeTime <= FORM_DATA.startTime){
+					Utils.Notice.print('作业截止时间不能小于开始时间',2000);
+					return;
+				}
+				
+				$.post('/auth/teacher/assign/saveAssign.htm',{dataJson:JSON.stringify(FORM_DATA)},function(json){
+					if(json.success){
+						Utils.Notice.print('布置成功',2000);
+						setTimeout(function(){
+							window.assignHomework.confirmAssign();
+						},1000);
+						
+					}
+				})
+			}
+		},
+		loadGroup:function(shareScope){
+			var _this = this;
+			_this.queryParams.userResGroupId= null;
+			$.getJSON(Leke.domain.questionServerName + '/auth/common/resgroup/jsonp/findUserResGroup.htm?resType=2&callback=?',function(json){
+				var datas=[];
+				$.each(json.datas.groups,function(i,g){
+					if(g.shareScope== shareScope ){
+						datas.push({code:g.userResGroupId,text:g.groupName});
+					}
+				});
+				$('.j-ul-group').html(Mustache.render('<li class="assign-testpaper-bank-li" data-v="">分组</li>'+_this.tmpl,datas));
+			})
+		},
+		loadStageSubject:function(){
+			var _this = this;
+			var userPref = Leke.userPref;
+			var stageSubjects=[];
+			$.each(Leke.userPref.authority.schoolStages,function(i,n){
+				$.each(n.subjects,function(j,s){
+					stageSubjects.push({code:n.schoolStageId+'_'+s.subjectId,text:n.schoolStageName+s.subjectName});
+				});
+			});
+			var outHtml = Mustache.render('<li class="assign-testpaper-bank-li" data-v="">学段学科</li>' + _this.tmpl,stageSubjects);
+			$('.j-ul-stage-subject').html(outHtml);
+		},
+		findPaperData:function(){
+			var _this = this;
+			var dataList = [];
+			$.ajax({url:'/auth/teacher/distribute/loadPapers.htm',
+				data:_this.queryParams,
+				type:'post',
+				async:false,
+				success:function(data){
+					win.queryParams.dataSize = data.datas.page.totalSize;
+					data.datas.page.paperTypeString = function() {
+						if (this.paperType === 1) {
+							return '普通试卷';
+						} else if (this.paperType === 2) {
+							if (this.paperAttachmentId) {
+								return '答题卡(有试卷)';
+							} else {
+								return '答题卡(无试卷)';
+							}
+						}
+					},
+					data.datas.page.isSubjective = function() {
+						return this.subjective ? '是' : '否';
+					},
+					data.datas.page.isHandwrite = function() {
+						return this.handwrite ? '是' : '否';
+					}
+					dataList = data.datas.page;
+			}});
+			return dataList;
+		},
+		renderPaperList:function(datas,isAppend){
+			var tmpl= $("#j-tmpl-paper").html();
+			var output = Mustache.render(tmpl, datas);
+			if(isAppend){
+				$('#j-body-paper').append(output);
+			}else{
+				$('#j-body-paper').html(output);
+			}
+		},
+		dropObj :  $('.j-content-paper ').dropload({
+		    scrollArea : $('.j-content-paper'),
+			autoLoad:false,
+			loadUpFn : function(me){
+			    	win.queryParams.curPage = 1;
+			    	var datas = win.findPaperData();
+					
+			    	win.renderPaperList(datas,false); 
+					
+				
+					 if(win.queryParams.curPage*win.queryParams.pageSize < win.queryParams.dataSize){
+						me.resetload();
+						me.unlock();	
+						me.noData(false); 
+						me.resetload();
+					 }else{
+						//me.lock();
+						me.noData(); 
+						me.resetload();		
+						$('.dropload-refresh').text('暂无数据');	
+					 }
+
+				
+			    },
+			    loadDownFn : function(me){
+			    	win.queryParams.curPage = win.queryParams.curPage+1;
+			        var datas = win.findPaperData();
+			        if(datas.dataList.length > 0 ){
+			        	win.renderPaperList(datas,true); 
+			        // 如果没有数据
+			        }
+			        if(!(win.queryParams.curPage*win.queryParams.pageSize < win.queryParams.dataSize)){
+					 	me.lock();	
+						me.noData(); 
+					}
+			       	me.resetload();	
+			    },
+				threshold : 50
+		})		
+}
+win.init();
+
+
+
+/*});*/
+
+

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" ?>   
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.homework.dao.mybatis.HanWangDao">
+
+	<insert id="saveHanWang" parameterType="cn.strong.leke.homework.model.HanWang">
+		<![CDATA[
+		INSERT INTO hw_hanwang (
+		   	questionId,
+		   	homeworkDtlId,
+		   	data,
+		   	isDeleted,
+		   	createdBy,
+		   	createdOn
+		) VALUES (
+		   	#{questionId},
+		   	#{homeworkDtlId},
+		   	#{data},
+		    0,
+		    #{createdBy},
+		    now()
+		)
+		]]>
+		<selectKey keyProperty="id" order="AFTER" resultType="long">
+			SELECT LAST_INSERT_ID() AS id
+		</selectKey>
+	</insert>
+
+	<select id="getHanWangById" parameterType="long" resultType="cn.strong.leke.homework.model.HanWang">
+		<![CDATA[
+		SELECT questionId,
+		       homeworkDtlId,
+		       data,
+		       isDeleted,
+		       createdBy,
+		       createdOn
+		  FROM hw_hanwang
+		 WHERE id = #{id}
+		]]>
+	</select>
+
+</mapper>   

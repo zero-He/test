@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8" ?>   
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.diag.dao.lesson.mybatis.AttendanceDao">
+
+	<select id="checkHasAttendByCourseSingleId" parameterType="long" resultType="boolean">
+	<![CDATA[
+		SELECT count(*)
+		  FROM ls_attendance_lesson
+		 WHERE scId = #{courseSingleId}
+	]]>
+	</select>
+
+	<select id="getAttendStatInfoByCourseSingleId" parameterType="map"
+		resultType="cn.strong.leke.lessonlog.model.AttendStatInfo">
+	<![CDATA[
+		SELECT COUNT(*) planNum,
+			   COUNT(IF(status = 0, 1, NULL)) partNum,
+			   COUNT(IF(status < 2, 1, NULL)) realNum,
+			   COUNT(IF(status = 2, 1, NULL)) missNum
+		  FROM ls_attendance_student a
+		  JOIN ls_attendance_lesson b
+		    ON a.csAttenId = b.csAttenId
+		 WHERE a.isDeleted = 0
+		   AND b.isDeleted = 0
+		   AND b.scId = #{courseSingleId}
+	]]>
+	</select>
+
+	<select id="getAttendStatInfoByStudentId" parameterType="map"
+		resultType="cn.strong.leke.lessonlog.model.AttendStatInfo">
+	<![CDATA[
+		SELECT COUNT(*) planNum,
+			   COUNT(IF(status = 0, 1, NULL)) partNum,
+			   COUNT(IF(status < 2, 1, NULL)) realNum,
+			   COUNT(IF(status = 2, 1, NULL)) missNum
+		  FROM ls_attendance_student a
+		  JOIN ls_attendance_lesson b
+		    ON a.csAttenId = b.csAttenId
+		 WHERE a.isDeleted = 0
+		   AND b.isDeleted = 0
+		   AND a.userId = #{studentId}
+		   AND b.scId IN
+	]]>
+		<foreach collection="courseSingleIds" item="courseSingleId" separator="," open="(" close=")">
+			#{courseSingleId}
+		</foreach>
+	</select>
+
+	<select id="getAttendStatInfoByCourseSingleIds" parameterType="map"
+		resultType="cn.strong.leke.diag.dao.lesson.model.AttendStatInfo2">
+	<![CDATA[
+		SELECT COUNT(*) usersNum,
+			   COUNT(distinct b.scId) lessonNum,
+			   SUM(IF(attendState = 0, 1, 0)) normalNum,
+			   SUM(IF(attendState = 1, 1, 0)) belateNum,
+			   SUM(IF(attendState = 2, 1, 0)) earlyNum,
+			   SUM(IF(attendState = 3, 1, 0)) exceptNum,
+			   SUM(IF(attendState = 4, 1, 0)) absentNum
+		  FROM ls_attendance_student a
+		  JOIN ls_attendance_lesson b
+		    ON a.csAttenId = b.csAttenId
+		 WHERE a.isDeleted = 0
+		   AND b.isDeleted = 0
+		   AND b.scId IN
+	]]>
+		<foreach collection="courseSingleIds" item="courseSingleId" separator="," open="(" close=")">
+			#{courseSingleId}
+		</foreach>
+	</select>
+
+	<select id="findUserAttendInfoByCourseSingleIds" parameterType="map"
+		resultType="cn.strong.leke.diag.dao.lesson.model.UserAttendInfo">
+	<![CDATA[
+		SELECT a.userId,
+			   a.userName,
+			   COUNT(*) totalNum,
+			   SUM(IF(attendState <> 4, 1, 0)) realNum,
+			   SUM(IF(attendState = 0, 1, 0)) normalNum,
+			   SUM(IF(attendState = 1, 1, 0)) belateNum,
+			   SUM(IF(attendState = 2, 1, 0)) earlyNum,
+			   SUM(IF(attendState = 3, 1, 0)) exceptNum,
+			   SUM(IF(attendState = 4, 1, 0)) absentNum
+		  FROM ls_attendance_student a
+		  JOIN ls_attendance_lesson b
+		    ON a.csAttenId = b.csAttenId
+		 WHERE a.isDeleted = 0
+		   AND b.isDeleted = 0
+		   AND b.scId IN
+	]]>
+		<foreach collection="courseSingleIds" item="courseSingleId" separator="," open="(" close=")">
+			#{courseSingleId}
+		</foreach>
+		GROUP BY a.userId
+	</select>
+
+	<select id="findNamesByCourseSingleIdAndStatus" parameterType="map" resultType="string">
+	<![CDATA[
+		SELECT b.userName
+		  FROM ls_attendance_lesson a
+		  JOIN ls_attendance_student b
+		    ON a.csAttenId = b.csAttenId
+		 WHERE a.isDeleted = 0
+		   AND b.isDeleted = 0
+		   AND a.scId = #{courseSingleId}
+		   AND b.status = #{status}
+	]]>
+	</select>
+
+	<select id="filterNotAttendCourseSingleIds" parameterType="map" resultType="long">
+	<![CDATA[
+		SELECT DISTINCT scId
+		  FROM ls_attendance_lesson
+		 WHERE isDeleted = 0
+		   AND scId IN
+	]]>
+		<foreach collection="courseSingleIds" item="courseSingleId" separator="," open="(" close=")">
+			#{courseSingleId}
+		</foreach>
+	</select>
+
+	<select id="getTeachAttendStatInfoByCourseSingleIds" parameterType="map"
+		resultType="cn.strong.leke.diag.dao.lesson.model.AttendStatInfo2">
+	<![CDATA[
+		SELECT COUNT(*) realNum,
+			   SUM(IF(a.attendState = 0, 1, 0)) normalNum,
+			   SUM(IF(a.attendState = 1, 1, 0)) belateNum,
+			   SUM(IF(a.attendState = 2, 1, 0)) earlyNum,
+			   SUM(IF(a.attendState = 3, 1, 0)) exceptNum,
+			   SUM(IF(a.attendState = 4, 1, 0)) absentNum
+		  FROM ls_attendance_teacher a
+		  JOIN ls_attendance_lesson b
+		    ON a.csAttendId = b.csAttenId
+		 WHERE a.isDeleted = 0
+		   AND b.isDeleted = 0
+		   AND b.scId IN
+	]]>
+		<foreach collection="courseSingleIds" item="courseSingleId" separator="," open="(" close=")">
+			#{courseSingleId}
+		</foreach>
+	</select>
+
+	<select id="findUserRateByCourseSingleIds" parameterType="map" resultType="cn.strong.leke.diag.model.UserRate">
+	<![CDATA[
+		SELECT b.userId,
+			   ROUND(SUM(IF(b.attendState = 0, 1, 0)) * 100 / COUNT(*)) rate
+		  FROM ls_attendance_lesson a
+		  JOIN ls_attendance_student b
+		    ON a.csAttenId = b.csAttenId
+		 WHERE b.isDeleted = 0
+		   AND a.isDeleted = 0
+		   AND a.scId IN 
+	]]>
+		<foreach collection="courseSingleIds" item="courseSingleId" separator="," open="(" close=")">
+			#{courseSingleId}
+		</foreach>
+		GROUP BY b.userId
+	</select>
+
+</mapper>   

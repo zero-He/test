@@ -1,0 +1,497 @@
+/*
+ * Copyright (c) 2014 Strong Group - 版权所有
+ * 
+ * This software is the confidential and proprietary information of
+ * Strong Group. You shall not disclose such confidential information 
+ * and shall use it only in accordance with the terms of the license 
+ * agreement you entered into with www.cnstrong.cn.
+ */
+package cn.strong.leke.homework.model;
+
+import java.math.BigDecimal;
+import java.util.Date;
+
+import cn.strong.leke.common.utils.StringUtils;
+import cn.strong.leke.homework.util.HomeworkUtils;
+
+/**
+ * api
+ * 学生作业列表返回信息
+ * @author Zhang Fujun
+ * @date 2016年4月18日
+ */
+public class ApiStudentHomeworkListDTO {
+
+	// 老师作业ID
+	private Long homeworkId;
+	
+	private Long teacherId;
+	
+	private String className ;  
+	private Date correctTime ;
+	private String soundFile;
+	// 老师标识
+	private String teacherName;
+	// 试卷标识
+	private Long paperId;
+	private Long paperType;
+	// 作业状态，1：正常，2：作废
+	private Integer status;
+	// 学科标识
+	private Long subjectId;
+	// 年级学科名称
+	private String subjectName;
+	// 课程名称
+	private String courseName;
+	// 作业名称
+	private String homeworkName;
+	// 作业类型
+	private Integer homeworkType;
+	// 使用阶段
+	private Integer usePhase;
+	//资源类型
+	private Integer resType;
+	// 原始类型，用于显示
+	private String rawType;
+	// 备课资源ID
+	private String beikeGuid;
+	// 开放答案时间
+	private Date openAnswerTime;
+	// 开始时间
+	private Date startTime;
+	// 截止时间
+	private Date closeTime;
+	// 主观性
+	private Boolean subjective;
+	//	学生作业标识
+	private Long homeworkDtlId;
+	//	作业提交状态，0：未提交，1：正常提交，2：延迟提交
+	private Integer submitStatus;
+	//	提交时间
+	private Date submitTime;
+	//	排名
+	private Integer rank;
+	//	得分，如果作业未提交时，为空值；已提交且未批改时，为客观题得分；已批改时为作业得分。注意：这个数保留两位小数，显示时要保留一位小数
+	private BigDecimal score;
+
+	/**
+	 * 得分率
+	 */
+	private BigDecimal scoreRate;
+	/**
+	 * 订正状态 1:待订正,2:待复批,3:订正通过
+	 */
+	private Integer bugFixStage;
+
+	private Boolean isOpenAnswer;
+
+	private Boolean isSelfCheck;
+
+	/**
+	 * @return the homeworkId
+	 */
+	public Long getHomeworkId() {
+		return homeworkId;
+	}
+
+	/**
+	 * @param homeworkId the homeworkId to set
+	 */
+	public void setHomeworkId(Long homeworkId) {
+		this.homeworkId = homeworkId;
+	}
+
+	/**
+	 * @return the teacherId
+	 */
+	public Long getTeacherId() {
+		return teacherId;
+	}
+
+	/**
+	 * @param teacherId the teacherId to set
+	 */
+	public void setTeacherId(Long teacherId) {
+		this.teacherId = teacherId;
+	}
+
+	/**
+	 * @return the className
+	 */
+	public String getClassName() {
+		return className;
+	}
+
+	/**
+	 * @param className the className to set
+	 */
+	public void setClassName(String className) {
+		this.className = className;
+	}
+
+	/**
+	 * @return the correctTime
+	 */
+	public Date getCorrectTime() {
+		return correctTime;
+	}
+
+	/**
+	 * @param correctTime the correctTime to set
+	 */
+	public void setCorrectTime(Date correctTime) {
+		this.correctTime = correctTime;
+	}
+
+	/**
+	 * @return the soundFile
+	 */
+	public String getSoundFile() {
+		return soundFile;
+	}
+
+	/**
+	 * @param soundFile the soundFile to set
+	 */
+	public void setSoundFile(String soundFile) {
+		this.soundFile = soundFile;
+	}
+
+	/**
+	 * @return the teacherName
+	 */
+	public String getTeacherName() {
+		return teacherName;
+	}
+
+	/**
+	 * @param teacherName the teacherName to set
+	 */
+	public void setTeacherName(String teacherName) {
+		this.teacherName = teacherName;
+	}
+
+	/**
+	 * @return the paperId
+	 */
+	public Long getPaperId() {
+		return paperId;
+	}
+
+	/**
+	 * @param paperId the paperId to set
+	 */
+	public void setPaperId(Long paperId) {
+		this.paperId = paperId;
+	}
+
+	/**
+	 * @return the status
+	 */
+	public Integer getStatus() {
+		return status;
+	}
+
+	/**
+	 * @param status the status to set
+	 */
+	public void setStatus(Integer status) {
+		this.status = status;
+	}
+
+	/**
+	 * @return the subjectId
+	 */
+	public Long getSubjectId() {
+		return subjectId;
+	}
+
+	/**
+	 * @param subjectId the subjectId to set
+	 */
+	public void setSubjectId(Long subjectId) {
+		this.subjectId = subjectId;
+	}
+
+	/**
+	 * @return the subjectName
+	 */
+	public String getSubjectName() {
+		return subjectName;
+	}
+
+	/**
+	 * @param subjectName the subjectName to set
+	 */
+	public void setSubjectName(String subjectName) {
+		this.subjectName = subjectName;
+	}
+
+	/**
+	 * @return the courseName
+	 */
+	public String getCourseName() {
+		return courseName;
+	}
+
+	/**
+	 * @param courseName the courseName to set
+	 */
+	public void setCourseName(String courseName) {
+		this.courseName = courseName;
+	}
+
+	/**
+	 * @return the homeworkName
+	 */
+	public String getHomeworkName() {
+		return homeworkName;
+	}
+
+	/**
+	 * @param homeworkName the homeworkName to set
+	 */
+	public void setHomeworkName(String homeworkName) {
+		this.homeworkName = homeworkName;
+	}
+
+	public String getHomeworkType() {
+		return HomeworkUtils.fmtHomeworkTypeStr(homeworkType);
+	}
+
+	/**
+	 * @param homeworkType the homeworkType to set
+	 */
+	public void setHomeworkType(Integer homeworkType) {
+		this.homeworkType = homeworkType;
+	}
+
+	/**
+	 * @return the startTime
+	 */
+	public Date getStartTime() {
+		return startTime;
+	}
+
+	/**
+	 * @param startTime the startTime to set
+	 */
+	public void setStartTime(Date startTime) {
+		this.startTime = startTime;
+	}
+
+	/**
+	 * @return the closeTime
+	 */
+	public Date getCloseTime() {
+		return closeTime;
+	}
+
+	/**
+	 * @param closeTime the closeTime to set
+	 */
+	public void setCloseTime(Date closeTime) {
+		this.closeTime = closeTime;
+	}
+
+	/**
+	 * @return the subjective
+	 */
+	public Boolean getSubjective() {
+		return subjective;
+	}
+
+	/**
+	 * @param subjective the subjective to set
+	 */
+	public void setSubjective(Boolean subjective) {
+		this.subjective = subjective;
+	}
+
+	/**
+	 * @return the homeworkDtlId
+	 */
+	public Long getHomeworkDtlId() {
+		return homeworkDtlId;
+	}
+
+	/**
+	 * @param homeworkDtlId the homeworkDtlId to set
+	 */
+	public void setHomeworkDtlId(Long homeworkDtlId) {
+		this.homeworkDtlId = homeworkDtlId;
+	}
+
+	/**
+	 * @return the submitStatus
+	 */
+	public Integer getSubmitStatus() {
+		return submitStatus;
+	}
+
+	/**
+	 * @param submitStatus the submitStatus to set
+	 */
+	public void setSubmitStatus(Integer submitStatus) {
+		this.submitStatus = submitStatus;
+	}
+
+	/**
+	 * @return the submitTime
+	 */
+	public Date getSubmitTime() {
+		return submitTime;
+	}
+
+	/**
+	 * @param submitTime the submitTime to set
+	 */
+	public void setSubmitTime(Date submitTime) {
+		this.submitTime = submitTime;
+	}
+
+	/**
+	 * @return the rank
+	 */
+	public Integer getRank() {
+		return rank;
+	}
+
+	/**
+	 * @param rank the rank to set
+	 */
+	public void setRank(Integer rank) {
+		this.rank = rank;
+	}
+
+	/**
+	 * @return the score
+	 */
+	public BigDecimal getScore() {
+		return score;
+	}
+
+	/**
+	 * @param score the score to set
+	 */
+	public void setScore(BigDecimal score) {
+		this.score = score;
+	}
+
+	/**
+	 * @return the bugFixStage
+	 */
+	public Integer getBugFixStage() {
+		return bugFixStage;
+	}
+
+	/**
+	 * @param bugFixStage the bugFixStage to set
+	 */
+	public void setBugFixStage(Integer bugFixStage) {
+		this.bugFixStage = bugFixStage;
+	}
+
+	/**
+	 * @return the isOpenAnswer
+	 */
+	public Boolean getIsOpenAnswer() {
+		return isOpenAnswer;
+	}
+
+	/**
+	 * @param isOpenAnswer the isOpenAnswer to set
+	 */
+	public void setIsOpenAnswer(Boolean isOpenAnswer) {
+		this.isOpenAnswer = isOpenAnswer;
+	}
+
+	/**
+	 * @return the isSelfCheck
+	 */
+	public Boolean getIsSelfCheck() {
+		return isSelfCheck;
+	}
+
+	/**
+	 * @param isSelfCheck the isSelfCheck to set
+	 */
+	public void setIsSelfCheck(Boolean isSelfCheck) {
+		this.isSelfCheck = isSelfCheck;
+	}
+
+	/**
+	 * @return the scoreRate
+	 */
+	public BigDecimal getScoreRate() {
+		return scoreRate;
+	}
+
+	/**
+	 * @param scoreRate the scoreRate to set
+	 */
+	public void setScoreRate(BigDecimal scoreRate) {
+		this.scoreRate = scoreRate;
+	}
+
+	/**
+	 * @return the paperType
+	 */
+	public Long getPaperType() {
+		return paperType;
+	}
+
+	/**
+	 * @param paperType the paperType to set
+	 */
+	public void setPaperType(Long paperType) {
+		this.paperType = paperType;
+	}
+
+	public Integer getResType() {
+		return resType;
+	}
+
+	public void setResType(Integer resType) {
+		this.resType = resType;
+	}
+
+	public Integer getUsePhase() {
+		return usePhase;
+	}
+
+	public void setUsePhase(Integer usePhase) {
+		this.usePhase = usePhase;
+	}
+
+	public String getRawType() {
+		return rawType;
+	}
+
+	public void setRawType(String rawType) {
+		this.rawType = rawType;
+	}
+
+	public String getBeikeGuid() {
+		return beikeGuid;
+	}
+
+	public void setBeikeGuid(String beikeGuid) {
+		this.beikeGuid = beikeGuid;
+	}
+
+	public Date getOpenAnswerTime() {
+		return openAnswerTime;
+	}
+
+	public void setOpenAnswerTime(Date openAnswerTime) {
+		this.openAnswerTime = openAnswerTime;
+	}
+	
+	public String getRawTypeName(){
+		if(StringUtils.isNotEmpty(this.rawType)){
+			return ResRawType.resolve(rawType).name;
+		}
+		return null;
+	}
+}

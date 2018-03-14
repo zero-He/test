@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.monitor.core.dao.mybatis.IAttendanceDao">
+	<select id="selectAttendanceList" parameterType="cn.strong.leke.monitor.core.model.AttendanceQuery" resultType="cn.strong.leke.monitor.core.model.AttendanceStudentDTO">
+		<!-- /* 学校学段的考勤数据*/ -->
+		SELECT att.schoolId,
+		lk.schoolStageId,ss.schoolStageName,
+		COUNT(DISTINCT(stu.userId)) AS mustClassNum,
+		COUNT(1) AS mustClassTimes,
+		SUM(CASE WHEN STATUS!=2 THEN 1 ELSE 0 END) AS actualClassTimes  
+		FROM lesson.ls_attendance_student stu  
+		LEFT JOIN lesson.ls_attendance_lesson att  ON stu.csAttenId=att.csAttenId 
+		LEFT JOIN lesson.ls_lesson ls ON att.scId=ls.courseSingleId
+		LEFT JOIN lesson.ls_klass lk ON lk.classId=ls.classId 
+		LEFT JOIN tutor.tutor_schoolStage ss ON lk.schoolStageId=ss.schoolStageId
+		WHERE ls.schoolId=#{schoolId} AND att.schoolId=#{schoolId} AND lk.schoolStageId=#{schoolStageId}
+		AND att.isDeleted=0 AND stu.isDeleted=0 AND ls.isDeleted = 0 AND lk.isDeleted=0 AND ss.isDeleted=0 
+		<if test="fromDate != null and fromDate != ''">
+		<![CDATA[
+			AND ls.startTime >= DATE_FORMAT(#{fromDate},'%Y-%m-%d') 
+		]]>
+		</if>
+		<if test="endDate != null and endDate != ''">
+		<![CDATA[
+			AND ls.startTime < DATE_ADD(#{endDate},INTERVAL 1 DAY)   
+		]]></if>
+		GROUP BY att.schoolId,lk.schoolStageId,ss.schoolStageName
+	</select>
+	<!-- 班级考勤学生 -->
+	<select id="selectStudentAttendanceList" parameterType="cn.strong.leke.monitor.core.model.AttendanceQuery" resultType="cn.strong.leke.monitor.core.model.AttendanceStudentDTO">
+		<!-- 学校班级的考勤数据 -->
+		SELECT att.schoolId  AS schoolId,
+		lkk.classId ,lkk.className,
+		COUNT(DISTINCT(stu.userId)) AS mustClassNum,
+		COUNT(1) AS mustClassTimes,
+		SUM(CASE WHEN STATUS!=2 THEN 1 ELSE 0 END) AS actualClassTimes   
+		FROM  lesson.ls_attendance_student stu   <!-- 学生考勤表  -->
+		LEFT JOIN lesson.ls_klass lkk ON lkk.relationId=stu.classId  and lkk.isExpired = 0 and lkk.isDeleted = 0 <!-- 此处根据考勤记录的classID,读取学生所属的班级，用于后续分组 -->
+		LEFT JOIN lesson.ls_attendance_lesson att ON stu.csAttenId=att.csAttenId  <!-- 课堂考勤表  -->
+		LEFT JOIN lesson.ls_lesson ls ON att.scId=ls.courseSingleId  <!-- 课堂表 --> 
+		LEFT JOIN lesson.ls_klass_subject sub ON sub.classSubjId=ls.classSubjId AND sub.isDeleted=0
+		LEFT JOIN lesson.ls_klass lk ON lk.classId=ls.classId   <!-- 班级表，以上联表统计出老师这个年级的课堂对应的考勤记录 -->
+		WHERE ls.schoolId=#{schoolId} AND lk.gradeId=#{gradeId} AND stu.isDeleted=0 AND att.isDeleted=0 AND ls.isDeleted = 0 AND lk.isDeleted=0  
+		AND ls.isEnd=1 and ls.teacherId=#{teacherId} AND sub.subjectId =#{subjectId}
+		<if test="fromDate != null and fromDate != ''">
+		<![CDATA[
+			AND ls.startTime >= DATE_FORMAT(#{fromDate},'%Y-%m-%d') 
+		]]>
+		</if>
+		<if test="endDate != null and endDate != ''">
+		<![CDATA[
+			AND ls.startTime < DATE_ADD(#{endDate},INTERVAL 1 DAY)   
+		]]></if>
+		GROUP BY att.schoolId,lkk.classId,lkk.className
+	</select>
+	<!-- 班级考勤班主任 -->
+	<select id="selectTeacherAttendanceList" parameterType="cn.strong.leke.monitor.core.model.AttendanceQuery" resultType="cn.strong.leke.monitor.core.model.AttendanceTeacherDTO">
+		<!--老师考勤数据 -->
+		SELECT schoolId,classId,className,userId AS headTeacherId,userName AS headTeacherName,
+		COUNT(1) AS mustAttendLessonNum,
+		SUM(CASE WHEN teacherId IS NOT NULL THEN 1 ELSE 0 END) AS actualLessonTimes,
+		IFNULL(SUM(online),0) AS attendHours,IFNULL(SUM(times),0) AS attendTimes FROM (
+		SELECT stu.csAttenId,ls.schoolId,lkk.classId,lkk.className,teacher.userId,teacher.userName,other.userId  AS teacherId,other.online,other.count as times
+		FROM  lesson.ls_attendance_student stu 
+		LEFT JOIN lesson.ls_klass lkk ON lkk.relationId=stu.classId  and lkk.isExpired = 0 and lkk.isDeleted = 0 <!-- 此处根据考勤记录的classID,读取学生所属的班级，用于后续分组 -->
+		LEFT JOIN lesson.ls_klass_teacher teacher ON teacher.classId=lkk.classId AND teacher.isDeleted=0 AND teacher.schoolId=#{schoolId} AND roleId=103 <!-- 得到班主任ID -->
+		LEFT JOIN lesson.ls_attendance_other other ON other.csAttenId=stu.csAttenId AND other.userId=teacher.userId AND other.roleId=103 <!-- 班主任考勤表 -->
+		LEFT JOIN lesson.ls_attendance_lesson att ON stu.csAttenId=att.csAttenId  <!-- 课堂考勤表 -->
+		LEFT JOIN lesson.ls_lesson ls ON att.scId=ls.courseSingleId  <!-- 课堂表 -->
+		LEFT JOIN lesson.ls_klass_subject sub ON sub.classSubjId=ls.classSubjId AND sub.isDeleted=0
+		LEFT JOIN lesson.ls_klass lk ON lk.classId=ls.classId   <!-- 班级表，以上联表统计出老师这个年级的课堂对应的考勤记录 -->
+		WHERE ls.schoolId=#{schoolId} AND lk.gradeId=#{gradeId} and stu.isDeleted=0 AND att.isDeleted=0 AND ls.isDeleted = 0 AND lk.isDeleted=0  
+		AND ls.isEnd=1 
+		and ls.teacherId=#{teacherId} AND sub.subjectId =#{subjectId}
+		<if test="fromDate != null and fromDate != ''">
+		<![CDATA[
+			AND ls.startTime >= DATE_FORMAT(#{fromDate},'%Y-%m-%d') 
+		]]>
+		</if>
+		<if test="endDate != null and endDate != ''">
+		<![CDATA[
+			AND ls.startTime < DATE_ADD(#{endDate},INTERVAL 1 DAY)   
+		]]></if>
+		GROUP BY ls.schoolId,lkk.classId,lkk.className,stu.csAttenId,teacher.userId,teacher.userName,other.userId,other.online,other.count 
+		) t 
+		GROUP BY schoolId,classId,className,userId,userName
+	</select>
+	
+	<!-- 学生课堂考勤 -->
+	<select id="selectStudentAttendanceLessonList" parameterType="cn.strong.leke.monitor.core.model.AttendanceQuery" resultType="cn.strong.leke.monitor.core.model.AttendanceStudentDTO">
+		SELECT att.schoolId,
+		lkk.classId,
+		ls.courseSingleName AS lessonName,
+		ls.startTime AS lessonStartTime,
+		ls.endTime AS lessonEndTime
+		,COUNT(DISTINCT(stu.userId)) AS mustClassNum,COUNT(1) AS mustClassTimes,SUM(CASE WHEN STATUS!=2 THEN 1 ELSE 0 END) AS actualClassTimes   
+		FROM  lesson.ls_attendance_student stu
+		LEFT JOIN lesson.ls_attendance_lesson att ON stu.csAttenId=att.csAttenId 
+		LEFT JOIN lesson.ls_lesson ls ON att.scId=ls.courseSingleId
+		LEFT JOIN lesson.ls_klass_subject sub ON sub.classSubjId=ls.classSubjId AND sub.isDeleted=0
+		LEFT JOIN lesson.ls_klass lk ON lk.classId=ls.classId 
+		LEFT JOIN lesson.ls_klass lkk ON lkk.relationId=stu.classId and lkk.isExpired = 0 and lkk.isDeleted = 0 
+		WHERE att.isDeleted=0 AND ls.isDeleted = 0 AND lk.isDeleted=0  
+		AND ls.schoolId=#{schoolId} AND lk.gradeId=#{gradeId} 
+		<if test="classId != null and classId != '' and classId != 0">
+		AND lkk.classId=#{classId} 
+		</if>
+		<if test="classId == null or classId == 0">
+		AND lkk.classId is null
+		</if>
+		AND ls.isEnd=1 AND ls.teacherId=#{teacherId} AND sub.subjectId =#{subjectId}
+		<if test="fromDate != null and fromDate != ''">
+		<![CDATA[
+			AND ls.startTime >= DATE_FORMAT(#{fromDate},'%Y-%m-%d') 
+		]]>
+		</if>
+		<if test="endDate != null and endDate != ''">
+		<![CDATA[
+			AND ls.startTime < DATE_ADD(#{endDate},INTERVAL 1 DAY)   
+		]]></if>
+		<if test="fromLessonDate != null and fromLessonDate != ''">
+		<![CDATA[
+			AND ls.startTime >= DATE_FORMAT(#{fromLessonDate},'%Y-%m-%d') 
+		]]>
+		</if>
+		<if test="endLessonDate != null and endLessonDate != ''">
+		<![CDATA[
+			AND ls.startTime < DATE_ADD(#{endLessonDate},INTERVAL 1 DAY)   
+		]]></if>
+		<if test="lessonName != null and lessonName != ''">
+		<![CDATA[
+			AND ls.courseSingleName LIKE CONCAT(CONCAT('%',#{lessonName}),'%')
+		]]></if>
+		GROUP BY att.schoolId,lkk.classId,lkk.className,ls.courseSingleName,ls.startTime,ls.endTime
+	</select>
+	
+	<!-- 老师课堂考勤 -->
+	<select id="selectTeacherAttendanceLessonList" parameterType="cn.strong.leke.monitor.core.model.AttendanceQuery" resultType="cn.strong.leke.monitor.core.model.AttendanceTeacherDtlDTO">
+		SELECT stu.csAttenId,
+		ls.schoolId,
+		ls.courseSingleName AS lessonName,
+		ls.startTime AS lessonStartTime,
+		ls.endTime AS lessonEndTime,
+		ls.time AS lessonMinutes,
+		lkk.classId,
+		lkk.className,
+		teacher.userId,
+		other.userId  AS headTeacherId,
+		other.online AS attendHours,
+		other.attendTime
+		FROM  lesson.ls_attendance_student stu
+		LEFT JOIN lesson.ls_klass lkk ON lkk.relationId=stu.classId and lkk.isExpired = 0 and lkk.isDeleted = 0 
+		LEFT JOIN lesson.ls_klass_teacher teacher ON teacher.classId=lkk.classId AND teacher.isDeleted=0 AND teacher.schoolId=#{schoolId} AND roleId=103
+		LEFT JOIN lesson.ls_attendance_other other ON other.csAttenId=stu.csAttenId AND other.userId=teacher.userId AND other.roleId=103
+		LEFT JOIN lesson.ls_attendance_lesson att ON stu.csAttenId=att.csAttenId
+		LEFT JOIN lesson.ls_lesson ls ON att.scId=ls.courseSingleId
+		LEFT JOIN lesson.ls_klass_subject sub ON sub.classSubjId=ls.classSubjId AND sub.isDeleted=0
+		LEFT JOIN lesson.ls_klass lk ON lk.classId=ls.classId
+		WHERE stu.isDeleted=0 AND att.isDeleted=0 AND ls.isDeleted = 0 AND lk.isDeleted=0  
+		AND ls.isEnd=1  AND ls.schoolId=#{schoolId} AND lk.gradeId=#{gradeId} 
+		<if test="classId != null and classId != '' and classId != 0">
+		AND lkk.classId=#{classId} 
+		</if>
+		<if test="classId == null or classId == 0">
+		AND lkk.classId is null
+		</if>
+		AND ls.teacherId=#{teacherId} AND sub.subjectId =#{subjectId} AND teacher.userId=#{headTeacherId}
+		<if test="fromDate != null and fromDate != ''">
+		<![CDATA[
+			AND ls.startTime >= DATE_FORMAT(#{fromDate},'%Y-%m-%d') 
+		]]>
+		</if>
+		<if test="endDate != null and endDate != ''">
+		<![CDATA[
+			AND ls.startTime < DATE_ADD(#{endDate},INTERVAL 1 DAY)   
+		]]></if>
+			<if test="fromLessonDate != null and fromLessonDate != ''">
+		<![CDATA[
+			AND ls.startTime >= DATE_FORMAT(#{fromLessonDate},'%Y-%m-%d') 
+		]]>
+		</if>
+		<if test="endLessonDate != null and endLessonDate != ''">
+		<![CDATA[
+			AND ls.startTime < DATE_ADD(#{endLessonDate},INTERVAL 1 DAY)   
+		]]></if>
+		<if test="lessonName != null and lessonName != ''">
+		<![CDATA[
+			AND ls.courseSingleName LIKE CONCAT(CONCAT('%',#{lessonName}),'%')
+		]]></if>
+		GROUP BY stu.csAttenId,ls.schoolId,lkk.classId,lkk.className,teacher.userId,other.userId,other.online
+	</select>
+</mapper>

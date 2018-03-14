@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8" ?>   
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.diag.dao.lesson.mybatis.EvaluateDao">
+
+	<select id="getEvaluateInfoByLessonId" parameterType="long"
+		resultType="cn.strong.leke.diag.dao.lesson.model.EvaluateInfo">
+	<![CDATA[
+		SELECT COUNT(*) userCount,
+			   COUNT(IF(summary = 2, 1, NULL)) goodCount,
+			   IFNULL(ROUND(AVG(professionalLevel), 1), 0) professionalScore,
+			   IFNULL(ROUND(AVG(rhythmLevel), 1), 0) rhythmScore,
+			   IFNULL(ROUND(AVG(interactionLevel), 1), 0) interactionScore
+		  FROM ls_evaluate
+		 WHERE isDeleted = 0
+		   AND courseSingleId = #{lessonId}
+	]]>
+	</select>
+
+	<select id="getEvaluateInfoByCourseSingleIds" parameterType="long"
+		resultType="cn.strong.leke.diag.dao.lesson.model.EvaluateInfo">
+	<![CDATA[
+		SELECT COUNT(*) userCount,
+			   COUNT(IF(summary = 2, 1, NULL)) goodCount,
+			   IFNULL(ROUND(AVG(professionalLevel), 1), 0) professionalScore,
+			   IFNULL(ROUND(AVG(rhythmLevel), 1), 0) rhythmScore,
+			   IFNULL(ROUND(AVG(interactionLevel), 1), 0) interactionScore
+		  FROM ls_evaluate
+		 WHERE isDeleted = 0
+		   AND courseSingleId IN
+	]]>
+		<foreach collection="courseSingleIds" item="courseSingleId" separator="," open="(" close=")">
+			#{courseSingleId}
+		</foreach>
+	</select>
+
+	<select id="findEvaluateByLessonId" parameterType="cn.strong.leke.diag.dao.lesson.model.EvalQuery"
+		resultType="cn.strong.leke.diag.dao.lesson.model.EvaluateDTO">
+	<![CDATA[
+		SELECT evaluateId,
+			   summary,
+			   professionalLevel,
+			   rhythmLevel,
+			   interactionLevel,
+			   content,
+			   isAno,
+			   isDefault,
+			   createdBy,
+			   createdName,
+			   createdOn
+		  FROM ls_evaluate
+		 WHERE courseSingleId = #{courseSingleId}
+		   AND isDeleted = 0
+	]]>
+		<if test="hasText != null and hasText == true">
+			AND LENGTH(content) > 0
+		</if>
+		<if test="summary != null">
+			AND summary = #{summary}
+		</if>
+		 ORDER BY createdOn DESC
+	</select>
+
+	<select id="getEvaluateInfoByTeacherId" parameterType="long"
+		resultType="cn.strong.leke.diag.dao.lesson.model.EvaluateInfo">
+	<![CDATA[
+		SELECT goodCount,
+			   userCount,
+			   ROUND(professionalLevelScore / userCount, 1) professionalScore,
+			   ROUND(rhythmLevelScore / userCount, 1) rhythmScore,
+			   ROUND(interactionLevelScore / userCount, 1) interactionScore
+		  FROM ls_evaluate_avg
+		 WHERE owner = #{teacherId}
+	]]>
+	</select>
+
+	<select id="getEvalRateByCourseSingleIds" parameterType="map" resultType="int">
+	<![CDATA[
+		SELECT IFNULL(ROUND(COUNT(IF(isDefault = 0, 1, NULL)) * 100 / COUNT(*)), 0)
+		  FROM ls_evaluate
+		 WHERE isDeleted = 0
+		   AND createdBy = #{studentId}
+		   AND courseSingleId IN
+	]]>
+		<foreach collection="courseSingleIds" item="courseSingleId" separator="," open="(" close=")">
+			#{courseSingleId}
+		</foreach>
+	</select>
+
+	<select id="findEvalRatesByCourseSingleIds" parameterType="map" resultType="cn.strong.leke.diag.model.UserRate">
+	<![CDATA[
+		SELECT createdBy userId,
+			   IFNULL(ROUND(COUNT(IF(isDefault = 0, 1, NULL)) * 100 / COUNT(*)), 0) rate
+		  FROM ls_evaluate
+		 WHERE isDeleted = 0
+		   AND courseSingleId IN
+	]]>
+		<foreach collection="courseSingleIds" item="courseSingleId" separator="," open="(" close=")">
+			#{courseSingleId}
+		</foreach>
+		GROUP BY createdBy
+	</select>
+
+</mapper>   

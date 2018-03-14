@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+                     http://www.springframework.org/schema/beans/spring-beans-3.2.xsd">
+
+	<!-- client invoker configure -->
+	<bean class="cn.strong.leke.core.webservice.WebServiceClientInvoker">
+		<property name="services">
+			<props>
+				<prop key="cn.strong.leke.remote.service.user.IEduBureauRemoteService">
+					${domain.user}/api/n/user/eduBureauRemoteService.ws
+				</prop>
+				<prop key="cn.strong.leke.remote.service.user.IMarketRemoteService">
+					${domain.user}/api/n/user/marketRemoteService.ws
+				</prop>
+				<prop key="cn.strong.leke.remote.service.crm.ISellerRemoteService">
+					${domain.crm}/api/n/crm/sellerRemoteService.ws
+				</prop>
+			</props>
+		</property>
+	</bean>
+
+</beans>

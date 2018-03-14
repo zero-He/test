@@ -1,0 +1,30 @@
+
+var Achieves = [
+	['isAttend', '全勤'],
+	['isPreview', '提前预习'],
+	['isListen', '专心听讲'],
+	['isLoveAck', '勤思好问'],
+	['isActive', '活跃分子'],
+	['isRanking', '榜上有名'],
+	['isFragrant', '手有余香'],
+	['isReform', '及时改错'],
+	['isDiligent', '不磨蹭'],
+	['isPractice', '练习达人'],
+	['isRefresh', '温故知新']
+];
+
+class AchievementInfo extends React.Component {
+	render() {
+		var ach = this.props.achieve;
+		return (
+			<section id={this.props.id} className="ana-module">
+				<div className="title">成就<a href="//static.leke.cn/pages/mobile/analyse/help.html"><i className="c-help"></i></a></div>
+				<div className="achievement">
+					<ul>{Achieves.map(v => <li className={ach[v[0]] ? 'light' : ''}><i></i><span>{v[1]}</span></li>)}</ul>
+				</div>
+			</section>
+		);
+	}
+}
+
+module.exports = AchievementInfo;

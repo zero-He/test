@@ -1,0 +1,130 @@
+define(function(require, exports, module) {
+	var $ = require('jquery');
+	var crossDomain = $('#jCrossDomain').val();
+	if (crossDomain == 'true') {
+		document.domain = 'leke.cn';
+	}
+	var utils = require('utils');
+	var Dialog = require("dialog");
+	var Mustache = require('mustache');
+	var KindEditor = require('editor');
+	var Sound = require('homework/common/Sound');
+	var Incentive = require('core-business/incentive');
+	var I18n = require('homework/common/i18n');
+
+	var s_alert = $.i18n.prop('homework.exercise.knowledge.alert');
+
+	var LoadDoubt = {
+		fInit : function() {
+			this.loadKindEditor();
+			this.bindValidateTitle();
+			this.bindSubmit();
+			Sound.init();
+		},
+		bindValidateTitle : function() {
+			var reg = /^[\u4E00-\u9FA5a-zA-Z0-9]{2,16}$/;
+			var _this = this;
+			var $title = $("#jDoubtTitle");
+			$title.on("change", function() {
+				if (!reg.test($(this).val())) {
+					$title.parent().find(".onError_top").text($.i18n.prop('homework.doubt.editor.text'));
+				} else {
+					$title.parent().find(".onError_top").text("");
+				}
+			});
+		},
+		// 加载编辑器控件
+		loadKindEditor : function() {
+			editor = KindEditor.create('#iDoubtDiscript', {
+				crossDomain : crossDomain === 'true',
+				resizeType : 1,
+				allowPreviewEmoticons : false,
+				height : "160px",
+				width : "520px",
+				minWidth : 100,
+				items : ['bold', 'italic', 'underline', 'subscript', 'superscript', 'image', '|', 'justifyleft',
+						'justifycenter', 'justifyright', '|', 'undo', 'redo'],
+				htmlTags : {
+					img : ['src', 'width', 'height', 'border', 'alt', 'title', 'align', '.width', '.height', '.border',
+							'.float'],
+					p : ['align', '.text-align', '.color', '.background-color', '.font-size', '.font-family',
+							'.background', '.font-weight', '.font-style', '.text-decoration', '.vertical-align',
+							'.text-indent', '.margin-left'],
+					'strong,b,em,i,u,sub,sup' : []
+				},
+				uploadJson : Leke.domain.homeworkServerName + '/auth/common/upload/kindeditor.htm',
+				afterChange : function() {
+					var limitNum = 500; //设定限制字数
+					var pattern = $.i18n.prop('homework.doubt.editor.patterncount', limitNum);
+					$('.word_surplus').html(pattern); //输入显示
+					if (this.count('text') > limitNum) {
+						pattern = ($.i18n.prop('homework.doubt.editor.content'));
+						//超过字数限制自动截取
+						var strValue = editor.text();
+						$('.word_surplus').html("");
+						$("#sDoubtContentErr").html(pattern);
+						utils.Notice.alert($.i18n.prop('homework.doubt.editor.alert'));
+					} else {
+						//计算剩余字数
+						var result = limitNum - this.count('text');
+						pattern = $.i18n.prop('homework.doubt.editor.patterncount', result);
+						$('.word_surplus').html(pattern); //输入显示
+						$("#sDoubtContentErr").html("");
+					}
+				}
+			});
+		},
+		bindSubmit : function() {
+			var _this = this;
+			$("#bPaperEdit").on("click", function() {
+				editor.sync();
+				var iDoubtDiscript = $("#iDoubtDiscript").val();
+				var doubtTitle = $("#jDoubtTitle").val();
+
+				if ($(".onError_top").text() != '') {
+					utils.Notice.alert($(".onError_top").attr("tx") + $.i18n.prop('homework.doubt.editor.error'))
+				} else if (doubtTitle == "") {
+					utils.Notice.alert($.i18n.prop('homework.doubt.title.nonull'));
+				} else if (iDoubtDiscript == "") {
+					utils.Notice.alert($.i18n.prop('homework.doubt.editor.nonull'));
+				} else if ($("#doubtTitleErr").text() != '') {
+					utils.Notice.alert($.i18n.prop('homework.doubt.editor.fault'))
+				} else if ($("#sDoubtContentErr").text() != '') {
+					utils.Notice.alert($.i18n.prop('homework.doubt.editor.describeerror'))
+				} else {
+					$.post(ctx + "/auth/student/myDoubt/saveDoubt.htm", {
+						"doubtType" : $('input:radio[name=doubtType]:checked').val(),
+						"doubtTitle" : doubtTitle,
+						"doubtContent" : iDoubtDiscript,
+						"teacherId" : $("#iDoubtTeacherId").val(),
+						"homeworkDtlId" : $('#jHomeworkDtlId').val(),
+						"questionId" : $("#hQuestionId").val(),
+						"subjectId" : $("#hSubjectId").val(),
+						"doubtAudio" : $('#audioUrl').val(),
+						"needIncentive" : true
+					}, function(data) {
+						if (data.success) {
+							var tips = data.datas.tips || {};
+							var leke = tips.leke;
+							var exp = tips.exp;
+							var str = "提问成功";
+							if (leke) {
+								str = str + "，乐豆+" + leke;
+							}
+							if (exp) {
+								str = str + "，经验+" + exp;
+							}
+							utils.Notice.alert(str);
+							setTimeout(function() {
+								Dialog.close();
+							}, 2000);
+						}
+					});
+				}
+			});
+		}
+	};
+
+	LoadDoubt.fInit();
+
+})

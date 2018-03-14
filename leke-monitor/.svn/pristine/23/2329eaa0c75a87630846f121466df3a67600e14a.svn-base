@@ -1,0 +1,31 @@
+  <ul>
+    <li>
+        <div class="item">
+            <p>上课学校数（当前/今日）</p>
+            <span><em data-bind="text: currentSchoolCount"></em>/<br/>
+            <em data-bind="text: dailySchoolCount"></em></span>
+        </div>
+    </li>
+    <li>
+        <div class="item">
+            <p>课堂数（当前/今日）</p>
+            <span><em data-bind="text: currentLessonCount"></em>/<br/>
+            <em data-bind="text: dailyLessonCount"></em></span>
+        </div>
+    </li>
+    <li>
+        <div class="item">
+            <p>人数（<em>当前上课</em>/今日应到）</p>
+            <span><em data-bind="text: currentActualStuCount"></em>/<br/>
+            <em data-bind="text: dailyExpectStuCount"></em>
+            </span>
+        </div>
+    </li>
+    <li>
+        <div class="item">
+            <p>人次（今日已发生/今日应到）</p>
+            <span><em data-bind="text: dailyActualStuTimes"></em>/<br/>
+            <em data-bind="text: dailyExpectStuTimes"></em></span>
+        </div>
+    </li>
+</ul>

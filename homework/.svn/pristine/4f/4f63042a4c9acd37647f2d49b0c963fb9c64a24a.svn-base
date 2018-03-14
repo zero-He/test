@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8" ?>   
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.homework.dao.mybatis.DoubtDao">
+
+	<!-- 插入实体 -->
+	<insert id="saveDoubt" parameterType="cn.strong.leke.homework.model.Doubt"
+	useGeneratedKeys="true" keyProperty="doubtId">
+		insert into HW_DOUBT(
+		subjectId,
+		doubtType,
+		doubtTitle,
+		doubtContent,
+		homeworkDtlId,
+		questionId,
+		targetType,
+		schoolId,
+		schoolName,
+		userName,
+		bestExpainId,
+		doubtAudio,
+		duration,
+		isDeleted,
+		createdBy,
+		createdOn,
+		teacherId,
+		resolved,
+		explainTime
+		)
+		values(
+		#{subjectId},
+		#{doubtType},
+		#{doubtTitle},
+		#{doubtContent},
+		#{homeworkDtlId},
+		#{questionId},
+		#{targetType},
+		#{schoolId},
+		#{schoolName},
+		#{userName},
+		#{bestExpainId},
+		#{doubtAudio},
+		#{duration},
+		#{isDeleted},
+		#{createdBy},
+		#{createdOn},
+		#{teacherId},
+		0,
+		#{createdOn}
+		)
+	</insert>
+
+	<select id="getDetail" parameterType="cn.strong.leke.homework.model.DoubtDtl" resultType="cn.strong.leke.homework.model.DoubtDtl">
+		select * from HW_DOUBT doubt where doubt.isDeleted = 0 and doubt.doubtId = #{doubtId} 
+	</select>
+	
+	<update id="updateDetailExplainTime" parameterType="map">
+		update HW_DOUBT set explainTime = now()
+		<if test="askAgain != null">
+			, askAgain = #{askAgain} 
+		</if>
+		where doubtId = #{doubtId}
+	</update>
+	
+	<select id="getDoubt" parameterType="cn.strong.leke.homework.model.Doubt" resultType="cn.strong.leke.homework.model.Doubt">
+		select * from HW_DOUBT doubt 
+		where 
+			doubt.isDeleted = 0 
+			and doubt.createdBy = #{createdBy}
+			and doubt.createdOn = #{createdOn}
+	</select>
+
+	<select id="doubtList" parameterType="cn.strong.leke.homework.model.DoubtDtl" resultType="cn.strong.leke.homework.model.DoubtDtl" >
+	
+		select * from HW_DOUBT doubt where doubt.isDeleted = 0 and doubt.createdBy = #{createdBy}
+		
+		<if test="doubtTitle != null and doubtTitle != ''">
+			and doubt.doubtTitle like CONCAT('%',#{doubtTitle},'%')
+		</if>
+		<if test="startTime != null and startTime != ''">
+			and doubt.createdOn <![CDATA[ > ]]> #{startTime}
+		</if>
+		<if test="endTime != null and endTime != ''">
+			and doubt.createdOn <![CDATA[ < ]]> #{endTime}
+		</if>
+		<if test="subjectId != null and subjectId != 0">
+			and doubt.subjectId = #{subjectId}
+		</if>
+		<if test="resolved == false">
+			and doubt.resolved  = 0 
+		</if>
+		<if test="resolved == true">
+			and doubt.resolved = 1
+		</if>
+		order by doubt.explainTime desc,doubt.doubtId desc
+	</select>
+	
+	
+		<select id="getTeacherDoubtl" parameterType="cn.strong.leke.homework.model.DoubtDtl" resultType="cn.strong.leke.homework.model.DoubtDtl" >
+	
+		select * from HW_DOUBT doubt where doubt.isDeleted = 0 and doubt.teacherId = #{teacherId}
+		
+		<if test="userName != null and userName != ''">
+			and doubt.userName like concat('%',#{userName},'%')
+		</if>
+		<if test="doubtTitle != null and doubtTitle != ''">
+			and doubt.doubtTitle like CONCAT('%',#{doubtTitle},'%')
+		</if>
+		<if test="startTime != null and startTime != ''">
+			and doubt.createdOn <![CDATA[ > ]]> #{startTime}
+		</if>
+		<if test="endTime != null and endTime != ''">
+			and doubt.createdOn <![CDATA[ < ]]> #{endTime}
+		</if>
+		<if test="resolved == false">
+			and doubt.resolved  = 0 
+		</if>
+		<if test="resolved == true">
+			and doubt.resolved = 1
+		</if>
+		order by doubt.explainTime desc, doubt.doubtId desc
+	</select>
+	
+		<select id="isResolved" parameterType="long" resultType="int">
+			select resolved from  HW_DOUBT where doubtId = #{doubtId}
+		</select>
+	 
+		<update id="resoveDoubt" parameterType="long" >
+			update HW_DOUBT set resolved = 1 where doubtId = #{doubtId}
+		</update>
+	
+
+</mapper>   

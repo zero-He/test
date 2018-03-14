@@ -1,0 +1,277 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.1//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.question.dao.mybatis.OutlineNodeDao">
+
+	<select id="queryOutlineNodes" parameterType="cn.strong.leke.model.question.OutlineNode"
+		resultType="cn.strong.leke.model.question.OutlineNode">
+		SELECT 
+			outlineNodeId, outlineNodeName, outlineId, parentId, ord, lft, rgt, materialNodeId
+			isDeleted, createdBy, createdOn, modifiedBy, modifiedOn
+		FROM que_outline_node
+		<where>
+			<if test="outlineNodeId != null">AND outlineNodeId = #{outlineNodeId}</if>
+			<if test="outlineNodeName != null and outlineNodeName != ''">AND outlineNodeName LIKE '%'||#{outlineNodeName}||'%'</if>
+			<if test="outlineId != null">AND outlineId = #{outlineId}</if>
+			<if test="parentId != null">AND parentId = #{parentId}</if>
+			AND isDeleted = 0
+		</where>
+		ORDER BY parentId ASC, ord ASC , outlineNodeId ASC
+	</select>
+	
+	<select id="getOutlineNodeById" parameterType="long"
+		resultType="cn.strong.leke.model.question.OutlineNode">
+		SELECT 
+			outlineNodeId, outlineNodeName, outlineId, parentId, ord, lft, rgt, materialNodeId
+			isDeleted, createdBy, createdOn, modifiedBy, modifiedOn
+		FROM que_outline_node
+		<where>
+			outlineNodeId = #{outlineNodeId}
+			AND isDeleted = 0
+		</where>
+	</select>
+	
+	<select id="queryOutlineNodesByOutlineId" parameterType="long"
+		resultType="cn.strong.leke.model.question.OutlineNode">
+		SELECT 
+			outlineNodeId, outlineNodeName, outlineId, parentId, ord, lft, rgt, materialNodeId
+			isDeleted, createdBy, createdOn, modifiedBy, modifiedOn
+		FROM que_outline_node
+		<where>
+			outlineId = #{outlineId}
+			AND isDeleted = 0
+		</where>
+	</select>
+	
+	<insert id="addOutlineNode" parameterType="cn.strong.leke.model.question.OutlineNode" useGeneratedKeys="true" keyProperty="outlineNodeId">
+		INSERT INTO que_outline_node(
+			outlineNodeName, outlineId, parentId, ord, lft, rgt, materialNodeId,
+			isDeleted, createdBy, createdOn, modifiedBy, modifiedOn
+		) VALUES (
+			#{outlineNodeName},#{outlineId},#{parentId},#{ord},#{lft},#{rgt},#{materialNodeId},
+			0,#{createdBy},now(),#{modifiedBy},now()
+		)
+	</insert>
+
+<!-- 	<insert id="insertMaterialNode" useGeneratedKeys="true" keyProperty="materialNodeId"
+		parameterType="cn.strong.leke.model.question.MaterialNode">
+		INSERT INTO que_material_node(
+			materialNodeName, materialNodeCode, nodeType, schoolStageId, gradeId,
+			subjectId, materialId, knowledgeId, parentId, ord, lft, rgt,
+			isDeleted, createdBy, createdOn, modifiedBy, modifiedOn
+		) VALUES (
+			#{materialNodeName}, #{materialNodeCode}, #{nodeType}, #{schoolStageId}, #{gradeId},
+			#{subjectId}, #{materialId}, #{knowledgeId}, #{parentId}, #{ord}, #{lft}, #{rgt},
+			0, #{createdBy}, now(), #{modifiedBy}, now()
+		)
+	</insert> -->
+	
+	<update id="updateOutlineNode" parameterType="cn.strong.leke.model.question.OutlineNode">
+		UPDATE que_outline_node
+		<set>
+			<if test="outlineNodeName != null and outlineNodeName != ''">outlineNodeName = #{outlineNodeName},</if>
+			<if test="outlineId != null">outlineId = #{outlineId},</if>
+			<if test="parentId != null">parentId = #{parentId},</if>
+			<if test="ord != null">ord = #{ord},</if>
+			<if test="lft != null">lft = #{lft},</if>
+			<if test="rgt != null">rgt = #{rgt},</if>
+			<if test="materialNodeId != null">materialNodeId = #{materialNodeId},</if>
+			<if test="modifiedBy != null">modifiedBy = #{modifiedBy},</if>
+			
+			modifiedOn = now()
+		</set>
+		<where>
+			outlineNodeId= #{outlineNodeId}
+		</where>
+	</update>	
+	
+	<update id="updateOutlineNodeTreeInfo" parameterType="cn.strong.leke.model.question.OutlineNode">
+		UPDATE que_outline_node
+		<set>
+			<if test="ord != null">ord = #{ord},</if>
+			<if test="lft != null">lft = #{lft},</if>
+			<if test="rgt != null">rgt = #{rgt},</if>
+			<if test="modifiedBy != null">modifiedBy = #{modifiedBy},</if>
+			
+			modifiedOn = now()
+		</set>
+		<where>
+			outlineNodeId= #{outlineNodeId}
+		</where>
+	</update>	
+	
+
+	<update id="updateIncLftIndexGteLftVal" parameterType="cn.strong.leke.model.question.OutlineNode">
+		UPDATE que_outline_node
+		SET lft = lft + 2
+		<where>
+			<![CDATA[
+				AND lft >= #{lft}
+			]]>
+			AND outlineId = #{outlineId}
+			AND isDeleted = 0
+		</where>
+	</update>
+	
+	<update id="updateIncRgtIndexGteLftVal" parameterType="cn.strong.leke.model.question.OutlineNode">
+		UPDATE que_outline_node
+		SET rgt = rgt + 2
+		<where>
+			<![CDATA[
+				AND rgt >= #{lft}
+			]]>
+			AND outlineId = #{outlineId}
+			AND isDeleted = 0
+		</where>
+	</update>
+	
+	<update id="deleteOutlineNode" parameterType="cn.strong.leke.model.question.OutlineNode">
+		UPDATE que_outline_node
+		<set>
+			isDeleted = 1,
+			<if test="modifiedBy != null">modifiedBy = #{modifiedBy},</if>
+			modifiedOn = now()
+		</set>
+		<where>
+			outlineNodeId= #{outlineNodeId}
+		</where>
+	</update>
+	
+	<update id="updateDecLftIndexGteLftVal" parameterType="cn.strong.leke.model.question.OutlineNode">
+		UPDATE que_outline_node
+		SET lft = lft - 2
+		<where>
+			<![CDATA[
+				AND lft >= #{lft}
+			]]>
+			AND outlineId = #{outlineId}
+			AND isDeleted = 0
+		</where>
+	</update>
+	
+	<update id="updateDecRgtIndexGteLftVal" parameterType="cn.strong.leke.model.question.OutlineNode">
+		UPDATE que_outline_node
+		SET rgt = rgt - 2
+		<where>
+			<![CDATA[
+				AND rgt >= #{lft}
+			]]>
+			AND outlineId = #{outlineId}
+			AND isDeleted = 0
+		</where>
+	</update>
+	
+	<select id="getSameOrderFrontNode" parameterType="cn.strong.leke.model.question.OutlineNode"
+		resultType="cn.strong.leke.model.question.OutlineNode">
+		SELECT 
+			outlineNodeId, outlineNodeName, outlineId, parentId, ord, lft, rgt, materialNodeId
+			isDeleted, createdBy, createdOn, modifiedBy, modifiedOn
+		FROM que_outline_node
+		<where>
+			outlineId = #{outlineId}
+			AND parentId = #{parentId}
+			<![CDATA[
+				AND outlineNodeId < #{outlineNodeId}
+			]]>
+			AND ord = #{ord}
+			AND isDeleted = 0
+		</where>
+	</select>
+	
+	<select id="getSameOrderAfterNode" parameterType="cn.strong.leke.model.question.OutlineNode"
+		resultType="cn.strong.leke.model.question.OutlineNode">
+		SELECT 
+			outlineNodeId, outlineNodeName, outlineId, parentId, ord, lft, rgt, materialNodeId
+			isDeleted, createdBy, createdOn, modifiedBy, modifiedOn
+		FROM que_outline_node
+		<where>
+			outlineId = #{outlineId}
+			AND parentId = #{parentId}
+			<![CDATA[
+				AND outlineNodeId > #{outlineNodeId}
+			]]>
+			AND ord = #{ord}
+			AND isDeleted = 0
+		</where>
+	</select>
+	
+	<select id="getOrderFrontNode" parameterType="cn.strong.leke.model.question.OutlineNode"
+		resultType="cn.strong.leke.model.question.OutlineNode">
+		SELECT 
+			outlineNodeId, outlineNodeName, outlineId, parentId, ord, lft, rgt, materialNodeId
+			isDeleted, createdBy, createdOn, modifiedBy, modifiedOn
+		FROM que_outline_node
+		<where>
+			outlineId = #{outlineId}
+			AND parentId = #{parentId}
+			<![CDATA[
+			AND ord < #{ord}
+			]]>
+			AND isDeleted = 0
+		</where>
+	</select>
+	
+	<select id="getOrderAfterNode" parameterType="cn.strong.leke.model.question.OutlineNode"
+		resultType="cn.strong.leke.model.question.OutlineNode">
+		SELECT 
+			outlineNodeId, outlineNodeName, outlineId, parentId, ord, lft, rgt, materialNodeId
+			isDeleted, createdBy, createdOn, modifiedBy, modifiedOn
+		FROM que_outline_node
+		<where>
+			outlineId = #{outlineId}
+			AND parentId = #{parentId}
+			<![CDATA[
+			AND ord > #{ord}
+			]]>
+			AND isDeleted = 0
+		</where>
+	</select>
+	
+	<update id="updateLftRgtIndex" parameterType="cn.strong.leke.model.question.OutlineNode">
+		UPDATE que_outline_node
+		<set>
+			lft = #{lft},
+			rgt = #{rgt},
+			modifiedOn = now()
+		</set>
+		<where>
+			AND outlineId = #{outlineId}
+			AND isDeleted = 0
+		</where>
+	</update>
+	
+	<update id="deleteOutlineNodeByOutlineId" parameterType="cn.strong.leke.model.question.OutlineNode">
+		UPDATE 
+			que_outline_node
+		SET
+			isDeleted = 1,
+			modifiedBy = #{modifiedBy},
+			modifiedOn = now()
+		WHERE 
+			outlineId = #{outlineId}
+			AND isDeleted = 0
+	</update>
+	
+	<select id="findRootNodeByOutlineId" parameterType="long"
+		resultType="cn.strong.leke.model.question.OutlineNode">
+		SELECT a.*
+		FROM que_outline_node a
+		WHERE 
+			a.outlineId = #{outlineId}
+			AND a.parentId = 0
+			AND a.isDeleted = 0
+		ORDER BY a.lft ASC
+	</select>
+	
+	<update id="updateOutlineNodeName" parameterType="cn.strong.leke.model.question.OutlineNode">
+		UPDATE 
+			que_outline_node
+		SET
+			outlineNodeName=#{outlineNodeName},
+			modifiedBy = #{modifiedBy},
+			modifiedOn = now()	
+		WHERE 
+			isDeleted=0 AND outlineNodeId=#{outlineNodeId}
+	</update>
+	
+</mapper>

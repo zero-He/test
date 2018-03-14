@@ -1,0 +1,46 @@
+/**
+ * 
+ */
+package cn.strong.leke.monitor.mongo.appcenter.dao;
+
+import java.util.Date;
+import java.util.List;
+
+import cn.strong.leke.framework.page.jdbc.Page;
+import cn.strong.leke.monitor.mongo.appcenter.model.PadSystem;
+
+/**
+ * PAD 系统信息 DAO
+ * 
+ * @author liulongbiao
+ *
+ */
+public interface IPadSystemDao {
+
+	/**
+	 * 保存 PadSystem 信息
+	 * 
+	 * @param sys
+	 */
+	void save(PadSystem sys);
+
+	/**
+	 * 获取 PadSystem 信息
+	 * 
+	 * @param imei
+	 * @return
+	 */
+	PadSystem getByImei(String imei);
+	
+	/**
+	 * 查询
+	 * @param page
+	 * @param loginName
+	 * @param userName
+	 * @param root
+	 * @param version
+	 * @param mac
+	 * @return
+	 */
+	List<PadSystem> findPadSystem(Page page,List<String> imeis,Boolean root,String version,String mac);
+}

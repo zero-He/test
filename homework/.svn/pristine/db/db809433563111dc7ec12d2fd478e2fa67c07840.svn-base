@@ -1,0 +1,60 @@
+define(function(require, exports, module) {
+	var $ = require('jquery');
+	var JSON = require('json');
+	var Utils = require('utils');
+	var Dialog = require('dialog');
+	var questionFilter = require('homework/common/questionFilter');
+	require('homework/sheet.struct');
+	require('homework/sheet.render');
+	var Review = require("homework/common/sheet.review");
+	var Helper = require('homework/common/sheet.helper');
+
+	var Work = {
+		// 初始化
+		fInit : function() {
+			questionFilter.init('','review');
+			Review.initBindEvent();
+			this.fBindSaveSubmit();
+		},
+		fBindSaveSubmit : function() {
+			$('#btnSubmit').click(function() {
+				var correctInfo = Review.parseSheet();
+				Helper.commentary().then(function(commentary) {
+					return $.post('saveReviewWork.htm', {
+						homeworkId : $('#homeworkId').val(),
+						homeworkDtlId : $('#homeworkDtlId').val(),
+						commentary : commentary,
+						isAgain : false,
+						correctJson : JSON.stringify(correctInfo.questionResultList)
+					});
+				}).done(function(json) {
+					if (json.success) {
+						var tips = json.datas.tips || {};
+						var message;
+						if (json.datas.nextId != null) {
+							message = "复批成功";
+							setTimeout(function() {
+								location.href = "correctWork.htm?homeworkDtlId=" + json.datas.nextId;
+							}, 2000);
+						} else {
+							message = "恭喜你，作业已经全部复批完成啦";
+							setTimeout(function() {
+								window.close();
+							}, 2000);
+						}
+						if (tips.leke) {
+							message += "，乐豆+" + tips.leke;
+						}
+						if (tips.exp) {
+							message += "，经验+" + tips.exp;
+						}
+						Utils.Notice.alert(message);
+					}
+				});
+			});
+		}
+	};
+
+	Work.fInit();
+
+});

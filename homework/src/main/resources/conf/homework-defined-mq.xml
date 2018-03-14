@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context" xmlns:rabbit="http://www.springframework.org/schema/rabbit"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.2.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.2.xsd
+		http://www.springframework.org/schema/rabbit http://www.springframework.org/schema/rabbit/spring-rabbit-1.1.xsd">
+
+	<!-- 作业提交后处理消息 -->
+	<rabbit:queue name="${mq.q.homework.submit}" />
+	<rabbit:direct-exchange name="${mq.e.homework.submit}">
+		<rabbit:bindings>
+			<rabbit:binding queue="${mq.q.homework.submit}" key="${mq.q.homework.submit}" />
+		</rabbit:bindings>
+	</rabbit:direct-exchange>
+	
+	<!-- 在线测试结果保存消息发送 -->
+	<rabbit:queue name="${mq.q.onlinetest}" />
+	<rabbit:direct-exchange name="${mq.e.onlinetest}">
+		<rabbit:bindings>
+			<rabbit:binding queue="${mq.q.onlinetest}" key="${mq.q.onlinetest}" />
+		</rabbit:bindings>
+	</rabbit:direct-exchange>
+	
+	<!-- 课堂互批结果保存消息发送 -->
+	<rabbit:queue name="${mq.q.homework.mutual.correct}" />
+	<rabbit:direct-exchange name="${mq.e.homework.mutual.correct}">
+		<rabbit:bindings>
+			<rabbit:binding queue="${mq.q.homework.mutual.correct}" key="${mq.q.homework.mutual.correct}" />
+		</rabbit:bindings>
+	</rabbit:direct-exchange>
+
+	<!-- 作业批改进度消息 -->
+	<rabbit:queue name="q.homework.progress" />
+	<rabbit:direct-exchange name="${mq.e.homework.progress}">
+		<rabbit:bindings>
+			<rabbit:binding queue="${mq.q.homework.progress}" key="${mq.q.homework.progress}" />
+		</rabbit:bindings>
+	</rabbit:direct-exchange>
+
+	<!-- 作业批改处理消息 -->
+	<rabbit:queue name="${mq.q.homework.correct}" />
+	<rabbit:direct-exchange name="${mq.e.homework.correct}">
+		<rabbit:bindings>
+			<rabbit:binding queue="${mq.q.homework.correct}" key="${mq.q.homework.correct}" />
+		</rabbit:bindings>
+	</rabbit:direct-exchange>
+
+	<!-- 错题本消息发送 -->
+	<rabbit:queue name="${mq.q.wrongtopic}" />
+	<rabbit:direct-exchange name="${mq.e.wrongtopic}">
+		<rabbit:bindings>
+			<rabbit:binding queue="${mq.q.wrongtopic}" key="${mq.q.wrongtopic}" />
+		</rabbit:bindings>
+	</rabbit:direct-exchange>
+	
+	<!-- 试卷布置作业次数消息 -->
+	<rabbit:queue name="${mq.q.paper.usercount}" />
+	<rabbit:direct-exchange name="${mq.e.paper.usercount}">
+		<rabbit:bindings>
+			<rabbit:binding queue="${mq.q.paper.usercount}" key="${mq.q.paper.usercount}" />
+		</rabbit:bindings>
+	</rabbit:direct-exchange>
+
+	<!-- 备课系统，学生作业状态变化消息发送 -->
+	<rabbit:queue name="${mq.q.beike.homeworkdtl}" />
+	<rabbit:direct-exchange name="${mq.e.beike.homeworkdtl}">
+		<rabbit:bindings>
+			<rabbit:binding queue="${mq.q.beike.homeworkdtl}" key="${mq.q.beike.homeworkdtl}" />
+		</rabbit:bindings>
+	</rabbit:direct-exchange>
+
+	<rabbit:queue name="${mq.q.resource.homeworkdtl}" />
+	<rabbit:direct-exchange name="${mq.e.resource.homeworkdtl}">
+		<rabbit:bindings>
+			<rabbit:binding queue="${mq.q.resource.homeworkdtl}" key="${mq.q.resource.homeworkdtl}" />
+		</rabbit:bindings>
+	</rabbit:direct-exchange>
+	
+	<!-- 购买课程或导上课名单后，下发作业  -->
+	<rabbit:queue name="${mq.q.homework.distribute}" />
+	<rabbit:direct-exchange name="${mq.e.homework.distribute}">
+		<rabbit:bindings>
+			<rabbit:binding queue="${mq.q.homework.distribute}" key="${mq.q.homework.distribute}" />
+		</rabbit:bindings>
+	</rabbit:direct-exchange>
+
+	<!-- 答题卡数据写入消息 -->
+	<rabbit:queue name="${mq.q.homework.sheet.write}" />
+	<rabbit:direct-exchange name="${mq.e.homework.sheet.write}">
+		<rabbit:bindings>
+			<rabbit:binding queue="${mq.q.homework.sheet.write}" key="${mq.q.homework.sheet.write}" />
+		</rabbit:bindings>
+	</rabbit:direct-exchange>
+
+	<!-- 答题卡数据解析消息 -->
+	<rabbit:queue name="${mq.q.homework.sheettask.parse}" />
+	<rabbit:direct-exchange name="${mq.e.homework.sheettask.parse}">
+		<rabbit:bindings>
+			<rabbit:binding queue="${mq.q.homework.sheettask.parse}" key="${mq.q.homework.sheettask.parse}" />
+		</rabbit:bindings>
+	</rabbit:direct-exchange>
+	
+	<!-- 周作业生成消息 -->
+	<rabbit:queue name="${mq.q.homework.week}" />
+	<rabbit:direct-exchange name="${mq.e.homework.week}">
+		<rabbit:bindings>
+			<rabbit:binding queue="${mq.q.homework.week}" key="${mq.q.homework.week}" />
+		</rabbit:bindings>
+	</rabbit:direct-exchange>
+	
+	<!-- 寒暑假作业消息 -->
+	<rabbit:queue name="${mq.q.homework.holidayhw}" />
+	<rabbit:direct-exchange name="${mq.e.homework.holidayhw}">
+		<rabbit:bindings>
+			<rabbit:binding queue="${mq.q.homework.holidayhw}" key="${mq.q.homework.holidayhw}" />
+		</rabbit:bindings>
+	</rabbit:direct-exchange>
+	
+	<!-- 单课备课消息 -->
+	<rabbit:queue name="${mq.q.homework.lesson.beike}" />
+	<rabbit:direct-exchange name="${mq.e.homework.lesson.beike}">
+		<rabbit:bindings>
+			<rabbit:binding queue="${mq.q.homework.lesson.beike}" key="${mq.q.homework.lesson.beike}" />
+		</rabbit:bindings>
+	</rabbit:direct-exchange>
+	
+	<!-- 单课结束消息 -->
+	<rabbit:queue name="${mq.q.homework.lesson.end}" />
+	<rabbit:direct-exchange name="${mq.e.homework.lesson.end}">
+		<rabbit:bindings>
+			<rabbit:binding queue="${mq.q.homework.lesson.end}" key="${mq.q.homework.lesson.end}" />
+		</rabbit:bindings>
+	</rabbit:direct-exchange>
+	<!-- 单课结束处理预习作业完成情况 -->
+	<rabbit:queue name="${mq.q.homework.preview.complete}" />
+	<rabbit:direct-exchange name="${mq.e.homework.preview.complete}">
+		<rabbit:bindings>
+			<rabbit:binding queue="${mq.q.homework.preview.complete}" key="${mq.q.homework.preview.complete}" />
+		</rabbit:bindings>
+	</rabbit:direct-exchange>
+	
+	<!-- 单课删除作业 -->
+	<rabbit:queue name="${mq.q.homework.lesson.del}" />
+	<rabbit:direct-exchange name="${mq.e.homework.lesson.del}">
+		<rabbit:bindings>
+			<rabbit:binding queue="${mq.q.homework.lesson.del}" key="${mq.q.homework.lesson.del}" />
+		</rabbit:bindings>
+	</rabbit:direct-exchange>
+	
+</beans>

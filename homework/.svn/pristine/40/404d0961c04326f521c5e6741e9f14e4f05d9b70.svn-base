@@ -1,0 +1,72 @@
+<%@ page pageEncoding="UTF-8"%>
+<%@ include file="/pages/common/tags.jsp"%>
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <title>${subject.subjectName}</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=640">
+    <link rel="stylesheet" href="${assets}/styles/mobile/v1.3.css?_t=${_t}">
+    <script src="${assets}/scripts/common/mobile/utils.js?_t=${_t}"></script>
+    <leke:context />
+</head>
+
+<body id="jDroploadId">
+	<form id="jForm" action="">
+		<input type="hidden" id="jNav1" name="homeworkType"/>
+		<input type="hidden" id="jNav2" name="isClose"/>
+		<input type="hidden" name="subjectId" value="${subject.subjectId}"/>
+		<input type="hidden" name="classId" value="${classId}"/>
+	</form>
+    <article class="c-homeworklist">
+        <section class="nav-contain">
+            <nav class="c-nav j-nav1">
+                <ul>
+                    <li style="width: 128px;" data-i="0" class="cur">全部</li>
+                    <li style="width: 128px;" data-i="1">预习作业</li>
+                    <li style="width: 128px;" data-i="2">随堂作业</li>
+                    <li style="width: 128px;" data-i="3">课后作业</li>
+                    <li style="width: 128px;" data-i="5">点播作业</li>
+                </ul>
+            </nav>
+            <nav class="c-nav workduration j-nav2">
+                <ul>
+                    <li class="cur">全部</li>
+                    <li data-i="true">已到期作业</li>
+                    <li data-i="false">未到期作业</li>
+                </ul>
+            </nav>
+        </section>
+        <section id="jList" class="homework-lists">
+            
+        </section>
+    </article>
+    <script id="jListTpl" type="x-mustache">
+		{{#dataList}}
+			<ul>
+                <li class="header">
+                    <span class="classname">{{homeworkName}}</span>
+                    <div class="right">
+                        <span class="workkind">{{homeworkTypeStr}}</span>
+                    </div>
+                </li>
+                <li class="datalist">
+					<div class="average">平均分：<span>{{avgScore}}</span></div>
+                    <div class="highest">最高分：<span>{{maxScore}}</span></div>
+                    <div class="lowest">最低分：<span>{{minScore}}</span></div>
+					<div class="submited">已提交：<span>{{finishNum}}/{{totalNum}}</span></div>
+					<div class="delayper">迟交率：<span>{{delayPercent}}</span></div>
+                </li>
+                <li class="deadline">截止时间：
+                    <span>{{closeTimeStr}}</span>
+                </li>
+            </ul>
+		{{/dataList}}
+    </script>
+	<script src="${assets}/scripts/common/mobile/zepto.min.js?_t=${_t}"></script>
+	<script src="/scripts/m/homework/common/mustache.min.js?_t=${_t}"></script>
+	<script src="/scripts/m/homework/common/dropload.min.js?_t=${_t}"></script>
+    <script src="/scripts/m/homework/manager/detail/homeworkDetail.js?_tt=${_t}"></script>
+</body>
+</html>

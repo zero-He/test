@@ -1,0 +1,27 @@
+<div class="m-table m-table-center">
+	<table class="m-list">
+		<tbody>
+			<tr><th width="10%"><label><input type="checkbox" data-bind="checked: checkedAll" >全选</label></th><th width="20%">标题</th><th width="20%">操作</th></tr>
+			<!-- ko foreach: records -->
+			<tr>
+			    <td><input type="checkbox" name="resId" data-bind="value: resId"></td>
+			    <td data-bind="text: content"></td>
+			    <td class="operation">
+			    	<a  href="#" data-bind="click: $component.open">预览</a>
+			    </td>
+			</tr>
+			<!-- /ko -->
+		</tbody>
+	</table>
+	<div data-bind="component: {
+					name: 'leke-page',
+					params: {
+						curPage: query.curPage,
+						totalSize: totalSize
+					}
+				}"></div>
+	<!-- ko if: records().length == 0 -->
+	<p class="m-tips"><i></i><span>当前没有教学资源!</span></p>
+	<!-- /ko -->
+</div>
+<div class="copybtn"><input class="u-btn u-btn-lg u-btn-bg-turquoise" value="提交复制资源" type="button" data-bind="click: doCopy"></div>

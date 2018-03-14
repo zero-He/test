@@ -1,0 +1,82 @@
+<div class="m-search-box">
+	<label class="title" data-bind="i18n: 'que.question.searchItem.schoolStage'">学段：</label>
+	<select name="schoolStageId" class="u-select u-select-sm"
+		data-bind="options: schoolStages,
+				   optionsText: 'schoolStageName',
+				   optionsValue: 'schoolStageId',
+				   optionsCaption: '==请选择==',
+				   value: query.schoolStageId"></select>
+	<label class="title" data-bind="i18n: 'que.question.searchItem.subject'">科目：</label>
+	<select name="subjectId" class="u-select u-select-sm"
+		data-bind="options: subjects,
+				   optionsText: 'subjectName',
+				   optionsValue: 'subjectId',
+				   optionsCaption: '==请选择==',
+				   value: query.subjectId"></select>
+	<label class="title" data-bind="i18n: 'que.question.searchItem.press'">出版社：</label>
+	<select name="pressId" class="u-select u-select-sm"
+		data-bind="options: presses,
+				   optionsText: 'pressName',
+				   optionsValue: 'pressId',
+				   optionsCaption: '==请选择==',
+				   value: query.pressId,
+				   valueAllowUnset: true"></select> <a class="u-btn u-btn-nm u-btn-bg-turquoise f-ml10"
+		data-bind="click: doSearch">查询</a>
+	<div class="operation">
+		<a class="u-btn u-btn-nm u-btn-bg-orange f-ml10"
+			data-bind="click: doAdd">添加教材</a>
+	</div>
+</div>
+<div class="m-table">
+<table >
+	<thead>
+		<tr>
+			<th width="10%" align="center">学段</th>
+			<th width="10%" align="center">科目</th>
+			<th width="20%" align="center">出版社</th>
+			<th width="20%" align="center">教材名称</th>
+			<th width="10%" align="center">序号</th>
+			<th width="10%" align="center">电子教材</th>
+			<th width="30%" align="center">操作</th>
+		</tr>
+	</thead>
+	<tbody data-bind="foreach: materials">
+		<tr>
+			<td data-bind="text: $data.schoolStageName"></td>
+			<td data-bind="text: $data.subjectName"></td>
+			<td data-bind="text: $data.pressName"></td>
+			<td data-bind="text: $data.materialName"></td>
+			<td data-bind="text: $data.ord || 0"></td>
+			<td data-bind="text: $data.fileId ?  '已经上传' : '未上传' "></td>
+			<td class="operation">
+				<a class="f-csp" data-bind="click: function() {
+					$parent.toTree($data);
+				}">章节设置</a>
+				<a class="f-csp" data-bind="click: function() {
+					$parent.doModify($data);
+				}">修改</a>
+				<a class="f-csp" data-bind="click: function() {
+					$parent.doDel($data);
+				}">删除</a>
+				<a class="f-csp" data-bind="click: function() {
+					$parent.doRebuildIndex($data);
+				}">重建索引</a>
+				<a class="f-csp" target="_blank" data-bind="attr: {href: Leke.ctx + '/auth/admin/material/materialUpload.htm?materialId=' + $data.materialId}">上传教材</a>
+				<!-- ko if: $data.fileId -->
+				<a class="f-csp" target="_blank" data-bind="attr: {href: Leke.ctx + '/auth/admin/material/materialFileView.htm?materialId=' + $data.materialId}">查看电子教材</a>
+				<!-- /ko -->
+				<!-- ko if: isMain -->
+					<a class="f-csp" data-bind="attr: {href: Leke.ctx + '/auth/admin/material/bindingMaterial.htm?spm=403020&materialId=' + $data.materialId}" target="_blank">绑定教材</a>
+				<!-- /ko -->
+			</td>
+		</tr>
+	</tbody>
+</table>
+</div>
+<div data-bind="component: {
+	name: 'leke-page',
+	params: {
+		curPage: query.curPage,
+		totalSize: totalSize
+	}
+}"></div>

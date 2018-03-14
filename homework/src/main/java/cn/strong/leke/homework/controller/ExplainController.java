@@ -1,0 +1,105 @@
+/* 
+ * 包名: cn.strong.leke.homework.controller
+ *
+ * 文件名：ExplainController.java
+ *
+ * 版权所有：Copyright www.leke.cn Corporation 2014 
+ * 
+ * 创建者: luf
+ *
+ * 日期：2014-6-19
+ */
+package cn.strong.leke.homework.controller;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import javax.annotation.Resource;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
+
+import cn.strong.leke.common.utils.StringUtils;
+import cn.strong.leke.context.user.UserContext;
+import cn.strong.leke.context.user.cst.RoleCst;
+import cn.strong.leke.core.business.incentive.DynamicHelper;
+import cn.strong.leke.framework.exceptions.ValidateException;
+import cn.strong.leke.framework.web.JsonResult;
+import cn.strong.leke.homework.model.DoubtDtl;
+import cn.strong.leke.homework.model.Explain;
+import cn.strong.leke.homework.service.DoubtService;
+import cn.strong.leke.homework.service.ExplainService;
+import cn.strong.leke.model.incentive.Award;
+import cn.strong.leke.model.incentive.DynamicInfo;
+import cn.strong.leke.model.incentive.DynamicTypes;
+import cn.strong.leke.model.incentive.IncentiveTypes;
+import cn.strong.leke.model.user.User;
+
+/**
+ * 提问回答 AND 问题追问
+ * @author    luf
+ * @version   Avatar 
+ */
+@Controller
+@RequestMapping("/auth/*")
+public class ExplainController {
+
+	@Resource
+	private DoubtService doubtService;
+	@Resource
+	private ExplainService explainService;
+
+//	@Resource(name = "doubtSender")
+//	private MessageSender doubtSender;
+
+	@RequestMapping({ "teacher/explainDoubt", "student/explainDoubt" })
+	@ResponseBody
+	public JsonResult explainDoubt(Explain explain, DoubtDtl doubt) {
+		if(StringUtils.isEmpty(explain.getExplainContent())){
+			throw new ValidateException("请上传内容");
+		}
+		JsonResult jsonresult = new JsonResult();
+		boolean hasDone = explainService.firstTime(doubt.getDoubtId());
+		User user = UserContext.user.get();
+		if (RoleCst.STUDENT.equals(UserContext.user.getCurrentRoleId())) {
+			explainService.updateAgainDoubt(doubt.getDoubtId());
+		}
+		explain.setSchoolId(UserContext.user.getCurrentSchoolId());
+		explain.setCreatedBy(UserContext.user.getUserId());
+		explain.setUserName(UserContext.user.getUserName());
+		explainService.saveExplain(explain,UserContext.user.getCurrentRoleId());
+		
+		//添加激励
+		if (hasDone && RoleCst.TEACHER.equals(UserContext.user.getCurrentRoleId())) {
+			doubt = doubtService.getDetail(doubt);
+			DynamicInfo dynamicInfo = new DynamicInfo();
+			dynamicInfo.setUserId(user.getId());
+			dynamicInfo.setUserName(user.getUserName());
+			dynamicInfo.setRoleId(RoleCst.TEACHER);
+			dynamicInfo.setSchoolId(user.getCurrentSchool().getId());
+			dynamicInfo.setTitle(doubt.getDoubtTitle());
+			dynamicInfo.setDynamicType(DynamicTypes.HW_SLOVE_DOUBT);
+			dynamicInfo.setTypeId(IncentiveTypes.TEACHER.HW_STUDENT_DOUBT);
+			Map<String,Object> params = new HashMap<String, Object>();
+			params.put("doubtId", doubt.getDoubtId());
+			params.put("stuName", doubt.getUserName());
+			dynamicInfo.setParams(params);
+			Award award = DynamicHelper.publish(dynamicInfo);
+			if (award.getSucc() && award.getHave()) {
+				Map<String, Object> map = new HashMap<String, Object>();
+				map.put("doubtId", doubt.getDoubtId());
+				map.put("leke", award.getLekeVal());
+				map.put("exp", award.getExpVal());
+				map.put("type", dynamicInfo.getTypeId());
+				jsonresult.addDatas("tips", map);
+			} else {
+				jsonresult.addDatas("tips", null);
+			}
+		}
+		
+		jsonresult.setSuccess(true);
+		return jsonresult;
+	}
+
+}

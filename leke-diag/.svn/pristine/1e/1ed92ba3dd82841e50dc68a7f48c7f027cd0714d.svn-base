@@ -1,0 +1,408 @@
+<?xml version="1.0" encoding="UTF-8" ?>   
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.diag.dao.teachingMonitor.ResolveDoubtDao">
+	
+	<sql id="teacherOfGradeSubject">
+	    <!-- 关联年级、学科下的老师 -->
+		AND EXISTS (
+					SELECT 1 FROM lesson.ls_klass f, lesson.ls_klass_teacher t 
+		            WHERE t.userId = a.teacherId 
+		            AND f.classId = t.classId
+		            AND f.isExpired = 0
+		            AND f.isDeleted = 0
+		            AND f.type = 1
+		            AND t.roleId = 101
+		            AND f.schoolId = #{schoolId}
+		            <if test="gradeId != null and gradeId != -1">
+		            AND f.gradeId = #{gradeId}
+					</if>
+					<if test="subjectId != null and subjectId != -1">
+					AND t.subjectId = #{subjectId}
+					</if>
+		            )
+	</sql>	
+	
+	<select id="findResolveDoubtStat" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.teachingMonitor.ResolveDoubt">
+		SELECT
+		  p.totalDoubt,
+		  p.resolveDoubt,
+		  p.teacherNum,
+		  CONVERT(IF(p.totalDoubt = 0, 0, ROUND(p.resolveDoubt / p.totalDoubt * 100, 1)), DECIMAL(4,1)) resolveRate,
+		  CONVERT(IF(p.teacherNum = 0, 0, ROUND(p.resolveDoubt / p.teacherNum, 1)), DECIMAL(4,1)) teacherAvgResolveRate,
+		  p.in24HourResolveDoubt,
+		  CONVERT(IF(p.totalDoubt = 0, 0, ROUND(p.in24HourResolveDoubt / p.totalDoubt * 100, 1)), DECIMAL(4,1)) in24HourResolveRate,
+		  p.out24HourResolveDoubt,
+		  CONVERT(IF(p.totalDoubt = 0, 0, ROUND(p.out24HourResolveDoubt / p.totalDoubt * 100, 1)), DECIMAL(4,1)) out24HourResolveRate,
+		  p.notResolveDoubt,
+		  CONVERT(IF(p.totalDoubt = 0, 0, ROUND(p.notResolveDoubt / p.totalDoubt * 100, 1)), DECIMAL(4,1)) notResolveRate
+		FROM
+		(
+			SELECT 
+				COUNT(1) totalDoubt,
+				IFNULL(SUM(IF(a.resolved = 1, 1, 0)), 0) resolveDoubt,
+				IFNULL(SUM(IF(a.resolved = 1, 0, 1)), 0) notResolveDoubt,
+				COUNT(DISTINCT a.teacherId) teacherNum,
+				IFNULL(SUM(CASE WHEN ABS(TIMESTAMPDIFF(MINUTE,a.explainTime, a.createdOn)) <![CDATA[<=]]> 1440 AND a.resolved = 1 THEN 1 ELSE 0 END), 0) in24HourResolveDoubt,
+				IFNULL(SUM(CASE WHEN ABS(TIMESTAMPDIFF(MINUTE,a.explainTime, a.createdOn)) <![CDATA[>]]> 1440 AND a.resolved = 1 THEN 1 ELSE 0 END), 0) out24HourResolveDoubt
+			FROM homework.HW_DOUBT a
+			WHERE a.schoolId = #{schoolId}
+			<if test="subjectId != null and subjectId != -1">
+			AND a.subjectId = #{subjectId} 
+			</if>
+		    AND a.isDeleted = 0
+			AND a.createdOn <![CDATA[>=]]> DATE(#{startDate})
+			AND a.createdOn <![CDATA[<]]> DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+			<include refid="teacherOfGradeSubject"/>
+		)p
+	</select>
+	
+	<select id="findResolveDoubtByDay" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.teachingMonitor.ResolveDoubt">
+		
+		SELECT
+		  m.startDate,
+		  m.startDate endDate,
+		  m.startDate dateStr,
+		  IFNULL(p.resolveDoubt, 0) resolveDoubt,
+		  IFNULL(p.in24HourResolveDoubt, 0) in24HourResolveDoubt,
+		  IFNULL(p.out24HourResolveDoubt, 0) out24HourResolveDoubt
+		FROM
+			(SELECT @d :=@d + 1 AS rn, 
+					DATE_ADD(#{startDate}, INTERVAL @d DAY) startDate 
+			 FROM lesson.ls_dateAssistant c,(SELECT @d :=- 1) b LIMIT #{limit}) m
+		LEFT JOIN
+		(
+		  SELECT 
+		    DATE_FORMAT(a.createdOn, '%Y-%m-%d') createdOn,
+			IFNULL(SUM(IF(a.resolved = 1, 1, 0)), 0) resolveDoubt,
+			IFNULL(SUM(CASE WHEN ABS(TIMESTAMPDIFF(MINUTE,a.explainTime, a.createdOn)) <![CDATA[<=]]> 1440 AND a.resolved = 1 THEN 1 ELSE 0 END), 0) in24HourResolveDoubt,
+			IFNULL(SUM(CASE WHEN ABS(TIMESTAMPDIFF(MINUTE,a.explainTime, a.createdOn)) <![CDATA[>]]> 1440 AND a.resolved = 1 THEN 1 ELSE 0 END), 0) out24HourResolveDoubt
+		  FROM homework.HW_DOUBT a
+		  WHERE a.isDeleted = 0
+		  AND a.resolved = 1
+		  AND a.schoolId = #{schoolId}
+		  <if test="subjectId != null and subjectId != -1">
+		  AND a.subjectId = #{subjectId}
+		  </if>
+	      AND a.createdOn <![CDATA[>=]]> DATE(#{startDate})
+		  AND a.createdOn <![CDATA[<]]> DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+		  <include refid="teacherOfGradeSubject"/>
+	      
+		  GROUP BY DATE_FORMAT(a.createdOn, '%Y-%m-%d')
+		) p
+		ON m.startDate = p.createdOn order by m.startDate
+	</select>
+	
+	<select id="findResolveDoubtByWeek" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.teachingMonitor.ResolveDoubt">
+		SELECT
+		  m.startDate,
+		  m.endDate,
+		  CONCAT_WS('/',m.startDate,m.endDate) dateStr,
+		  IFNULL(p.resolveDoubt, 0) resolveDoubt,
+		  IFNULL(p.in24HourResolveDoubt, 0) in24HourResolveDoubt,
+		  IFNULL(p.out24HourResolveDoubt, 0) out24HourResolveDoubt
+		FROM
+			(SELECT
+					p.startDate,
+					CASE
+				    WHEN DATE(#{endDate}) BETWEEN p.startDate AND p.endDate THEN
+					    DATE(#{endDate})
+				    ELSE
+					    p.endDate
+				  END endDate
+				FROM
+					(SELECT t.startDate, 
+		              SUBDATE(t.startDate,WEEKDAY(t.startDate)-6) endDate 
+		         FROM (SELECT @d :=@d + 1 AS rn, DATE_ADD(#{startDate}, INTERVAL @d DAY) startDate FROM lesson.ls_dateAssistant,(SELECT @d := -1) b LIMIT #{limit}) t) p
+				    WHERE DAYOFWEEK(p.startDate) = 2
+				       OR p.startDate = DATE(#{startDate})) m
+		LEFT JOIN
+		(
+		  SELECT 
+		    DATE_FORMAT(SUBDATE(a.createdOn,WEEKDAY(a.createdOn)), '%Y-%m-%d') createdOn,
+			IFNULL(SUM(IF(a.resolved = 1, 1, 0)), 0) resolveDoubt,
+			IFNULL(SUM(CASE WHEN ABS(TIMESTAMPDIFF(MINUTE,a.explainTime, a.createdOn)) <![CDATA[<=]]> 1440 AND a.resolved = 1 THEN 1 ELSE 0 END), 0) in24HourResolveDoubt,
+			IFNULL(SUM(CASE WHEN ABS(TIMESTAMPDIFF(MINUTE,a.explainTime, a.createdOn)) <![CDATA[>]]> 1440 AND a.resolved = 1 THEN 1 ELSE 0 END), 0) out24HourResolveDoubt
+		  FROM homework.HW_DOUBT a
+		  WHERE a.isDeleted = 0
+		  AND a.resolved = 1
+		  AND a.schoolId = #{schoolId}
+		  <if test="subjectId != null and subjectId != -1">
+		  AND a.subjectId = #{subjectId}
+		  </if>
+		  AND a.createdOn <![CDATA[>=]]> DATE(#{startDate})
+		  AND a.createdOn <![CDATA[<]]> DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+		  <include refid="teacherOfGradeSubject"/>
+	      
+		  GROUP BY DATE_FORMAT(SUBDATE(a.createdOn,WEEKDAY(a.createdOn)), '%Y-%m-%d')
+		) p
+		ON m.startDate = p.createdOn
+	</select>
+	
+	<select id="findResolveDoubtByMonth" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.teachingMonitor.ResolveDoubt">
+		SELECT
+		  m.startDate,
+		  m.endDate,
+		  CONCAT_WS('/',m.startDate,m.endDate) dateStr,
+		  IFNULL(p.resolveDoubt, 0) resolveDoubt,
+		  IFNULL(p.in24HourResolveDoubt, 0) in24HourResolveDoubt,
+		  IFNULL(p.out24HourResolveDoubt, 0) out24HourResolveDoubt
+		FROM
+			(SELECT
+					p.startDate,
+					CASE
+				    WHEN DATE(#{endDate}) BETWEEN p.startDate AND p.endDate THEN
+					    DATE(#{endDate})
+				    ELSE
+					    p.endDate
+				  END endDate
+				FROM
+					(SELECT t.*, 
+		              LAST_DAY(t.startDate) endDate 
+		         FROM (SELECT @d :=@d + 1 AS rn, DATE_ADD(#{startDate}, INTERVAL @d DAY) startDate FROM lesson.ls_dateAssistant,(SELECT @d := -1) b LIMIT #{limit}) t) p
+				    WHERE DATE_ADD(p.startDate,INTERVAL -DAY(p.startDate) + 1 DAY) = p.startDate
+				       OR p.startDate = DATE(#{startDate})) m
+		LEFT JOIN
+		(
+		  SELECT 
+		    DATE_FORMAT(DATE_ADD(a.createdOn,INTERVAL -DAY(a.createdOn) + 1 DAY), '%Y-%m-%d') createdOn,
+			IFNULL(SUM(IF(a.resolved = 1, 1, 0)), 0) resolveDoubt,
+			IFNULL(SUM(CASE WHEN ABS(TIMESTAMPDIFF(MINUTE,a.explainTime, a.createdOn)) <![CDATA[<=]]> 1440 AND a.resolved = 1 THEN 1 ELSE 0 END), 0) in24HourResolveDoubt,
+			IFNULL(SUM(CASE WHEN ABS(TIMESTAMPDIFF(MINUTE,a.explainTime, a.createdOn)) <![CDATA[>]]> 1440 AND a.resolved = 1 THEN 1 ELSE 0 END), 0) out24HourResolveDoubt
+		  FROM homework.HW_DOUBT a
+		  WHERE a.isDeleted = 0
+		  AND a.resolved = 1
+		  AND a.schoolId = #{schoolId}
+		  <if test="subjectId != null and subjectId != -1">
+		  AND a.subjectId = #{subjectId}
+		  </if>
+		  AND a.createdOn <![CDATA[>=]]> DATE(#{startDate})
+		  AND a.createdOn <![CDATA[<]]> DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+		  
+		  <include refid="teacherOfGradeSubject"/>
+		  GROUP BY DATE_FORMAT(DATE_ADD(a.createdOn,INTERVAL -DAY(a.createdOn) + 1 DAY), '%Y-%m-%d')
+		) p
+		ON m.startDate = p.createdOn
+	</select>
+	
+	<select id="findResolveDoubtByGrade" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.teachingMonitor.ResolveDoubt">
+		
+		SELECT
+	      g.gradeId, 
+		  g.gradeName,
+	      IFNULL(c.resolveDoubt, 0) resolveDoubt,
+	      IFNULL(c.in24HourResolveDoubt, 0) in24HourResolveDoubt,
+	      IFNULL(c.out24HourResolveDoubt, 0) out24HourResolveDoubt
+		FROM
+        (
+           SELECT 
+		     e.gradeId,
+		     COUNT(DISTINCT e.doubtId) resolveDoubt,
+		 	 COUNT(DISTINCT CASE WHEN ABS(TIMESTAMPDIFF(MINUTE, e.explainTime, e.createdOn)) <![CDATA[<=]]> 1440 THEN e.doubtId ELSE NULL END) in24HourResolveDoubt,
+		 	 COUNT(DISTINCT CASE WHEN ABS(TIMESTAMPDIFF(MINUTE, e.explainTime, e.createdOn)) <![CDATA[>]]> 1440 THEN e.doubtId ELSE NULL END) out24HourResolveDoubt
+		   FROM
+		   (SELECT 
+		      DISTINCT
+		      d.gradeId,
+		      d.classId,
+		      b.userId,
+		      a.doubtId,
+		      a.explainTime,
+		      a.createdOn
+			 FROM homework.HW_DOUBT a, lesson.ls_klass_teacher b, lesson.ls_klass d
+			 WHERE a.teacherId = b.userId
+		     AND b.classId = d.classId
+		     AND a.subjectId = b.subjectId
+		     AND a.doubtType = 1
+		     AND a.isDeleted = 0
+			 AND a.resolved = 1
+		     AND d.isDeleted = 0
+		     AND d.isExpired = 0
+		     AND d.type = 1
+		     AND a.schoolId = #{schoolId}
+		     AND b.schoolId = #{schoolId}
+		     AND b.roleId = 101
+		     <if test="subjectId != null and subjectId != -1">
+			 AND a.subjectId = #{subjectId}
+			 </if>
+			 AND a.createdOn <![CDATA[>=]]> DATE(#{startDate})
+		     AND a.createdOn <![CDATA[<]]> DATE_ADD(#{endDate}, INTERVAL 1 DAY))e
+		   GROUP BY e.gradeId
+	      )c
+		 RIGHT JOIN tutor.tutor_grade g
+		 ON g.gradeId = c.gradeId
+		 WHERE EXISTS (SELECT 1 from tutor.tutor_school_stage s, tutor.tutor_schoolStage_grade t
+					  WHERE s.schoolStageId = t.schoolStageId
+					  AND g.gradeId = t.gradeId
+					  AND s.schoolId = #{schoolId}
+					  )
+		 GROUP BY g.gradeId
+	</select>
+	
+	<select id="findResolveDoubtByAllSubject" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.teachingMonitor.ResolveDoubt">
+		SELECT 
+		  g.subjectId, 
+		  g.subjectName,
+		  COUNT(a.doubtId) resolveDoubt,
+	      COUNT(CASE WHEN ABS(TIMESTAMPDIFF(MINUTE,a.explainTime, a.createdOn)) <![CDATA[<=]]> 1440 THEN 1 ELSE NULL END) in24HourResolveDoubt,
+		  COUNT(CASE WHEN ABS(TIMESTAMPDIFF(MINUTE,a.explainTime, a.createdOn)) <![CDATA[>]]> 1440 THEN 1 ELSE NULL END) out24HourResolveDoubt
+		FROM homework.HW_DOUBT a
+		RIGHT JOIN tutor.tutor_subject g
+		ON g.subjectId = a.subjectId
+		AND a.isDeleted = 0
+		AND a.resolved = 1
+		AND a.schoolId = #{schoolId}
+		AND a.createdOn <![CDATA[>=]]> DATE(#{startDate})
+		AND a.createdOn <![CDATA[<]]> DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+		<include refid="teacherOfGradeSubject"/>
+		WHERE EXISTS (SELECT 1 from tutor.tutor_school_stage s, tutor.tutor_schoolStage_subject t
+		              WHERE s.schoolStageId = t.schoolStageId
+		              AND g.subjectId = t.subjectId
+		              <if test="subjectId != null and subjectId != -1">
+					  AND g.subjectId = #{subjectId}
+					  </if>
+		              AND s.schoolId = #{schoolId}
+		              )
+		GROUP BY g.subjectId
+	</select>
+	
+	<select id="findResolveDoubtByClazz" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.teachingMonitor.ResolveDoubt">
+		SELECT 
+			  f.classId,
+			  f.className,
+			  SUM(IF(a.resolved = 1, 1, 0)) resolveDoubt,
+			  SUM(CASE WHEN ABS(TIMESTAMPDIFF(MINUTE,a.explainTime, a.createdOn)) <![CDATA[<=]]> 1440 AND a.resolved = 1 THEN 1 ELSE 0 END) in24HourResolveDoubt,
+			  SUM(CASE WHEN ABS(TIMESTAMPDIFF(MINUTE,a.explainTime, a.createdOn)) <![CDATA[>]]> 1440 AND a.resolved = 1 THEN 1 ELSE 0 END) out24HourResolveDoubt
+		FROM homework.HW_DOUBT a
+		INNER JOIN lesson.ls_klass_teacher b
+		ON a.teacherId = b.userId
+		AND a.isDeleted = 0
+		AND b.isDeleted = 0
+		AND a.resolved = 1
+		AND a.schoolId = #{schoolId}
+		<if test="subjectId != null and subjectId != -1">
+		AND a.subjectId = #{subjectId}
+		AND b.subjectId = #{subjectId}
+		</if>
+		AND a.createdOn <![CDATA[>=]]> DATE(#{startDate})
+		AND a.createdOn <![CDATA[<]]> DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+		AND b.roleId = 101
+		INNER JOIN lesson.ls_klass f
+		ON f.classId = b.classId
+		AND f.isExpired = 0
+	    AND f.isDeleted = 0
+	    AND f.type = 1
+	    <if test="gradeId != null and gradeId != -1">
+           AND f.gradeId = #{gradeId}
+		</if>
+		GROUP BY f.classId ORDER BY f.className
+		
+	</select>
+	
+	<select id="findResolveDoubtByGradeSubject" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.teachingMonitor.ResolveDoubt">
+		SELECT 
+		  g.subjectId, 
+		  g.subjectName,
+		  COUNT(DISTINCT a.doubtId) resolveDoubt,
+	      COUNT(DISTINCT CASE WHEN ABS(TIMESTAMPDIFF(MINUTE,a.explainTime, a.createdOn)) <![CDATA[<=]]> 1440 THEN a.doubtId ELSE NULL END) in24HourResolveDoubt,
+		  COUNT(DISTINCT CASE WHEN ABS(TIMESTAMPDIFF(MINUTE,a.explainTime, a.createdOn)) <![CDATA[>]]> 1440 THEN a.doubtId ELSE NULL END) out24HourResolveDoubt
+		FROM homework.HW_DOUBT a
+		INNER JOIN lesson.ls_klass_teacher b
+		ON a.teacherId = b.userId
+        AND a.isDeleted = 0
+		AND a.resolved = 1
+		AND a.schoolId = #{schoolId}
+		AND b.schoolId = #{schoolId}
+		AND b.roleId = 101
+		AND a.createdOn <![CDATA[>=]]> DATE(#{startDate})
+		AND a.createdOn <![CDATA[<]]> DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+        AND EXISTS(SELECT 1 FROM lesson.ls_klass c 
+                   WHERE c.classId = b.classId 
+                   AND c.gradeId = #{gradeId}
+                   AND c.isDeleted = 0
+				   AND c.isExpired = 0
+				   AND c.type = 1)
+		RIGHT JOIN tutor.tutor_subject g
+		ON g.subjectId = a.subjectId
+		WHERE EXISTS (SELECT 1 from tutor.tutor_school_stage s, tutor.tutor_schoolStage_subject t, tutor.tutor_schoolStage_grade e
+					  WHERE s.schoolStageId = t.schoolStageId
+		              AND s.schoolStageId = e.schoolStageId
+					  AND g.subjectId = t.subjectId
+					  AND e.gradeId = #{gradeId}
+					  <if test="subjectId != null and subjectId != -1">
+					  AND g.subjectId = #{subjectId}
+					  </if>
+					  AND s.schoolId = #{schoolId}
+					  )
+		GROUP BY g.subjectId
+		
+	</select>
+	
+	<select id="findResolveDoubtByRank" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.teachingMonitor.ResolveDoubt">
+		SELECT 
+		  a.teacherId,
+		  (SELECT u.userName FROM tutor.tutor_user u WHERE u.userId = a.teacherId) teacherName,
+		  COUNT(1) resolveDoubt
+		FROM homework.HW_DOUBT a
+		WHERE a.schoolId = #{schoolId}
+		<if test="subjectId != null and subjectId != -1">
+	    AND a.subjectId = #{subjectId}
+	    </if>
+		AND a.resolved = 1
+		AND a.isDeleted = 0
+		AND a.createdOn <![CDATA[>=]]> DATE(#{startDate})
+		AND a.createdOn <![CDATA[<]]> DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+		<include refid="teacherOfGradeSubject"/>
+		GROUP BY a.teacherId
+	</select>
+	
+	<select id="findResolveDoubtDtl" parameterType="cn.strong.leke.diag.model.teachingMonitor.RequestVo"
+		resultType="cn.strong.leke.diag.model.teachingMonitor.ResolveDoubt">
+		SELECT m.* FROM
+		(SELECT
+		  p.teacherId,
+		  p.teacherName,
+		  p.subjectId,
+		  p.subjectName,
+		  p.totalDoubt,
+		  CONVERT(IF(p.totalDoubt = 0, 0, ROUND(p.resolveDoubt / p.totalDoubt * 100, 1)), DECIMAL(4,1)) resolveRate,
+		  p.resolveDoubt,
+		  p.in24HourResolveDoubt,
+		  p.out24HourResolveDoubt,
+		  p.notResolveDoubt
+		FROM
+		( 
+			SELECT 
+				a.teacherId,
+				(SELECT u.userName FROM tutor.tutor_user u WHERE u.userId = a.teacherId) teacherName,
+				a.subjectId,
+				(SELECT b.subjectName FROM tutor.tutor_subject b WHERE b.subjectId = a.subjectId) subjectName,
+				COUNT(1) totalDoubt,
+				IFNULL(SUM(IF(a.resolved = 1, 1, 0)), 0) resolveDoubt,
+				IFNULL(SUM(IF(a.resolved = 1, 0, 1)), 0) notResolveDoubt,
+				IFNULL(SUM(CASE WHEN ABS(TIMESTAMPDIFF(MINUTE,a.explainTime, a.createdOn)) <![CDATA[<=]]> 1440 AND a.resolved = 1 THEN 1 ELSE 0 END), 0) in24HourResolveDoubt,
+				IFNULL(SUM(CASE WHEN ABS(TIMESTAMPDIFF(MINUTE,a.explainTime, a.createdOn)) <![CDATA[>]]> 1440 AND a.resolved = 1 THEN 1 ELSE 0 END), 0) out24HourResolveDoubt
+			FROM homework.HW_DOUBT a
+			WHERE a.schoolId = #{schoolId}
+		    AND a.isDeleted = 0
+			<if test="subjectId != null and subjectId != -1">
+		    AND a.subjectId = #{subjectId}
+		    </if>
+			AND a.createdOn <![CDATA[>=]]> DATE(#{startDate})
+		    AND a.createdOn <![CDATA[<]]> DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+			<include refid="teacherOfGradeSubject"/>
+			GROUP BY a.teacherId, a.subjectId
+		) p)m 
+		<if test="orderAttr != null and orderAttr != ''">
+		ORDER BY ${orderAttr} ${orderType}
+		</if>
+	</select>
+</mapper>   

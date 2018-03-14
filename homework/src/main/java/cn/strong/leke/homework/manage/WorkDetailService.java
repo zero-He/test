@@ -1,0 +1,160 @@
+package cn.strong.leke.homework.manage;
+
+import java.util.Date;
+import java.util.List;
+
+import javax.annotation.Resource;
+
+import org.springframework.stereotype.Component;
+
+import cn.strong.leke.common.utils.DateUtils;
+import cn.strong.leke.homework.dao.mongo.WatchHistoryDao;
+import cn.strong.leke.homework.dao.mongo.WorkDetailDao;
+import cn.strong.leke.homework.dao.mybatis.HomeworkDtlDao;
+import cn.strong.leke.homework.model.QuestionProgress;
+import cn.strong.leke.homework.model.WorkDetail;
+import cn.strong.leke.homework.model.mongo.WorkStateSingleQuestion;
+
+@Component
+public class WorkDetailService {
+
+	@Resource
+	private WorkDetailDao workDetailDao;
+	@Resource
+	private WatchHistoryDao watchHistoryDao;
+	@Resource
+	private HomeworkDtlDao homeworkDtlDao;
+
+	/**
+	 * 根据作业明细ID获取作业数据。
+	 * @param homeworkDtlId
+	 * @return
+	 */
+	public WorkDetail getWorkDetailByHomeworkDtlId(Long homeworkDtlId) {
+		return this.workDetailDao.getWorkDetailByHomeworkDtlId(homeworkDtlId);
+	}
+
+	/**
+	 * 批量批改查询，只查询作业中的一题
+	 * @param homeworkDtlId
+	 * @param questionId
+	 * @return
+	 */
+	public WorkDetail getWorkDetailByBatchCorrect(Long homeworkDtlId, Long questionId) {
+		return this.workDetailDao.getWorkDetailByBatchCorrect(homeworkDtlId, questionId);
+	}
+
+	/**
+	 * 根据老师作业ID查询作业中试题的批改数量
+	 * @param homeworkId 老师作业ID
+	 * @return
+	 */
+	public List<QuestionProgress> findBatchProgressByHomeworkId(Long homeworkId) {
+		return this.workDetailDao.findBatchProgressByHomeworkId(homeworkId);
+	}
+
+	/**
+	 * 获取批量批改计数
+	 * @param homeworkId 作业ID
+	 * @param questionId 题目ID
+	 * @param cutDate 切断的时间
+	 * @return
+	 */
+	public Integer getBatchCorrectCount(Long homeworkId, Long questionId, Date cutDate) {
+		return this.workDetailDao.getBatchCorrectCount(homeworkId, questionId, cutDate);
+	}
+
+	/**
+	 * 获取批量批改下一个
+	 * @param homeworkId 作业ID
+	 * @param questionId 题目ID
+	 * @param cutDate 切断的时间
+	 * @return
+	 */
+	public WorkDetail getBatchCorrectNext(Long homeworkId, Long questionId, Date cutDate) {
+		return this.workDetailDao.getBatchCorrectNext(homeworkId, questionId, cutDate);
+	}
+
+	/**
+	 * 获取该题已经批量批改的学生作业ID
+	 * @param homeworkId 作业ID
+	 * @param questionId 题目ID
+	 * @param cutDate 切断的时间
+	 * @return
+	 */
+	public List<Long> getBatchSubmitHwDtls(Long homeworkId, Date cutDate) {
+		return this.workDetailDao.getBatchSubmitHwDtls(homeworkId, cutDate);
+	}
+
+	/**
+	 * 是否已经全部批改
+	 * @param homeworkId
+	 * @param questionId
+	 * @param cutDate
+	 * @return
+	 */
+	public boolean IsCorrectAll(Long homeworkId, Long questionId, Date cutDate) {
+		return this.workDetailDao.IsCorrectAll(homeworkId, questionId, cutDate);
+	}
+
+	/**
+	 * 查询 得分率小于 设置的题目id
+	 * @param rate
+	 * @param correctedHwDtlIds
+	 * @return
+	 */
+	public List<WorkStateSingleQuestion> findWorkStateSingleQuestion(List<Long> correctedHwDtlIds) {
+		return workDetailDao.findWorkStateSingleQuestion(correctedHwDtlIds);
+	}
+
+	/**
+	 * 查找一份作业某道题目做错的学生
+	 * @param questionId
+	 * @param homeworkId
+	 * @return
+	 */
+	public List<Long> findHwWrongStudent(Long questionId, Long homeworkId) {
+		return this.workDetailDao.findHwWrongStudent(questionId, homeworkId);
+	}
+
+	/**
+	 * 根据作业ID获取作业数据详情
+	 * @param homeworkId
+	 * @return
+	 */
+	public List<WorkDetail> findWorkDetailByHomeworkId(Long homeworkId) {
+		return this.workDetailDao.findWorkDetailByHomeworkId(homeworkId);
+	}
+
+	/**
+	 * 更新观看位置
+	 * @param homeworkDtlId
+	 * @param position
+	 * @param userId
+	 */
+	public void updatePosition(Long homeworkDtlId, Integer position, Integer duration, Long userId) {
+		this.watchHistoryDao.updatePosition(homeworkDtlId, position, duration, userId);
+	}
+
+	/**
+	 * 获取观看位置
+	 * @param homeworkDtlId
+	 * @return
+	 */
+	public Integer getPosition(Long homeworkDtlId) {
+		return this.watchHistoryDao.getPosition(homeworkDtlId);
+	}
+
+	/**
+	 * 检查最近三天提交的作业中，题目是否是待订正状态 
+	 * @param questionId
+	 * @param stuId
+	 * @return
+	 */
+	public Boolean isExistQuestion(Long questionId, Long stuId) {
+		Date date = DateUtils.addDays(new Date(), -3);
+		date = DateUtils.parseDate(DateUtils.format(date, DateUtils.SHORT_DATE_PATTERN));
+		List<Long> hwDtlIds = homeworkDtlDao.findHwDtlIdByCloseTime(stuId, date);
+		return this.workDetailDao.isExistQuestion(questionId, hwDtlIds);
+	}
+}

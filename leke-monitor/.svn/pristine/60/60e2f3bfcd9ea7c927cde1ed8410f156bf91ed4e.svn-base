@@ -1,0 +1,647 @@
+package cn.strong.leke.monitor.core.service.impl;
+
+import java.math.BigDecimal;
+import java.text.NumberFormat;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.TreeSet;
+
+import javax.annotation.Resource;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import cn.strong.leke.framework.page.jdbc.Page;
+import cn.strong.leke.monitor.core.dao.mybatis.ILessonBehaviorDao;
+import cn.strong.leke.monitor.core.model.lesson.LessonBehavior;
+import cn.strong.leke.monitor.core.model.lesson.LessonInteracts;
+import cn.strong.leke.monitor.core.model.lesson.SchoolLessonDto;
+import cn.strong.leke.monitor.core.model.lesson.Student;
+import cn.strong.leke.monitor.core.model.lesson.TeacherLessonDto;
+import cn.strong.leke.monitor.core.model.lesson.WholeLessonBehaviorDto;
+import cn.strong.leke.monitor.core.service.ILessonBehaviorService;
+import cn.strong.leke.monitor.mongo.course.service.ILessonDao;
+
+@Service
+public class LessonBehaviorServiceImpl implements ILessonBehaviorService {
+	@Resource
+	private ILessonBehaviorDao lessonBehaviorDao;
+	@Autowired
+	private ILessonDao lessonDao;
+
+	/**
+	 * 全网课堂功能统计
+	 */
+	@Override
+	public List<TeacherLessonDto> queryWholeNetwork(SchoolLessonDto query) {
+		List<LessonBehavior> lessonBehaviors = lessonDao.getLessonBehavior(query);
+		List<TeacherLessonDto> result = getLessonResult(lessonBehaviors);
+		return result;
+	}
+
+
+	/**
+	 * 学校课堂功能详情统计
+	 */
+	@Override
+	public List<TeacherLessonDto> schoolLessondetail(TeacherLessonDto query) {
+		List<Long> courseSingleIds = lessonBehaviorDao.getCourseSingleIdBySchool(query);
+		List<LessonBehavior> lessonBehaviors = lessonDao.getLessonBehaviorByCourseSingleId(courseSingleIds);
+		List<TeacherLessonDto> result = getLessonResult(lessonBehaviors);
+		return result;
+	}
+
+	/**
+	 * 获取学校某条课堂行为的各校数据对比！
+	 */
+	@Override
+	public List<TeacherLessonDto> schoolLessonStatistics(TeacherLessonDto query,Page page) {
+		List<Long> courseSingleIds = lessonBehaviorDao.getCourseSingleIdBySchool(query);
+		List<LessonBehavior> lessonBehaviors = lessonDao.getLessonBehaviorByCourseSingleId(courseSingleIds);
+		TreeSet<String> tss = new TreeSet<String>();
+		for (LessonBehavior lessonBehavior : lessonBehaviors) {
+			TeacherLessonDto teacherLessonDto = lessonBehaviorDao.getTeacherLessonDto(lessonBehavior.get_id());
+			lessonBehavior.setTeacherLessonDto(teacherLessonDto);
+			tss.add(lessonBehavior.getTeacherLessonDto().getSchoolName()
+					+ lessonBehavior.getTeacherLessonDto().getSchoolStageName());
+		}
+		List<TeacherLessonDto> schoolLessonDtos = new ArrayList<>();
+		for (String str : tss) {
+			int lessonNum = 0;
+			int sponsorNum = 0;
+			int useLessonCount = 0;
+			TeacherLessonDto teacherLesson = null;
+			for (LessonBehavior lessonBehavior : lessonBehaviors) {
+				int isUser = 0;
+				TeacherLessonDto teacherLessonDto = lessonBehavior.getTeacherLessonDto();
+				String teacherInfo = teacherLessonDto.getSchoolName() + teacherLessonDto.getSchoolStageName();
+				if (teacherInfo.equals(str)) {
+					teacherLesson = teacherLessonDto;
+					lessonNum += 1;
+					List<LessonInteracts> interacts = lessonBehavior.getInteracts();
+					List<Student> students = lessonBehavior.getStudents();
+					switch (query.getType()) {
+					case "快速问答":
+						if (interacts != null) {
+							for (LessonInteracts lessonInteracts : interacts) {
+								if (lessonInteracts.getType() == 302) {
+									sponsorNum += 1;
+									isUser = 1;
+								}
+							}
+						}
+						break;
+					case "随堂测试":
+						sponsorNum += lessonBehavior.getExamNum();
+						if (lessonBehavior.getExamNum() > 0) {
+							isUser = 1;
+						}
+						break;
+					case "点名-自动":
+						if (interacts != null) {
+							for (LessonInteracts lessonInteracts : interacts) {
+								if (lessonInteracts.getType() == 402) {
+									sponsorNum += 1;
+									isUser = 1;
+								}
+							}
+						}
+						break;
+					case "点名-手动":
+						if (interacts != null) {
+							for (LessonInteracts lessonInteracts : interacts) {
+								if (lessonInteracts.getType() == 401) {
+									sponsorNum += 1;
+									isUser = 1;
+								}
+							}
+						}
+						break;
+					case "息屏":
+						if (interacts != null) {
+							for (LessonInteracts lessonInteracts : interacts) {
+								if (lessonInteracts.getType() == 202) {
+									sponsorNum += 1;
+									isUser = 1;
+								}
+							}
+						}
+						break;
+					case "授权":
+						sponsorNum += lessonBehavior.getAuthedNum();
+						if (lessonBehavior.getAuthedNum() > 0) {
+							isUser = 1;
+						}
+						break;
+					case "举手":
+						if (students != null) {
+							for (Student student : students) {
+								sponsorNum += student.getRaised();
+								if (student.getRaised() > 0) {
+									isUser = 1;
+								}
+							}
+						}
+						break;
+					case "分组讨论":
+						if (interacts != null) {
+							for (LessonInteracts lessonInteracts : interacts) {
+								if (lessonInteracts.getType() == 303) {
+									sponsorNum += 1;
+									isUser = 1;
+								}
+							}
+						}
+						break;
+					case "评价":
+						if (students != null) {
+							for (Student student : students) {
+								if (student.getIsEval()) {
+									sponsorNum += 1;
+									isUser = 1;
+								}
+							}
+						}
+						break;
+					case "献花":
+						if (students != null) {
+							for (Student student : students) {
+								sponsorNum += student.getFlower();
+								if (student.getFlower() > 0) {
+									isUser = 1;
+								}
+							}
+						}
+						break;
+					case "作业讲解":
+						if (interacts != null) {
+							for (LessonInteracts lessonInteracts : interacts) {
+								if (lessonInteracts.getType() == 304) {
+									sponsorNum += 1;
+									isUser = 1;
+								}
+							}
+						}
+						break;
+					default:
+						break;
+					}
+
+				}
+				useLessonCount += isUser;
+			}
+			Double calculateAverage = calculateAverage(sponsorNum, lessonNum);
+			String percent = percent(useLessonCount, lessonNum);
+			teacherLesson.setAverage(calculateAverage);
+			teacherLesson.setSponsorRate(percent);
+			teacherLesson.setLessonNum(lessonNum);
+			teacherLesson.setSponsorNum(sponsorNum);
+			schoolLessonDtos.add(teacherLesson);
+		}
+
+		return schoolLessonDtos;
+	}
+
+	/**
+	 * 学校老师的课堂行为数据
+	 */
+	@Override
+	public List<TeacherLessonDto> teacherLessonStatistics(TeacherLessonDto query,Page page) {
+		List<Long> courseSingleIds = lessonBehaviorDao.getCourseSingleIdBySchool(query);
+		List<LessonBehavior> lessonBehaviors = lessonDao.getLessonBehaviorByCourseSingleId(courseSingleIds);
+		TreeSet<String> tss = new TreeSet<String>();
+		for (LessonBehavior lessonBehavior : lessonBehaviors) {
+			TeacherLessonDto teacherLessonDto = lessonBehaviorDao.getTeacherLessonDto(lessonBehavior.get_id());
+			lessonBehavior.setTeacherLessonDto(teacherLessonDto);
+			tss.add(teacherLessonDto.getGradeName() + lessonBehavior.getSubjectName()
+					+ teacherLessonDto.getLoginName());
+		}
+		List<TeacherLessonDto> teacherLessonDtos = new ArrayList<>();
+		for (String str : tss) {
+			int lessonNum = 0;
+			int sponsorNum = 0;
+			int useLessonCount = 0;
+			TeacherLessonDto teacherLesson = null;
+			for (LessonBehavior lessonBehavior : lessonBehaviors) {
+				int isUser = 0;
+				TeacherLessonDto teacherLessonDto = lessonBehavior.getTeacherLessonDto();
+				String teacherInfo = teacherLessonDto.getGradeName() + lessonBehavior.getSubjectName()
+						+ teacherLessonDto.getLoginName();
+				if (teacherInfo.equals(str)) {
+					teacherLessonDto.setSubjectName(lessonBehavior.getSubjectName());
+					teacherLessonDto.setTeacherName(lessonBehavior.getTeacherName());
+					teacherLesson = teacherLessonDto;
+					lessonNum += 1;
+					List<LessonInteracts> interacts = lessonBehavior.getInteracts();
+					List<Student> students = lessonBehavior.getStudents();
+					switch (query.getType()) {
+					case "快速问答":
+						if (interacts != null) {
+							for (LessonInteracts lessonInteracts : interacts) {
+								if (lessonInteracts.getType() == 302) {
+									sponsorNum += 1;
+									isUser = 1;
+								}
+							}
+						}
+						break;
+					case "随堂测试":
+						sponsorNum += lessonBehavior.getExamNum();
+						if (lessonBehavior.getExamNum() > 0) {
+							isUser = 1;
+						}
+						break;
+					case "点名-自动":
+						if (interacts != null) {
+							for (LessonInteracts lessonInteracts : interacts) {
+								if (lessonInteracts.getType() == 402) {
+									sponsorNum += 1;
+									isUser = 1;
+								}
+							}
+						}
+						break;
+					case "点名-手动":
+						if (interacts != null) {
+							for (LessonInteracts lessonInteracts : interacts) {
+								if (lessonInteracts.getType() == 401) {
+									sponsorNum += 1;
+									isUser = 1;
+								}
+							}
+						}
+						break;
+					case "息屏":
+						if (interacts != null) {
+							for (LessonInteracts lessonInteracts : interacts) {
+								if (lessonInteracts.getType() == 202) {
+									sponsorNum += 1;
+									isUser = 1;
+								}
+							}
+						}
+						break;
+					case "授权":
+						sponsorNum += lessonBehavior.getAuthedNum();
+						if (lessonBehavior.getAuthedNum() > 0) {
+							isUser = 1;
+						}
+						break;
+					case "举手":
+						if (students != null) {
+							for (Student student : students) {
+								sponsorNum += student.getRaised();
+								if (student.getRaised() > 0) {
+									isUser = 1;
+								}
+							}
+						}
+						break;
+					case "分组讨论":
+						if (interacts != null) {
+							for (LessonInteracts lessonInteracts : interacts) {
+								if (lessonInteracts.getType() == 303) {
+									sponsorNum += 1;
+									isUser = 1;
+								}
+							}
+						}
+						break;
+					case "评价":
+						if (students != null) {
+							for (Student student : students) {
+								if (student.getIsEval()) {
+									sponsorNum += 1;
+									isUser = 1;
+								}
+							}
+						}
+						break;
+					case "献花":
+						if (students != null) {
+							for (Student student : students) {
+								sponsorNum += student.getFlower();
+								if (student.getFlower() > 0) {
+									isUser = 1;
+								}
+							}
+						}
+						break;
+					case "作业讲解":
+						if (interacts != null) {
+							for (LessonInteracts lessonInteracts : interacts) {
+								if (lessonInteracts.getType() == 304) {
+									sponsorNum += 1;
+									isUser = 1;
+								}
+							}
+						}
+						break;
+					default:
+						break;
+					}
+
+				}
+				useLessonCount += isUser;
+			}
+			Double calculateAverage = calculateAverage(sponsorNum, lessonNum);
+			String percent = percent(useLessonCount, lessonNum);
+			teacherLesson.setLessonNum(lessonNum);
+			teacherLesson.setSponsorNum(sponsorNum);
+			teacherLesson.setAverage(calculateAverage);
+			teacherLesson.setSponsorRate(percent);
+			teacherLessonDtos.add(teacherLesson);
+		}  
+		return teacherLessonDtos;
+	}
+
+	/**
+	 * 老师课堂功能详情统计
+	 */
+	@Override
+	public List<TeacherLessonDto> teacherLessonDetail(TeacherLessonDto query) {
+		List<Long> courseSingleIds = lessonBehaviorDao.getCourseSingleIdBySchool(query);
+		List<LessonBehavior> lessonBehaviors = lessonDao.getLessonBehaviorByCourseSingleId(courseSingleIds);
+		List<TeacherLessonDto> result = getLessonResult(lessonBehaviors);
+		return result;
+	}
+
+	/**
+	 * 根据不通的字段名获取不同事件的信息
+	 * 
+	 * @param type
+	 * @param str
+	 * @param lessonMap
+	 * @param key
+	 * @param lessonNum
+	 * @return
+	 */
+	public static <T extends WholeLessonBehaviorDto> T setWholeInfo(String type, String str,
+			Map<String, Integer> lessonMap, String key, Integer lessonNum, T wld) {
+
+		int sponsorNum = lessonMap.get(key).intValue();
+		int count = lessonMap.get(str).intValue();
+		Double filesize = calculateAverage(sponsorNum, lessonNum);
+
+		String probability = percent(count, lessonNum);
+		wld.setSponsorRate(probability);
+		wld.setSponsorNum(sponsorNum);
+		wld.setLessonNum(lessonNum);
+		wld.setType(type);
+		wld.setAverage(filesize);
+		return wld;
+	}
+
+	/**
+	 * 分类不同的事件
+	 * 
+	 * @param lessonMap
+	 * @param key
+	 * @param lessonNum
+	 * @param result
+	 */
+	public static <T extends WholeLessonBehaviorDto> void classifyMethod(Map<String, Integer> lessonMap, 
+			String key,Integer lessonNum, List<T> result, T wld) {
+		if (key.equals("quickNum")) {
+			T setWholeInfo = setWholeInfo("快速问答", "isQuick", lessonMap, key, lessonNum, wld);
+			result.add(setWholeInfo);
+		}
+		if (key.equals("examNum")) {
+			T setWholeInfo = setWholeInfo("随堂测试", "isExam", lessonMap, key, lessonNum, wld);
+			result.add(setWholeInfo);
+		}
+		if (key.equals("manualCallNum")) {
+			T setWholeInfo = setWholeInfo("点名-手动", "isManualCall", lessonMap, key, lessonNum, wld);
+			result.add(setWholeInfo);
+		}
+		if (key.equals("selfCallNum")) {
+			T setWholeInfo = setWholeInfo("点名-自动", "isSelfCall", lessonMap, key, lessonNum, wld);
+			result.add(setWholeInfo);
+		}
+		if (key.equals("closeNum")) {
+			T setWholeInfo = setWholeInfo("息屏", "isClose", lessonMap, key, lessonNum, wld);
+			result.add(setWholeInfo);
+		}
+		if (key.equals("authedNum")) {
+			T setWholeInfo = setWholeInfo("授权", "isAuthed", lessonMap, key, lessonNum, wld);
+			result.add(setWholeInfo);
+		}
+		if (key.equals("raisedNum")) {
+			T setWholeInfo = setWholeInfo("举手", "isRaised", lessonMap, key, lessonNum, wld);
+			result.add(setWholeInfo);
+		}
+		if (key.equals("discussionNum")) {
+			T setWholeInfo = setWholeInfo("分组讨论", "isDiscussion", lessonMap, key, lessonNum, wld);
+			result.add(setWholeInfo);
+		}
+		if (key.equals("isEvalNum")) {
+			T setWholeInfo = setWholeInfo("评价", "isEval", lessonMap, key, lessonNum, wld);
+			result.add(setWholeInfo);
+		}
+		if (key.equals("flowerNum")) {
+			T setWholeInfo = setWholeInfo("献花", "isFlower", lessonMap, key, lessonNum, wld);
+			result.add(setWholeInfo);
+		}
+		if (key.equals("analysisNum")) {
+			T setWholeInfo = setWholeInfo("作业讲解", "isAnalysis", lessonMap, key, lessonNum, wld);
+			result.add(setWholeInfo);
+		}
+	}
+
+	/**
+	 * 就算平均数，精确到小数点后两位
+	 * 
+	 * @param a
+	 * @param b
+	 * @return
+	 */
+	public static Double calculateAverage(int a, int b) {
+		Double filesize = 0.0;
+		if (b != 0) {
+			float size = (float) a / b;
+			BigDecimal bg = new BigDecimal(size);
+			filesize = bg.setScale(2, BigDecimal.ROUND_HALF_UP).doubleValue();
+		}
+		return filesize;
+	}
+
+	/**
+	 * 求a.b的百分比
+	 * 
+	 * @param a
+	 * @param b
+	 * @return
+	 */
+	public static String percent(int a, int b) {
+		String probability = "";
+		if (b != 0) {
+			// 创建一个数值格式化对象
+			NumberFormat numberFormat = NumberFormat.getInstance();
+			// 设置精确到小数点后2位
+			numberFormat.setMaximumFractionDigits(2);
+			probability = numberFormat.format((float) a / (float) b * 100) + "%";
+		}else {
+			probability = "0%";
+		}
+		return probability;
+	}
+
+	/**
+	 * 所有课堂行为统计
+	 * 
+	 * @param lessonBehaviors
+	 * @return
+	 */
+	public List<TeacherLessonDto> getLessonResult(List<LessonBehavior> lessonBehaviors) {
+		int raisedNum = 0;
+		int flowerNum = 0;
+		int isEvalNum = 0;
+		int manualCallNum = 0;
+		int selfCallNum = 0;
+		int closeNum = 0;
+		int discussionNum = 0;
+		int analysisNum = 0;
+		int isRaised = 0;
+		int isFlower = 0;
+		int isEval = 0;
+		int isManualCall = 0;
+		int isSelfCall = 0;
+		int isClose = 0;
+		int isDiscussion = 0;
+		int isAnalysis = 0;
+		int isQuick = 0;
+		int isExam = 0;
+		int isAuthed = 0;
+		int lessonNum = 0;
+		int authedNum = 0;
+		int examNum = 0;
+		int quickNum = 0;
+		for (LessonBehavior lessonBehavior : lessonBehaviors) {
+			int manualCall = 0;
+			int selfCall = 0;
+			int close = 0;
+			int discussion = 0;
+			int quick = 0;
+			int eval = 0;
+			int raised = 0;
+			int flower = 0;
+			int analysis = 0;
+			if (lessonBehavior.getAuthedNum() != 0) {
+				authedNum += lessonBehavior.getAuthedNum();
+				isAuthed += 1;
+			}
+			if (lessonBehavior.getExamNum() != 0) {
+				examNum += lessonBehavior.getExamNum();
+				isExam += 1;
+			}
+			List<LessonInteracts> interacts = lessonBehavior.getInteracts();
+			if (interacts != null) {
+				for (LessonInteracts lessonInteracts : interacts) {
+					switch (lessonInteracts.getType()) {
+					case 401:
+						manualCallNum += 1;
+						manualCall = 1;
+						break;
+					case 402:
+						selfCallNum += 1;
+						selfCall = 1;
+						break;
+					case 202:
+						closeNum += 1;
+						close = 1;
+						break;
+					case 303:
+						discussionNum += 1;
+						discussion = 1;
+						break;
+					case 304:
+						analysisNum += 1;
+						analysis = 1;
+						break;
+					case 302:
+						quickNum += 1;
+						quick = 1;
+						break;
+					default:
+						break;
+					}
+				}
+			}
+			List<Student> students = lessonBehavior.getStudents();
+			if (students != null) {
+
+				for (Student student : students) {
+					if (student.getIsEval()) {
+						isEvalNum += 1;
+						eval = 1;
+					}
+					if (student.getRaised() > 0) {
+						raisedNum += student.getRaised();
+						raised = 1;
+					}
+					if (student.getFlower() > 0) {
+						flowerNum += student.getFlower();
+						flower = 1;
+					}
+				}
+			}
+			isClose += close;
+			isManualCall += manualCall;
+			isSelfCall += selfCall;
+			isDiscussion += discussion;
+			isAnalysis += analysis;
+			isFlower += flower;
+			isRaised += raised;
+			isEval += eval;
+			isQuick += quick;
+
+		}
+		lessonNum = lessonBehaviors.size();
+		Map<String, Integer> lessonMap = new HashMap<>();
+		List<TeacherLessonDto> result = new ArrayList<>();
+		lessonMap.put("quickNum", quickNum);
+		lessonMap.put("examNum", examNum);
+		lessonMap.put("manualCallNum", manualCallNum);
+		lessonMap.put("selfCallNum", selfCallNum);
+		lessonMap.put("closeNum", closeNum);
+		lessonMap.put("analysisNum", analysisNum);
+		lessonMap.put("discussionNum", discussionNum);
+		lessonMap.put("isEvalNum", isEvalNum);
+		lessonMap.put("authedNum", authedNum);
+		lessonMap.put("raisedNum", raisedNum);
+		lessonMap.put("flowerNum", flowerNum);
+		lessonMap.put("isQuick", isQuick);
+		lessonMap.put("isExam", isExam);
+		lessonMap.put("isManualCall", isManualCall);
+		lessonMap.put("isSelfCall", isSelfCall);
+		lessonMap.put("isClose", isClose);
+		lessonMap.put("isAnalysis", isAnalysis);
+		lessonMap.put("isDiscussion", isDiscussion);
+		lessonMap.put("isEval", isEval);
+		lessonMap.put("isAuthed", isAuthed);
+		lessonMap.put("isRaised", isRaised);
+		lessonMap.put("isFlower", isFlower);
+		Set<Entry<String, Integer>> entrySet = lessonMap.entrySet();
+		for (Entry<String, Integer> entry : entrySet) {
+			TeacherLessonDto wld = new TeacherLessonDto();
+			String key = entry.getKey();
+			classifyMethod(lessonMap, key, lessonNum, result, wld);
+		}
+		return result;
+	}
+
+	@Override
+	public List<TeacherLessonDto> getGradeNameBySchool(TeacherLessonDto query) {
+		return lessonBehaviorDao.getGradeNameBySchool(query);
+	}
+
+	@Override
+	public List<TeacherLessonDto> getSubjectNameBySchool(TeacherLessonDto query) {
+		return lessonBehaviorDao.getSubjectNameBySchool(query);
+	}
+
+}

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.question.dao.mybatis.workbook.ISchoolWorkbookCheckLogDao">
+
+	<insert id="add" useGeneratedKeys="true" keyProperty="checkLogId"
+		parameterType="cn.strong.leke.question.model.workbook.SchoolWorkbookCheckLog">
+		INSERT INTO que_school_workbook_check_log(
+			workbookId, schoolId, fromStatus, toStatus, checkNote, checkedUser,
+			isDeleted, createdBy, createdOn
+		) VALUES (
+			#{workbookId}, #{schoolId}, #{fromStatus}, #{toStatus}, #{checkNote}, #{checkedUser},
+			0, #{createdBy}, now()
+		)
+	</insert>
+	
+	<!-- 查找一条审核记录 -->
+	<select id="getCheckLog" parameterType="long" resultType="cn.strong.leke.question.model.workbook.SchoolWorkbookCheckLog">
+		SELECT 
+			a.*
+		FROM
+			que_school_workbook_check_log a
+		WHERE
+			a.isDeleted = 0
+		AND
+			a.checkLogId = #{checkLogId}
+	</select>
+	
+	<select id="findByWorkbookAndSchool" parameterType="map"
+		resultType="cn.strong.leke.question.model.workbook.SchoolWorkbookCheckLog">
+		SELECT a.*
+		FROM que_school_workbook_check_log a
+		<where>
+			AND workbookId = #{workbookId}
+			AND schoolId = #{schoolId}
+			AND isDeleted = 0
+		</where>
+		ORDER BY a.createdOn DESC
+	</select>
+
+</mapper>

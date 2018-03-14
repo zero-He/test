@@ -1,0 +1,142 @@
+<div class="m-tab er-tab">
+	<button class="er-tab-pre">&lt;&lt;</button>
+	<button class="er-tab-next">&gt;&gt;</button>
+	<ul data-bind="foreach: teacherClass">
+	    <li data-bind="css: {active: $component.query.classId() == $data.classId},click: function(){ $component.query.classId($data.classId);$parent.doSearchByKnowledge('');$component.wrongKlgsDesc(null);}">
+	    	<a href="##" data-bind="text: className"></a>
+	    </li>
+	</ul>
+</div>
+<!--单体班级得分率-->
+<div class="g-sd c-average-sd">
+	<div class="average-head">
+	    <span class="average-head-item">单题班级得分率</span>
+	    <a href="##" class="average-head-item average-mark poptitle">
+		    <div class="m-tippop m-tippop-lt">
+				<span class="msg">作业的单题班级得分率低于该值且批改率（批改人数/总人数）不小于80%，系统在截止时间24-48小时后会自动将题目加入到错题本。</span>
+				<div class="arrow"><em></em><i></i></div>
+			</div>
+	    </a>
+	</div>
+    <div class="average-grade">
+        <input type="text" onkeyup="value=value.replace(/[^\d]/g,'')"  class="average-grade-input text-rate" maxlength="3"  data-bind="value: rate,event: { blur: doUpdateWrongSubjRate }">
+        <span class="average-grade-num html-rate" data-bind="text: rate"></span>
+        <span>%</span>
+        <span class="average-grade-btn c-basket-btn-hov btn-rate" data-bind="click: showEditRate"></span>
+        <button class="average-grade-btn c-basket-btn-hov btn-save-rate" style="display: none" data-bind="click: doUpdateWrongSubjRate">保存</button>
+    </div>
+    <!-- ko if: wrongKlgs().length -->
+    <div class="m-table">
+        <table>
+	       <tbody>
+	           <tr><td>知识点分布</td><td><span class="m-sorting" data-bind="css: $component.wrongKlgsDesc() == null ? '' : !$component.wrongKlgsDesc() ? 'm-sorting-desc' :'m-sorting-asc',  click: function(){ $component.wrongKlgsDesc(!$component.wrongKlgsDesc());}">题数<i></i></span></td></tr>
+	           <!-- ko foreach: wrongKlgs -->
+	           <tr><td data-bind="text: knowledgeName"></td><td class="average-grade-td-num" data-bind="text: questionTotal,click: function(){  $parent.doSearchByKnowledge($data);}"></td></tr>
+	           <!-- /ko -->
+	       </tbody>
+        </table>
+    </div>
+   <!-- /ko -->
+</div>
+<!--右侧主要内容-->
+<div class="g-mn">
+	<div class="m-tab c-error-collection">
+		<!--筛选-->
+		<div class="c-sift">
+		    <div class="c-sift-tit">
+		        <h3 class="c-sift-tit-h3">学&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;科</h3>
+		        <i class="c-sift-tit-colon">：</i>
+		    </div>
+		    <div class="c-sift-content">
+		        <ul>
+		            <!-- ko foreach: subjects -->
+		            <li class="c-sift-content-item" 
+		            	data-bind="text: subjectName,css: {'c-sift-content-item-on': $component.query.subjectId() == $data.subjectId},
+		            		click: function(){ $component.query.subjectId($data.subjectId);$parent.doSearchByKnowledge('');$component.wrongKlgsDesc(null);}"></li>
+		            <!-- /ko -->
+		        </ul>
+		    </div>
+		</div>
+        <div class="c-sift">
+            <div class="c-sift-tit">
+                <h3 class="c-sift-tit-h3">题&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;型</h3>
+                <i class="c-sift-tit-colon">：</i>
+            </div>
+            <div class="c-sift-content">
+                <ul>
+                	<li class="c-sift-content-item" data-bind="css: {'c-sift-content-item-on': !$component.query.questionTypeId()},
+                	click: function(){ $component.query.questionTypeId(null);}">全部</li>
+                	<!-- ko foreach: types -->
+		            <li class="c-sift-content-item" data-bind="text: questionTypeName, css: {
+		                    	'c-sift-content-item-on': $component.query.questionTypeId() == $data.questionTypeId
+		                    }, click: function() {
+		                    	$component.query.questionTypeId($data.questionTypeId);
+		                    }"></li>
+		            <!-- /ko -->
+		        </ul>
+            </div>
+        </div>
+        <div class="c-sift">
+            <div class="c-sift-tit">
+                <h3 class="c-sift-tit-h3">难&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;度</h3>
+                <i class="c-sift-tit-colon">：</i>
+            </div>
+            <div class="c-sift-content">
+                <ul>
+                    <li class="c-sift-content-item" data-bind="css: {'c-sift-content-item-on': !$component.query.diffLevel()},
+                    	click: function(){ $component.query.diffLevel(null);}">全部</li>
+                    <!-- ko foreach: diffLevels -->
+                    <li class="c-sift-content-item" data-bind="
+                    	text: levelName,
+                    	css: {'c-sift-content-item-on': $component.query.diffLevel() == $data.diffLevel},
+                    	click: function(){ 
+                    		$component.query.diffLevel($data.diffLevel);}" >容易</li>
+                    <!-- /ko -->
+                </ul>
+            </div>
+        </div>
+        <div class="c-sift-content">
+            <label for="" class="title">单题班级得分率：</label>
+            <input type="text" onkeyup="value=value.replace(/[^\d]/g,'')" maxlength="3"  class="u-ipt u-ipt-nm" data-bind="value: query.minRate" >
+            <label for="" class="title">%至</label>
+            <input type="text" onkeyup="value=value.replace(/[^\d]/g,'')" maxlength="3" class="u-ipt u-ipt-nm" data-bind="value: query.maxRate">
+            <label for="" class="title">%</label>
+            <input type="submit" class="u-btn u-btn-nm u-btn-bg-turquoise" value="查询" data-bind="click: doSearch">
+            <p class="history-tip">
+             <!-- ko if: query.selKnowledge() -->
+             	<span>
+	            	<span>当前知识点：<span data-bind="text: query.selKnowledge().knowledgeName "></span></span><i class="cross" data-bind="click: function(){ doSearchByKnowledge('');}"></i></span>
+            	</span>
+            <!-- /ko -->
+            </p>
+        </div>
+        <!--智能排序-->
+        <div class="intell-tab">
+            <ul data-bind="foreach: orderBys">
+                <li class="intell-tab-li" 
+                	data-bind="css: {'intell-tab-li-on': $component.query.sort() == $data.sort},
+                					click: function(){ $component.query.sort($data.sort);}">
+                	<a href="#"><em data-bind="text: orderByName"></em><i class="intell-tab-li-arrow"></i></a>
+                </li>
+            </ul>
+        </div>
+        <!--快速选择-->
+        <div class="quickchoice-nav">
+            <div class="quickchoice-nav-check">
+            	<label>
+                 <input type="checkbox" class="selectedAll" id="selectedAll">
+                 <span>全部</span>
+                </label>
+            </div>
+            <div class="quickchoice-nav-btn">
+                <button class="quickchoice-nav-btn-item add-to-basket c-basket-btn-hov j-add-batch-quecart">加入习题篮</button>
+                <button class="u-btn u-btn-at u-btn-bg-turquoise u-btn-bg-gray j-remove-quecart">移出习题篮</button>
+                <button class="quickchoice-nav-btn-item c-basket-btn-hov j-batch-favorite">收藏</button>
+            </div>
+        </div>
+       	<!--试题详情-->
+        <div class="j-questions">
+            
+        </div>
+	</div>
+</div>

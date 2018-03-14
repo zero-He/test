@@ -1,0 +1,209 @@
+package cn.strong.leke.diag.controller;
+
+import static java.util.stream.Collectors.toList;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.annotation.Resource;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
+
+import cn.strong.leke.common.serialize.support.json.JsonUtils;
+import cn.strong.leke.common.utils.CollectionUtils;
+import cn.strong.leke.context.base.UserBaseContext;
+import cn.strong.leke.context.user.UserContext;
+import cn.strong.leke.context.user.cst.RoleCst;
+import cn.strong.leke.core.pinyin.Pinyin;
+import cn.strong.leke.diag.dao.homework.model.UserWorkSubmitRate;
+import cn.strong.leke.diag.dao.homework.mybatis.HomeworkDtlDao;
+import cn.strong.leke.diag.dao.lesson.model.UserAttendInfo;
+import cn.strong.leke.diag.dao.lesson.mybatis.AttendanceDao;
+import cn.strong.leke.diag.manage.ReportCycleService;
+import cn.strong.leke.diag.model.report.ReportCycle;
+import cn.strong.leke.diag.model.report.RptView;
+import cn.strong.leke.diag.model.report.ScoreRptQuery;
+import cn.strong.leke.diag.model.report.StuScoreRptView;
+import cn.strong.leke.diag.model.tchanaly.TchanalyRptQuery;
+import cn.strong.leke.diag.report.TchanalyKlassScoreReportHandler;
+import cn.strong.leke.diag.report.StuSubjScoreReportHandler;
+import cn.strong.leke.diag.report.TchanalyKlassBehaviorReportHandler;
+import cn.strong.leke.diag.report.TchanalyTeachBehaviorReportHandler;
+import cn.strong.leke.framework.web.JsonResult;
+import cn.strong.leke.lesson.model.LessonVM;
+import cn.strong.leke.lesson.model.query.ScheduleQuery;
+import cn.strong.leke.model.base.Clazz;
+import cn.strong.leke.remote.service.lesson.IKlassRemoteService;
+import cn.strong.leke.remote.service.lesson.ILessonRemoteService;
+
+@Controller
+@RequestMapping("/auth/m/report/tchanaly/")
+public class MobileReportTchanalyController extends ReportBaseController {
+
+	@Resource
+	private AttendanceDao attendanceDao;
+	@Resource
+	private HomeworkDtlDao homeworkDtlDao;
+	@Resource
+	private IKlassRemoteService klassRemoteService;
+	@Resource
+	private ILessonRemoteService lessonRemoteService;
+	@Resource
+	private ReportCycleService reportCycleService;
+
+	@Resource
+	private StuSubjScoreReportHandler stuSubjScoreReportHandler;
+	@Resource
+	private TchanalyKlassScoreReportHandler tchanalyKlassScoreReportHandler;
+	@Resource
+	private TchanalyTeachBehaviorReportHandler tchanalyTeachBehaviorReportHandler;
+	@Resource
+	private TchanalyKlassBehaviorReportHandler tchanalyKlassBehaviorReportHandler;
+
+	@RequestMapping("/score/index")
+	public String oldIndex(Model model) {
+		return "redirect:../index.htm";
+	}
+
+	/**
+	 * 学科老师分析页面
+	 * @param model
+	 * @return
+	 */
+	@RequestMapping("/index")
+	public String index(Model model) {
+		Map<String, Object> ReportCst = new HashMap<>();
+		this.setKlassModel(ReportCst);
+		this.setReportCycleModel(ReportCst);
+		ReportCst.put("userName", UserContext.user.getUserName());
+		ReportCst.put("viewName", "klass-score");
+		model.addAttribute("Csts", JsonUtils.toJSON(ReportCst));
+		return "/auth/m/report/tchanaly/index";
+	}
+
+	/**
+	 * 学科老师分析查询
+	 * @param query
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping("/data")
+	public Object data(TchanalyRptQuery query) {
+		query.setTeacherId(UserContext.user.getUserId());
+		RptView view = null;
+		if ("teach-behavior".equals(query.getViewName())) {
+			view = this.tchanalyTeachBehaviorReportHandler.execute(query);
+		} else if ("klass-behavior".equals(query.getViewName())) {
+			view = this.tchanalyKlassBehaviorReportHandler.execute(query);
+		} else {
+			view = this.tchanalyKlassScoreReportHandler.execute(query);
+		}
+		if (view != null) {
+			view.setUserName(UserContext.user.getUserName());
+		}
+		return new JsonResult().addDatas("view", view);
+	}
+
+	/**
+	 * 班级下学生成绩报告
+	 * @param classId
+	 * @param subjectId
+	 * @param hwType
+	 * @param cycleId
+	 * @param studentId
+	 * @param model
+	 * @return
+	 */
+	@RequestMapping("/klass-score-detail/{classId:\\d+}-{subjectId:\\d+}-{cycleId:\\d+}-{studentId}")
+	public String detail(@PathVariable("classId") Long classId, @PathVariable("subjectId") Long subjectId,
+			@PathVariable("cycleId") Integer cycleId, @PathVariable("studentId") Long studentId, Model model) {
+		ScoreRptQuery query = new ScoreRptQuery();
+		query.setClassId(classId);
+		query.setSubjectId(subjectId);
+		query.setCycleId(cycleId);
+		query.setStudentId(studentId);
+		StuScoreRptView view = this.stuSubjScoreReportHandler.execute(query);
+		String userName = UserBaseContext.getUserBaseByUserId(studentId).getUserName();
+
+		Map<String, Object> ReportCst = new HashMap<>();
+		ReportCst.put("view", view);
+		ReportCst.put("subjId", subjectId);
+		ReportCst.put("userId", query.getStudentId());
+		ReportCst.put("userName", userName);
+		model.addAttribute("ReportCst", JsonUtils.toJSON(ReportCst));
+		model.addAttribute("userName", userName);
+		return "/auth/m/report/tchanaly-score-detail";
+	}
+
+	/**
+	 * 学科老师：教学行为分析
+	 * @param query
+	 * @return
+	 */
+	@RequestMapping("/klass-behavior-attend/{classId:\\d+}-{subjectId:\\d+}-{cycleId:\\d+}")
+	public Object klassBehaviorAttend(@PathVariable("classId") Long classId, @PathVariable("subjectId") Long subjectId,
+			@PathVariable("cycleId") Integer cycleId, Model model) {
+		Long teacherId = UserContext.user.getUserId();
+		Clazz clazz = this.klassRemoteService.getClazzByClassId(classId);
+		ReportCycle reportCycle = this.reportCycleService.getReportCycleById(cycleId);
+		List<Long> courseSingleIds = this.findReportCycleLessonIds(teacherId, subjectId, classId, reportCycle);
+		List<UserAttendInfo> userAttendInfos;
+		if (CollectionUtils.isNotEmpty(courseSingleIds)) {
+			userAttendInfos = this.attendanceDao.findUserAttendInfoByCourseSingleIds(courseSingleIds);
+			userAttendInfos.forEach(v -> v.setUserNamePy(Pinyin.toPinyinAbbr(v.getUserName())));
+		} else {
+			userAttendInfos = new ArrayList<>();
+		}
+		model.addAttribute("clazz", clazz);
+		model.addAttribute("reportCycle", reportCycle);
+		Map<String, Object> ReportCst = new HashMap<>();
+		ReportCst.put("datas", userAttendInfos);
+		model.addAttribute("Csts", JsonUtils.toJSON(ReportCst));
+		return "/auth/m/report/tchanaly/klass-behavior-attend";
+	}
+
+	/**
+	 * 学科老师：教学行为分析
+	 * @param query
+	 * @return
+	 */
+	@RequestMapping("/klass-behavior-work/{classId:\\d+}-{subjectId:\\d+}-{cycleId:\\d+}")
+	public Object klassBehaviorWork(@PathVariable("classId") Long classId, @PathVariable("subjectId") Long subjectId,
+			@PathVariable("cycleId") Integer cycleId, Model model) {
+		Long teacherId = UserContext.user.getUserId();
+		Clazz clazz = this.klassRemoteService.getClazzByClassId(classId);
+		ReportCycle reportCycle = this.reportCycleService.getReportCycleById(cycleId);
+		List<Long> userIds = this.klassRemoteService.findStudentIdsByClassId(classId);
+		List<UserWorkSubmitRate> userWorkSubmitRates = Collections.emptyList();
+		if (!userIds.isEmpty()) {
+			userWorkSubmitRates = this.homeworkDtlDao.findUserWorkSubmitRatesByUserIds(teacherId, subjectId,
+					reportCycle.getStart(), reportCycle.getEnd(), classId);
+			userWorkSubmitRates.forEach(v -> v.setUserNamePy(Pinyin.toPinyinAbbr(v.getUserName())));
+		}
+		model.addAttribute("clazz", clazz);
+		model.addAttribute("reportCycle", reportCycle);
+		Map<String, Object> ReportCst = new HashMap<>();
+		ReportCst.put("datas", userWorkSubmitRates);
+		model.addAttribute("Csts", JsonUtils.toJSON(ReportCst));
+		return "/auth/m/report/tchanaly/klass-behavior-work";
+	}
+
+	private List<Long> findReportCycleLessonIds(Long teacherId, Long subjectId, Long classId, ReportCycle reportCycle) {
+		ScheduleQuery scheduleQuery = new ScheduleQuery();
+		scheduleQuery.setClassId(classId);
+		scheduleQuery.setRoleId(RoleCst.TEACHER);
+		scheduleQuery.setTeacherId(teacherId);
+		scheduleQuery.setSubjectId(subjectId);
+		scheduleQuery.setStartTime(reportCycle.getStart());
+		scheduleQuery.setEndTime(reportCycle.getEnd());
+		List<LessonVM> lessonList = this.lessonRemoteService.findScheduleByQuery(scheduleQuery);
+		return lessonList.stream().map(LessonVM::getCourseSingleId).collect(toList());
+	}
+}

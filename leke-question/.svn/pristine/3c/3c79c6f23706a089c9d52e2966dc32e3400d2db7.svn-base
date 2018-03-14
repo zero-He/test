@@ -1,0 +1,66 @@
+package cn.strong.leke.question.controller.api;
+
+import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
+
+import cn.strong.leke.common.serialize.support.json.JsonUtils;
+import cn.strong.leke.core.business.samba.TransNotice;
+import cn.strong.leke.framework.exceptions.LekeRuntimeException;
+import cn.strong.leke.framework.web.JsonResult;
+import cn.strong.leke.model.APIModel;
+import cn.strong.leke.question.core.material.cmd.IMaterialFileHandler;
+import cn.strong.leke.question.model.material.MaterialFile;
+
+@Controller
+@RequestMapping("/api/w/question/*")
+public class APIQuestionController extends APIBaseController {
+
+	private static final Logger logger = LoggerFactory.getLogger(APIQuestionController.class);
+
+	@Resource
+	private IMaterialFileHandler materialFileHandler;
+
+	@ResponseBody
+	@RequestMapping("end_translation")
+	public APIModel<JsonResult> transCodeCallback(HttpServletRequest request) {
+		JsonResult json = new JsonResult();
+		try {
+			TransNotice notice = this.parseP(request, TransNotice.class);
+			if (notice == null || notice.getDatas() == null) {
+				throw new LekeRuntimeException("请求参数有误");
+			}
+			MaterialFile materialFile = extractMaterialTransCodeInfo(notice);
+			materialFileHandler.updateTransCodeTask(materialFile);
+			logger.info("电子教材转码回调:", JsonUtils.toJSON(materialFile));
+		} catch (Exception e) {
+			logger.error(e.getMessage(), e);
+			json.setErr(e.getMessage());
+		}
+		return this.buildApiModel(json, request);
+	}
+
+	private MaterialFile extractMaterialTransCodeInfo(TransNotice notice) {
+		MaterialFile result = new MaterialFile();
+		result.setTaskId(notice.getTaskId());
+		result.setMaterialId(notice.getDatas().getId());
+		if (notice.isSuccess()) {
+			result.setStatus(MaterialFile.STATUS_SUCCESS);
+			result.setReason(notice.getMessage());
+			Long pages = notice.getTotalPage();
+			if (pages != null) {
+				result.setPageCount(pages);
+			}
+			result.setCwSuffix(notice.getFileType());
+		} else {
+			result.setStatus(MaterialFile.STATUS_FAILED);
+			result.setReason(notice.getMessage());
+		}
+		return result;
+	}
+}

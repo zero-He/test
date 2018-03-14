@@ -1,0 +1,32 @@
+/**
+ * 
+ */
+package cn.strong.leke.monitor.core.utils;
+
+import cn.strong.leke.core.cas.SessionCst;
+import cn.strong.leke.core.nosql.CacheUtils;
+import cn.strong.leke.model.user.User;
+
+/**
+ * 会话帮助类
+ * 
+ * @author liulongbiao
+ *
+ */
+public class SessionHelper {
+
+	/**
+	 * 根据用户 ID 获取该用户当前登录角色ID
+	 * 
+	 * @param userId
+	 * @return
+	 */
+	public static Long getCurrentRoleId(String userId) {
+		User u = (User) CacheUtils.hget(SessionCst.SESSION_PREFIX + userId, SessionCst.SESSION_ATTRIBUTE_USER_POJO);
+		if (u != null && u.getCurrentRole() != null) {
+			return u.getCurrentRole().getId();
+		} else {
+			return null;
+		}
+	}
+}

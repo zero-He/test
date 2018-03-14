@@ -1,0 +1,435 @@
+package cn.strong.leke.homework.controller;
+
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import javax.annotation.Resource;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
+
+import cn.strong.leke.common.serialize.support.json.JsonUtils;
+import cn.strong.leke.common.utils.CollectionUtils;
+import cn.strong.leke.context.user.UserContext;
+import cn.strong.leke.context.user.cst.RoleCst;
+import cn.strong.leke.core.business.incentive.DynamicHelper;
+import cn.strong.leke.framework.exceptions.ValidateException;
+import cn.strong.leke.framework.exceptions.Validation;
+import cn.strong.leke.framework.web.JsonResult;
+import cn.strong.leke.homework.manage.WorkDetailService;
+import cn.strong.leke.homework.model.AnswerInfo;
+import cn.strong.leke.homework.model.Homework;
+import cn.strong.leke.homework.model.HomeworkDtl;
+import cn.strong.leke.homework.model.HomeworkDtlInfo;
+import cn.strong.leke.homework.model.HomeworkType;
+import cn.strong.leke.homework.model.WorkDetail;
+import cn.strong.leke.homework.model.WorkRequest;
+import cn.strong.leke.homework.model.mongo.HomeworkProgress;
+import cn.strong.leke.homework.service.HomeworkDtlService;
+import cn.strong.leke.homework.service.HomeworkMainService;
+import cn.strong.leke.homework.service.HomeworkService;
+import cn.strong.leke.homework.service.IHomeworkProgressService;
+import cn.strong.leke.homework.util.AnswerUtils;
+import cn.strong.leke.homework.util.HomeworkCst;
+import cn.strong.leke.homework.util.HomeworkUtils;
+import cn.strong.leke.homework.util.MiddleBuilder;
+import cn.strong.leke.model.incentive.Award;
+import cn.strong.leke.model.incentive.DynamicInfo;
+import cn.strong.leke.model.incentive.DynamicTypes;
+import cn.strong.leke.model.paper.PaperDTO;
+import cn.strong.leke.model.question.AnswerResult;
+import cn.strong.leke.model.question.QuestionResult;
+import cn.strong.leke.model.user.User;
+import cn.strong.leke.tags.question.paper.PaperAttrs;
+import cn.strong.leke.tags.question.prepare.PrepareHandler;
+import cn.strong.leke.tags.question.prepare.PrepareHandlerAdapter;
+
+/**
+ * 学生/家长作业答题和查看。
+ * @author  andy
+ * @created 2014年11月5日 下午2:10:10
+ * @since   v1.0.0
+ */
+@Controller
+@RequestMapping("/auth/*")
+public class WorkPersonController {
+
+	protected static final Logger logger = LoggerFactory.getLogger(WorkPersonController.class);
+
+	@Resource
+	private HomeworkService homeworkService;
+	@Resource
+	private HomeworkDtlService homeworkDtlService;
+	@Resource
+	private HomeworkMainService homeworkMainService;
+	@Resource
+	private WorkDetailService workDetailService;
+	@Resource
+	private IHomeworkProgressService homeworkProgressService;
+
+	/**
+	 * 做题页面。<br>
+	 * 如果学生是第一次做题，更新学生作业的开始时间；<br>
+	 * 如果学生不是第一次做题，显示之前保存的答题信息；<br>
+	 * 提交后的作业不可以再做题。
+	 * @param homeworkDtlId 学生作业标识
+	 * @param model
+	 * @throws UnsupportedEncodingException 
+	 */
+	@RequestMapping("student/homework/doWork")
+	public String doWork(Long homeworkDtlId, Model model) throws UnsupportedEncodingException {
+		User user = UserContext.user.get();
+		HomeworkDtl homeworkDtl = this.homeworkDtlService.getHomeworkDtlById(homeworkDtlId);
+		Validation.isPageNotFound(homeworkDtl == null || !user.getId().equals(homeworkDtl.getStudentId()));
+		if (homeworkDtl.getSubmitTime() != null) {
+			// 如果作业已经提交，重定向到作业查看页面。
+			return "redirect:/auth/student/homework/viewWork.htm?homeworkDtlId=" + homeworkDtlId;
+		}
+
+		// 作业信息
+		Homework homeworkDTO = this.homeworkService.getHomeworkById(homeworkDtl.getHomeworkId());
+		
+		Validation.isFalse(
+				homeworkDTO.getHomeworkType() == HomeworkType.CLASS.value
+						&& new Date().before(homeworkDTO.getCloseTime()), "homework.homework.classendtime");
+		model.addAttribute("closeTime", homeworkDTO.getCloseTime().getTime());
+		model.addAttribute("title",
+				URLEncoder.encode(URLEncoder.encode(homeworkDTO.getHomeworkName(), "UTF-8"), "UTF-8"));
+		model.addAttribute("homeworkDTO", homeworkDTO);
+		model.addAttribute("homeworkDtl", homeworkDtl);
+		// 答题信息
+		WorkDetail workDetail = this.workDetailService.getWorkDetailByHomeworkDtlId(homeworkDtlId);
+		if (workDetail != null) {
+			// 已保存的答案获取
+			PrepareHandlerAdapter.doPrepare(PrepareHandler.Mode.Work, workDetail.getQuestions());
+			Map<Long, QuestionResult> questionResultMap = workDetail.getQuestions().stream()
+					.collect(Collectors.toMap(v -> v.getQuestionId(), v -> v));
+			model.addAttribute("questionResultMap", questionResultMap);
+		} else {
+			// 第一次做题时，更新开始时间
+			if (homeworkDtl.getStartTime() == null) {
+				homeworkDtl.setStartTime(new Date());
+				this.homeworkDtlService.updateHomeworkDtl(homeworkDtl);
+			}
+			this.sendDoWorkMessage(homeworkDtlId, homeworkDTO.getHomeworkName());
+		}
+		model.addAttribute("viewMode", PaperAttrs.VIEW_MODE_STUDENT_WORK);
+		PaperDTO paperDto = HomeworkUtils.buildPaperDTO(homeworkDtl.getPaperId(),homeworkDTO.getHomeworkName(),homeworkDTO.getSubjectName(),homeworkDTO.getSubjectId());
+		model.addAttribute("paperDto", paperDto);
+		return "/auth/student/homework/doWork";
+	}
+
+	// 用户动态消息发送
+	private void sendDoWorkMessage(Long homeworkDtlId, String title) {
+		User user = UserContext.user.get();
+		DynamicInfo dynamicInfo = new DynamicInfo();
+		dynamicInfo.setUserId(user.getId());
+		dynamicInfo.setUserName(user.getUserName());
+		dynamicInfo.setRoleId(RoleCst.STUDENT);
+		dynamicInfo.setSchoolId(user.getCurrentSchool().getId());
+		// 动态
+		dynamicInfo.setDynamicType(DynamicTypes.HW_HOMEWORK_START);
+		dynamicInfo.setTitle(title);
+		Map<String, Object> params = new HashMap<String, Object>();
+		params.put("homeworkDtlId", homeworkDtlId);
+		dynamicInfo.setParams(params);
+		DynamicHelper.publish(dynamicInfo);
+	}
+
+	/**
+	 * 保存学生答题信息。
+	 * @param homeworkDtlId 学生作业标识
+	 * @param answerJson 学生答题信息JSON
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping("student/homework/saveWork")
+	public Object saveWork(Long homeworkDtlId, String answerJson) {
+		WorkRequest request = new WorkRequest();
+		request.setHomeworkDtlId(homeworkDtlId);
+		request.setAnswerInfoList(JsonUtils.readList(answerJson, AnswerInfo.class));
+		this.homeworkMainService.saveAnswerSnapshot(request);
+		return new JsonResult();
+	}
+
+	/**
+	 * 保存并提交学生答题信息。
+	 * @param homeworkDtlId 学生作业标识
+	 * @param answerJson 学生答题信息JSON
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping("student/homework/submitWork")
+	public Object submitWork(Long homeworkDtlId, String answerJson) {
+		WorkRequest request = new WorkRequest();
+		request.setHomeworkDtlId(homeworkDtlId);
+		request.setAnswerInfoList(JsonUtils.readList(answerJson, AnswerInfo.class));
+		this.homeworkMainService.saveAnswerSubmit(request);
+		return new JsonResult();
+	}
+
+	/**
+	 * 根据学生作业ID，显示作业提交成功信息
+	 * @param homeworkDtlId
+	 * @param model
+	 */
+	@RequestMapping("student/homework/doWorkSuccess")
+	public void doWorkSuccess(Long homeworkDtlId, Model model) {
+		HomeworkDtlInfo homeworkDtlInfo = this.homeworkDtlService.getHomeworkDtlInfoById(homeworkDtlId);
+		Validation.isPageNotFound(homeworkDtlInfo == null);
+		Homework homework = homeworkService.getHomeworkById(homeworkDtlInfo.getHomeworkId());
+		model.addAttribute("count", homework.getFinishNum() == 0 ? 1 : homework.getFinishNum());
+		model.addAttribute("type", HomeworkType.valueOf(homework.getHomeworkType()).name);
+		fillUsedTime(homeworkDtlInfo);
+		model.addAttribute("homeworkDtl", homeworkDtlInfo);
+		model.addAttribute("isShow",HomeworkType.HOLIDAY.value != homework.getHomeworkType());
+		if (homeworkDtlInfo.getCorrectTime() != null) {
+			Award award = this.homeworkMainService.sendIncTypeForSubmitHomework(homeworkDtlInfo);
+			if(award.getSucc() && award.getHave()){
+				model.addAttribute("exp", award.getExpVal());
+				model.addAttribute("leke", award.getLekeVal());
+			}
+		}
+	}
+	
+	
+	
+	private void fillUsedTime(HomeworkDtlInfo homeworkDtlInfo) {
+		Integer usedTime = homeworkDtlInfo.getUsedTime();
+		if (usedTime == null || usedTime == 0) {
+			HomeworkProgress hp = homeworkProgressService.get(homeworkDtlInfo.getHomeworkId(), homeworkDtlInfo.getStudentId());
+			if (hp != null && CollectionUtils.isNotEmpty(hp.getUnfinished())) {
+				usedTime = hp.getUnfinished().get(0).getUsed();
+			} else if (hp != null && CollectionUtils.isNotEmpty(hp.getFinished())) {
+				usedTime = hp.getFinished().get(0).getUsed();
+			} else {
+				usedTime = 30;
+			}
+		}
+		homeworkDtlInfo.setUsedTime(HomeworkUtils.convertUsedTime(usedTime));
+	}
+
+	@RequestMapping("student/homework/doBugFix")
+	public String doBugFix(Long homeworkDtlId, Model model) throws UnsupportedEncodingException {
+		// 作业信息
+		HomeworkDtl homeworkDtl = this.homeworkDtlService.getHomeworkDtlById(homeworkDtlId);
+		Validation.isPageNotFound(homeworkDtl == null);
+		User user = UserContext.user.get();
+		Validation.isForbidden(!user.getId().equals(homeworkDtl.getStudentId()));
+
+		Homework homework = this.homeworkService.getHomeworkById(homeworkDtl.getHomeworkId());
+		WorkDetail workDetail = this.workDetailService.getWorkDetailByHomeworkDtlId(homeworkDtlId);
+
+		PrepareHandler.Mode mode = PrepareHandler.Mode.BugFix;
+		Map<Long, QuestionResult> questionResultMap = workDetail.getQuestions().stream()
+				.collect(Collectors.toMap(v -> v.getQuestionId(), v -> v));
+		if (CollectionUtils.isNotEmpty(workDetail.getAnswerInfos())) {
+			// 合并订正临时数据
+			mode = PrepareHandler.Mode.BugFixAsTemp;
+			for (AnswerInfo answerInfo : workDetail.getAnswerInfos()) {
+				QuestionResult questionResult = questionResultMap.get(answerInfo.getQuestionId());
+				if (CollectionUtils.isEmpty(answerInfo.getSubs())) {
+					List<String> answers = AnswerUtils.parseAnswerContent(answerInfo.getAnswerContent());
+					List<AnswerResult> answerResults = AnswerUtils.convertStringToAnswerResultList(answers, null);
+					questionResult.setAnswerArea(answerResults);
+					continue;
+				}
+				Map<Long, QuestionResult> questionResultMap2 = questionResult.getSubs().stream()
+						.collect(Collectors.toMap(v -> v.getQuestionId(), v -> v));
+				for (AnswerInfo answerInfo2 : answerInfo.getSubs()) {
+					QuestionResult questionResult2 = questionResultMap2.get(answerInfo2.getQuestionId());
+
+					List<String> answers = AnswerUtils.parseAnswerContent(answerInfo2.getAnswerContent());
+					List<AnswerResult> answerResults = AnswerUtils.convertStringToAnswerResultList(answers, null);
+					questionResult2.setAnswerArea(answerResults);
+				}
+			}
+		}
+		if (homeworkDtl.getCorrectTime() == null && homework.getIsSelfCheck() && homeworkDtl.getBugFixCount() == 0) {
+			mode = PrepareHandler.Mode.BugFixAsSelfCheck;
+		}
+		PrepareHandlerAdapter.doPrepare(mode, workDetail.getQuestions());
+
+		model.addAttribute("homeworkDtl", homeworkDtl);
+		model.addAttribute("homework", homework);
+		model.addAttribute("title", URLEncoder.encode(URLEncoder.encode(homework.getHomeworkName(), "UTF-8"), "UTF-8"));
+		model.addAttribute("questionResultMap", questionResultMap);
+		model.addAttribute("viewMode", PaperAttrs.VIEW_MODE_STUDENT_BUGFIX);
+		model.addAttribute("showRightAnswer", homework.getIsOpenAnswer());
+		PaperDTO paperDto = HomeworkUtils.buildPaperDTO(homeworkDtl.getPaperId(),homework.getHomeworkName(),homework.getSubjectName(),homework.getSubjectId());
+		model.addAttribute("paperDto", paperDto);
+		return "/auth/student/homework/doBugFix";
+
+	}
+
+	/**
+	 * 保存学生订正信息。
+	 * @param homeworkDtlId 学生作业标识
+	 * @param answerJson 学生答题信息JSON
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping("student/homework/saveBugFix")
+	public Object saveBugFix(Long homeworkDtlId, String answerJson) {
+		WorkRequest request = new WorkRequest();
+		request.setHomeworkDtlId(homeworkDtlId);
+		request.setAnswerInfoList(JsonUtils.readList(answerJson, AnswerInfo.class));
+		this.homeworkMainService.saveBugFixSnapshot(request);
+		return new JsonResult();
+	}
+
+	/**
+	 * 保存并提交学生订正信息。
+	 * @param homeworkDtlId 学生作业标识
+	 * @param answerJson 学生答题信息JSON
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping("student/homework/submitBugFix")
+	public Object submitBugFix(Long homeworkDtlId, String answerJson) {
+		WorkRequest request = new WorkRequest();
+		request.setHomeworkDtlId(homeworkDtlId);
+		request.setAnswerInfoList(JsonUtils.readList(answerJson, AnswerInfo.class));
+		HomeworkDtlInfo homeworkDtlInfo = this.homeworkMainService.saveBugFixSubmit(request);
+
+		JsonResult json = new JsonResult();
+		User user = UserContext.user.get();
+		DynamicInfo dynamicInfo = new DynamicInfo();
+		dynamicInfo.setDynamicType(DynamicTypes.HW_HOMEWORK_BUGFIX);
+		dynamicInfo.setTitle(homeworkDtlInfo.getHomeworkName());
+		dynamicInfo.setUserId(user.getId());
+		dynamicInfo.setUserName(user.getUserName());
+		dynamicInfo.setRoleId(RoleCst.STUDENT);
+		dynamicInfo.setSchoolId(user.getCurrentSchool().getId());
+		Map<String, Object> params = new HashMap<>();
+		params.put("homeworkDtlId", homeworkDtlId);
+		dynamicInfo.setParams(params);
+		Award award = DynamicHelper.publish(dynamicInfo);
+		if (award.getSucc() && award.getHave()) {
+			Map<String, Object> map = new HashMap<String, Object>();
+			map.put("type", dynamicInfo.getTypeId());
+			map.put("leke", award.getLekeVal());
+			map.put("exp", award.getExpVal());
+			json.addDatas("tips", map);
+		}
+
+		return json;
+	}
+
+	@RequestMapping("student/homework/doBugFixSuccess")
+	public String doBugFixSuccess(Long homeworkDtlId, Integer lekeVal, Integer expVal, Model model) {
+		HomeworkDtl homeworkDtl = this.homeworkDtlService.getHomeworkDtlById(homeworkDtlId);
+		MiddleBuilder builder = MiddleBuilder.start("订正提交成功").setLekeVal(lekeVal).setExpVal(expVal).addCloseWindow();
+		if (HomeworkCst.HOMEWORK_BUGFIX_STAGE_REVIEW == homeworkDtl.getBugFixStage()) {
+			builder.setMessage("你的作业等待老师复批。")
+					.addButton("查看作业", "/auth/student/homework/viewWork.htm?homeworkDtlId=" + homeworkDtlId).get();
+		} else if (HomeworkCst.HOMEWORK_BUGFIX_STAGE_FINISH == homeworkDtl.getBugFixStage()) {
+			builder.setMessage("你的作业已经复批。")
+					.addButton("查看作业", "/auth/student/homework/viewWork.htm?homeworkDtlId=" + homeworkDtlId).get();
+		} else {
+			builder.setMessage("你的作业中还有错误。")
+					.addButton("继续订正", "/auth/student/homework/doBugFix.htm?homeworkDtlId=" + homeworkDtlId).get();
+		}
+		model.addAttribute("middle", builder.get());
+		return "/auth/common/middle";
+	}
+
+	/**
+	 * 查看试卷信息。<br>
+	 * 注意：如果学生已经提交但还未批改，只显示学生答题信息，如果学生已经提交并已批改，显示学生答案、正确答案、试题解析。<br>
+	 * 权限：学生和老师都可以访问，根据当前用户判断是否有访问权限。
+	 * @param homeworkDtlId 学生试卷标识
+	 * @param model
+	 * @throws UnsupportedEncodingException 
+	 */
+	@RequestMapping({ "student/homework/viewWork" })
+	public String viewWork(Long homeworkDtlId, Model model) throws UnsupportedEncodingException {
+		// 作业信息
+		HomeworkDtl homeworkDtl = this.homeworkDtlService.getHomeworkDtlById(homeworkDtlId);
+		Validation.isPageNotFound(homeworkDtl == null);
+		Homework homeworkDTO = this.homeworkService.getHomeworkById(homeworkDtl.getHomeworkId());
+		User user = UserContext.user.get();
+		Validation.isPageNotFound(RoleCst.STUDENT.equals(user.getCurrentRole().getId())
+				&& !user.getId().equals(homeworkDtl.getStudentId()));
+
+		model.addAttribute("homeworkDtl", homeworkDtl);
+		model.addAttribute("homeworkDTO", homeworkDTO);
+		model.addAttribute("title",
+				URLEncoder.encode(URLEncoder.encode(homeworkDTO.getHomeworkName(), "UTF-8"), "UTF-8"));
+
+		// 答题信息
+		if (homeworkDtl.getModifiedOn() != null) {
+			// 已保存的试卷答题及批改信息
+			WorkDetail workDetail = this.workDetailService.getWorkDetailByHomeworkDtlId(homeworkDtlId);
+			if (workDetail != null) {
+				PrepareHandlerAdapter.doPrepare(PrepareHandler.Mode.View, workDetail.getQuestions());
+
+				Map<Long, QuestionResult> questionResultMap = workDetail.getQuestions().stream()
+						.collect(Collectors.toMap(v -> v.getQuestionId(), v -> v));
+				model.addAttribute("questionResultMap", questionResultMap);
+				model.addAttribute("sheetBookId", workDetail.getSheetBookId());
+			}
+		}
+		PaperDTO paperDto = HomeworkUtils.buildPaperDTO(homeworkDtl.getPaperId(),homeworkDTO.getHomeworkName(),homeworkDTO.getSubjectName(),homeworkDTO.getSubjectId());
+		model.addAttribute("paperDto", paperDto);
+		// 批改前不显示正确答案和试题解析，批改后显示
+		model.addAttribute("viewMode", PaperAttrs.VIEW_MODE_STUDENT_VIEW);
+		model.addAttribute("showRightAnswer", homeworkDTO.getIsOpenAnswer());
+		if (RoleCst.STUDENT.equals(user.getCurrentRole().getId())) {
+			return "/auth/homework/viewWork";
+		}
+		return "/auth/homework/viewWork_person";
+	}
+
+	/**
+	 * 学生作业跳转
+	 * @param homeworkId 老师作业ID
+	 * @return
+	 */
+	@RequestMapping("student/homework/redirectDoWork")
+	public String redirectDoWork(@RequestParam("homeworkId") Long homeworkId) {
+		User user = UserContext.user.get();
+		HomeworkDtl homeworkDtl = this.homeworkService.createStuBeikeHwWithTx(homeworkId, user);
+		if (homeworkDtl == null) {
+			throw new ValidateException("homework.common.pagenotfound");
+		}
+		return "redirect:/auth/student/homework/doWork.htm?homeworkDtlId=" + homeworkDtl.getHomeworkDtlId();
+	}
+
+	/**
+	 * 学生作业跳转
+	 * @param homeworkId 老师作业ID
+	 * @return
+	 */
+	@RequestMapping("student/homework/vodDoWork")
+	public String vodDoWork(@RequestParam("homeworkId") Long homeworkId) {
+		User user = UserContext.user.get();
+		HomeworkDtl homeworkDtl = homeworkService.resolveStuVodHwWithTx(homeworkId, user);
+		return "redirect:/auth/student/homework/doWork.htm?homeworkDtlId=" + homeworkDtl.getHomeworkDtlId();
+	}
+
+	/**
+	 * 学生作业跳转
+	 * @param homeworkId 老师作业ID
+	 * @return
+	 */
+	@RequestMapping("student/homework/redirectViewWork")
+	public String redirectViewWork(@RequestParam("homeworkId") Long homeworkId) {
+		Long studentId = UserContext.user.getUserId();
+		HomeworkDtl homeworkDtl = this.homeworkDtlService.getHomeworkDtlByHomeworkIdAndStudentId(homeworkId, studentId);
+		if (homeworkDtl == null) {
+			throw new ValidateException("homework.common.pagenotfound");
+		}
+		return "redirect:/auth/student/homework/viewWork.htm?homeworkDtlId=" + homeworkDtl.getHomeworkDtlId();
+	}
+}

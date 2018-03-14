@@ -1,0 +1,70 @@
+package cn.strong.leke.homework.controller;
+
+import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import org.apache.commons.lang.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+
+import cn.strong.leke.context.base.UserBaseContext;
+import cn.strong.leke.core.cas.LoginPostProcessor;
+import cn.strong.leke.core.cas.utils.TicketUtils;
+import cn.strong.leke.framework.exceptions.LekeRuntimeException;
+import cn.strong.leke.framework.exceptions.ValidateException;
+import cn.strong.leke.framework.exceptions.Validation;
+import cn.strong.leke.homework.manage.SheetQueryService;
+import cn.strong.leke.homework.model.SheetTask;
+import cn.strong.leke.homework.util.NetworkUtil;
+import cn.strong.leke.model.cas.LoginErrorMessageMap;
+import cn.strong.leke.model.user.UserBase;
+import cn.strong.leke.remote.service.cas.IUserAuthenticationRemoteService;
+
+@Controller
+@RequestMapping
+public class SheetRedirectController {
+
+	private static final Logger logger = LoggerFactory.getLogger(SheetRedirectController.class);
+
+	@Resource
+	private SheetQueryService sheetQueryService;
+	@Resource
+	private IUserAuthenticationRemoteService userAuthenticationRemoteService;
+
+	@RequestMapping("/s/{taskId}/{ticket}")
+	public String redirect(@PathVariable("taskId") String taskId, @PathVariable("ticket") String ticket,
+			HttpServletRequest request, HttpServletResponse response) {
+		// 验证参数列表
+		Validation.isPageNotFound(StringUtils.isBlank(taskId) || StringUtils.isBlank(ticket));
+
+		// 验证用户ID
+		Long userId = null;
+		try {
+			userId = Long.parseLong(TicketUtils.getUserId(ticket));
+		} catch (Exception e) {
+			logger.info("ticket parse error.", e);
+			Validation.isPageNotFound(true);
+		}
+
+		// 验证任务与用户关系
+		SheetTask sheetTask = this.sheetQueryService.getSheetTaskById(taskId);
+		Validation.isPageNotFound(sheetTask == null || !userId.equals(sheetTask.getCreatedBy()));
+
+		// 模拟登录
+		try {
+			UserBase userBase = UserBaseContext.getUserBaseByUserId(userId);
+			String ip = NetworkUtil.getIpAddress(request);
+			this.userAuthenticationRemoteService.validate(userBase.getUserId(), userBase.getPassword(),ip);
+		} catch (LekeRuntimeException e) {
+			throw new ValidateException(LoginErrorMessageMap.getMessage(e.getMessage()));
+		}
+
+		// 登录后处理
+		LoginPostProcessor.addCookiesForTicket(request, response, ticket);
+		return "redirect:/auth/teacher/sheet/taskInfo.htm?taskId=" + taskId;
+	}
+}

@@ -1,0 +1,492 @@
+package cn.strong.leke.diag.report;
+
+import static java.util.stream.Collectors.counting;
+import static java.util.stream.Collectors.groupingBy;
+import static java.util.stream.Collectors.summingInt;
+import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
+import java.util.stream.Stream;
+
+import javax.annotation.Resource;
+
+import org.springframework.stereotype.Component;
+
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+
+import cn.strong.leke.common.utils.DateUtils;
+import cn.strong.leke.common.utils.NumberUtils;
+import cn.strong.leke.context.base.UserBaseContext;
+import cn.strong.leke.context.user.UserContext;
+import cn.strong.leke.context.user.cst.RoleCst;
+import cn.strong.leke.diag.dao.homework.model.HomeworkCst;
+import cn.strong.leke.diag.dao.homework.model.UserWorkSubmitRate;
+import cn.strong.leke.diag.dao.homework.mongo.ExerciseDao;
+import cn.strong.leke.diag.dao.homework.mybatis.DoubtExplainDao;
+import cn.strong.leke.diag.dao.homework.mybatis.HomeworkDtlDao;
+import cn.strong.leke.diag.dao.homework.mybatis.ReviewWorkStatDao;
+import cn.strong.leke.diag.dao.lesson.model.AttendStatInfo2;
+import cn.strong.leke.diag.dao.lesson.mongo.LessonBehaviorDao;
+import cn.strong.leke.diag.dao.lesson.mybatis.AttendanceDao;
+import cn.strong.leke.diag.dao.lesson.mybatis.EvaluateDao;
+import cn.strong.leke.diag.dao.note.mybatis.NoteBookDao;
+import cn.strong.leke.diag.dao.teachingMonitor.CorrectHWDao;
+import cn.strong.leke.diag.manage.ReportCycleService;
+import cn.strong.leke.diag.model.ReviewCount;
+import cn.strong.leke.diag.model.UserCount;
+import cn.strong.leke.diag.model.UserRate;
+import cn.strong.leke.diag.model.report.ReportCycle;
+import cn.strong.leke.diag.model.studentMonitor.HomeworkCountBean;
+import cn.strong.leke.diag.model.tchanaly.Achievement;
+import cn.strong.leke.diag.model.tchanaly.Achievement.AchieveItem;
+import cn.strong.leke.diag.model.tchanaly.Achievement.TrendItem;
+import cn.strong.leke.diag.model.tchanaly.Achievement.UserItem;
+import cn.strong.leke.diag.model.tchanaly.TchanalyKlassBehaviorRptView;
+import cn.strong.leke.diag.model.tchanaly.TchanalyKlassBehaviorRptView.WorkStatInfo;
+import cn.strong.leke.diag.model.tchanaly.TchanalyRptQuery;
+import cn.strong.leke.diag.model.teachingMonitor.CorrectHW;
+import cn.strong.leke.diag.model.teachingMonitor.RequestVo;
+import cn.strong.leke.diag.service.studentMonitor.HomeworkAnalyseService;
+import cn.strong.leke.diag.util.ScoreUtils;
+import cn.strong.leke.lesson.model.LessonVM;
+import cn.strong.leke.lesson.model.query.ScheduleQuery;
+import cn.strong.leke.lessonlog.model.LessonBehavior;
+import cn.strong.leke.lessonlog.model.StudentBehavior;
+import cn.strong.leke.model.user.UserBase;
+import cn.strong.leke.remote.service.lesson.IKlassRemoteService;
+import cn.strong.leke.remote.service.lesson.ILessonRemoteService;
+
+@Component
+public class TchanalyKlassBehaviorReportHandler
+		implements ReportHandler<TchanalyRptQuery, TchanalyKlassBehaviorRptView> {
+
+	private static final int[] rates = { 10, 15, 10, 12, 5, 5, 8, 15, 8, 12 };
+
+	@Resource
+	private HomeworkDtlDao homeworkDtlDao;
+	@Resource
+	private AttendanceDao attendanceDao;
+	@Resource
+	private EvaluateDao evaluateDao;
+	@Resource
+	private ExerciseDao exerciseDao;
+	@Resource
+	private NoteBookDao noteBookDao;
+	@Resource
+	private ReviewWorkStatDao reviewWorkStatDao;
+	@Resource
+	private DoubtExplainDao doubtExplainDao;
+	@Resource
+	private LessonBehaviorDao lessonBehaviorDao;
+	@Resource
+	private ReportCycleService reportCycleService;
+	@Resource
+	private IKlassRemoteService klassRemoteService;
+	@Resource
+	private ILessonRemoteService lessonRemoteService;
+	@Resource
+	private HomeworkAnalyseService homeworkAnalyseService;
+
+	/* 
+	(non-Javadoc)
+	 * @see cn.strong.leke.diag.report.ReportHandler#execute(java.lang.Object)
+	 */
+	@Override
+	public TchanalyKlassBehaviorRptView execute(TchanalyRptQuery query) {
+		ReportCycle reportCycle = this.reportCycleService.getReportCycleById(query.getCycleId());
+		List<Long> lessonIds = this.findReportCycleLessonIds(query, reportCycle);
+		List<Long> userIds = this.klassRemoteService.findStudentIdsByClassId(query.getClassId());
+
+		AttendStatInfo2 attendInfo = this.getKlassAttendStatInfo(lessonIds);
+		Achievement result = this.getKlassAchievementResult(userIds, query, reportCycle);
+		HomeworkCountBean homeworkCount = this.homeworkDtlDao.findUserWorkSubmitRatesStat(query.getTeacherId(), query.getSubjectId(), 
+				reportCycle.getStart(), reportCycle.getEnd(), query.getClassId());
+		TchanalyKlassBehaviorRptView view = new TchanalyKlassBehaviorRptView();
+		view.setUserNum(userIds.size());
+		view.setAchieveNum(result.getNum());
+		view.setAchieveScore(result.getScore());
+		view.setAchieves(result.getItems());
+		view.setTrends(result.getTrends());
+		view.setUserRanks(result.getUserRanks());
+		view.setAttendInfo(attendInfo);
+		view.setHomeworkCount(homeworkCount);
+		return view;
+	}
+	
+	private AttendStatInfo2 getKlassAttendStatInfo(List<Long> lessonIds) {
+		if (lessonIds.isEmpty()) {
+			return new AttendStatInfo2();
+		}
+		AttendStatInfo2 attendStatInfo = attendanceDao.getAttendStatInfoByCourseSingleIds(lessonIds);
+		return attendStatInfo;
+	}
+
+	private WorkStatInfo getKlassWorkStatInfo(List<Long> userIds, TchanalyRptQuery query, ReportCycle reportCycle) {
+		WorkStatInfo workInfo = new WorkStatInfo();
+		if (userIds.isEmpty()) {
+			workInfo.setBadNum(0);
+			workInfo.setGoodNum(0);
+			workInfo.setSosoNum(0);
+			workInfo.setWorkNum(0);
+			return workInfo;
+		}
+		Integer workNum = this.homeworkDtlDao.findHomeworkNumByUserIds(userIds, query.getTeacherId(),
+				query.getSubjectId(), reportCycle.getStart(), reportCycle.getEnd());
+		if (workNum == 0) {
+			workInfo.setBadNum(0);
+			workInfo.setGoodNum(0);
+			workInfo.setSosoNum(0);
+			workInfo.setWorkNum(0);
+			return workInfo;
+		}
+		List<UserWorkSubmitRate> userWorkSubmitRates = this.homeworkDtlDao.findUserWorkSubmitRatesByUserIds(query.getTeacherId(), query.getSubjectId(), 
+				reportCycle.getStart(), reportCycle.getEnd(), query.getClassId());
+		int goodNum = (int) userWorkSubmitRates.stream().filter(v -> v.getNormalRate() >= 90).count();
+		int badNum = (int) userWorkSubmitRates.stream().filter(v -> v.getNormalRate() < 60).count();
+		int sosoNum = userWorkSubmitRates.size() - goodNum - badNum;
+		workInfo.setWorkNum(workNum);
+		workInfo.setGoodNum(goodNum);
+		workInfo.setSosoNum(sosoNum);
+		workInfo.setBadNum(badNum);
+		return workInfo;
+	}
+
+	private List<Long> findReportCycleLessonIds(TchanalyRptQuery query, ReportCycle reportCycle) {
+		ScheduleQuery scheduleQuery = new ScheduleQuery();
+		scheduleQuery.setClassId(query.getClassId());
+		scheduleQuery.setRoleId(RoleCst.TEACHER);
+		scheduleQuery.setTeacherId(query.getTeacherId());
+		scheduleQuery.setSubjectId(query.getSubjectId());
+		scheduleQuery.setStartTime(reportCycle.getStart());
+		scheduleQuery.setEndTime(reportCycle.getEnd());
+		List<LessonVM> lessonList = this.lessonRemoteService.findScheduleByQuery(scheduleQuery);
+		List<Long> lessonIds = lessonList.stream().map(LessonVM::getCourseSingleId).collect(toList());
+		if (!lessonIds.isEmpty()) {
+			// 过滤未上课课堂ID
+			lessonIds = this.attendanceDao.filterNotAttendCourseSingleIds(lessonIds);
+		}
+		return lessonIds;
+	}
+
+	private Achievement getKlassAchievementResult(List<Long> userIds, TchanalyRptQuery query, ReportCycle reportCycle) {
+		List<ReportCycle> cycles = this.reportCycleService.findNear6ReportCycle(reportCycle);
+		List<Achievement> achievements = cycles.stream().map(cycle -> {
+			return this.getKlassAchievement(userIds, query, cycle);
+		}).collect(toList());
+		Achievement achievement = achievements.get(0);
+		Collections.reverse(achievements);
+		achievement
+				.setTrends(achievements.stream().map(v -> new TrendItem(v.getLabel(), v.getScore())).collect(toList()));
+		List<UserBase> userBases = UserBaseContext.findUserBaseByUserId(userIds.toArray(new Long[0]));
+		List<UserItem> userRanks = userBases.stream().map(user -> {
+			Long userId = user.getUserId();
+			List<AchieveItem> items = achievement.getItems().stream().filter(v -> v.getUserIds().contains(userId))
+					.collect(toList());
+			int score = items.stream().mapToInt(item -> rates[item.getType() - 1]).sum();
+			UserItem userItem = new UserItem();
+			userItem.setUserId(user.getUserId());
+			userItem.setUserName(user.getUserName());
+			userItem.setScore(score);
+			userItem.setAchieveNum(items.size());
+			return userItem;
+		}).sorted(Comparator.comparingInt(UserItem::getScore).reversed()).collect(toList());
+		achievement.setUserRanks(userRanks);
+		achievement.getItems().forEach(item -> {
+			item.setUserNames(userBases.stream().filter(v -> item.getUserIds().contains(v.getUserId()))
+					.map(UserBase::getUserName).collect(toList()));
+		});
+		return achievement;
+	}
+
+	private Achievement getKlassAchievement(List<Long> userIds, TchanalyRptQuery query, ReportCycle reportCycle) {
+		Set<Long> userIdSet = new HashSet<>(userIds);
+		Predicate<Long> filterCond = v -> userIdSet.contains(v);
+		Long teacherId = query.getTeacherId();
+		Long subjectId = query.getSubjectId();
+		Date start = reportCycle.getStart(), end = reportCycle.getEnd();
+		List<Long> lessonIds = this.findReportCycleLessonIds(query, reportCycle);
+
+		int threshold_attend = reportCycle.getType() == 1 ? 100 : 98;
+		int threshold_exercise = reportCycle.getType() == 1 ? 7 : 30;
+		int threshold_doubt = reportCycle.getType() == 1 ? 3 : 12;
+		int threshold_dowork = reportCycle.getType() == 1 ? 100 : 95;
+		int threshold_bugfix = 80;
+		int threshold_called = 90;
+		int threshold_raised = 70;
+		int threshold_evaluate = 90;
+		int threshold_flower = reportCycle.getType() == 1 ? 1 : 4;
+		int threshold_preview = 90;
+		int threshold_review = 90;
+
+		List<AchieveItem> items = new ArrayList<>();
+		// 全勤
+		items.add(this.buildAchieveItem(1, () -> {
+			if (lessonIds.isEmpty()) {
+				return Sets.newHashSet();
+			}
+			List<UserRate> userAttendRates = this.attendanceDao.findUserRateByCourseSingleIds(lessonIds);
+			return userAttendRates.stream().filter(v -> v.getRate() != null && v.getRate() >= threshold_attend)
+					.map(UserRate::getUserId).filter(v -> userIdSet.contains(v)).collect(toSet());
+		}));
+
+		// 练习达人
+		items.add(this.buildAchieveItem(9, () -> {
+			if (userIds.isEmpty()) {
+				return Sets.newHashSet();
+			}
+			List<UserCount> exercises = this.exerciseDao.findStudentPracticeNumByTime(userIds, subjectId, start, end);
+			return exercises.stream().filter(v -> v.getNum() >= threshold_exercise * 4).map(UserCount::getUserId)
+					.filter(filterCond).collect(toSet());
+		}));
+
+		// 提问
+		items.add(this.buildAchieveItem(4, () -> {
+			if (userIds.isEmpty()) {
+				return Sets.newHashSet();
+			}
+			List<UserCount> doubts = this.doubtExplainDao.findUserDoubtNumByTime(userIds, subjectId, start, end);
+			return doubts.stream().filter(v -> v.getNum() >= threshold_doubt).map(UserCount::getUserId)
+					.filter(filterCond).collect(toSet());
+		}));
+
+		// 不磨蹭 & 及时改错
+		List<UserRate> homeworks;
+		if (userIds.isEmpty()) {
+			homeworks = Lists.newArrayList();
+		} else {
+			homeworks = this.homeworkDtlDao.findUserSubmitBugFixRatesByUserIds(userIds, teacherId, subjectId, start,
+					end);
+		}
+
+		// 不磨蹭
+		items.add(this.buildAchieveItem(8, () -> {
+			if (userIds.isEmpty()) {
+				return Sets.newHashSet();
+			}
+			return homeworks.stream().filter(v -> v.getRate() != null && v.getRate() >= threshold_dowork)
+					.map(UserRate::getUserId).filter(filterCond).collect(toSet());
+		}));
+
+		// 及时改错
+		items.add(this.buildAchieveItem(7, () -> {
+			if (userIds.isEmpty()) {
+				return Sets.newHashSet();
+			}
+			return homeworks.stream().filter(v -> v.getRate2() != null && v.getRate2() >= threshold_bugfix)
+					.map(UserRate::getUserId).filter(filterCond).collect(toSet());
+		}));
+
+		List<LessonBehavior> behaviors;
+		if (lessonIds.isEmpty()) {
+			behaviors = Lists.newArrayList();
+		} else {
+			behaviors = this.lessonBehaviorDao.findStudentBehaviorByCourseSingleIds(lessonIds);
+		}
+
+		// 专心听讲
+		items.add(this.buildAchieveItem(3, () -> {
+			int callNum = behaviors.stream().filter(v -> v.getCallNum() != null).mapToInt(LessonBehavior::getCallNum)
+					.sum();
+			if (callNum == 0) {
+				return Sets.newHashSet();
+			}
+			Map<Long, List<UserCount>> map = behaviors.stream().filter(v -> v.getStudents() != null)
+					.flatMap(v -> v.getStudents().stream()).map(v -> new UserCount(v.getStudentId(), v.getCalled()))
+					.collect(groupingBy(UserCount::getUserId));
+			Set<Long> ids = Sets.newHashSet();
+			map.forEach((userId, list) -> {
+				if (!filterCond.test(userId)) {
+					return;
+				}
+				int value = list.stream().mapToInt(UserCount::getNum).sum();
+				if (ScoreUtils.toRate(value, callNum, 0) >= threshold_called) {
+					ids.add(userId);
+				}
+			});
+			return ids;
+		}));
+
+		// 活跃分子
+		items.add(this.buildAchieveItem(5, () -> {
+			int total = behaviors.size();
+			if (total == 0) {
+				return Sets.newHashSet();
+			}
+			Map<Long, List<UserCount>> map = behaviors.stream().filter(v -> v.getStudents() != null)
+					.flatMap(v -> v.getStudents().stream()).map(v -> new UserCount(v.getStudentId(), v.getRaised()))
+					.collect(groupingBy(UserCount::getUserId));
+			Set<Long> ids = Sets.newHashSet();
+			map.forEach((userId, list) -> {
+				if (!filterCond.test(userId)) {
+					return;
+				}
+				int value = (int) list.stream().filter(v -> v.getNum() > 0).count();
+				if (ScoreUtils.toRate(value, total, 0) >= threshold_raised) {
+					ids.add(userId);
+				}
+			});
+			return ids;
+		}));
+
+		// 手有余香(送花)
+		items.add(this.buildAchieveItem(6, () -> {
+			if (lessonIds.isEmpty()) {
+				return Sets.newHashSet();
+			}
+			Map<Long, Long> map = behaviors.stream().flatMap(v -> {
+				if (v.getStudents() == null) {
+					return Stream.empty();
+				}
+				return v.getStudents().stream().filter(a -> a.getFlower() > 0).map(StudentBehavior::getStudentId);
+			}).collect(groupingBy(v -> v, counting()));
+			Set<Long> flowerSet = map.entrySet().stream().filter(entry -> entry.getValue() >= threshold_flower)
+					.map(entry -> entry.getKey()).collect(toSet());
+			List<UserRate> evaluates = this.evaluateDao.findEvalRatesByCourseSingleIds(lessonIds);
+			return evaluates.stream().filter(v -> v.getRate() != null && v.getRate() >= threshold_evaluate)
+					.map(UserRate::getUserId).filter(v -> flowerSet.contains(v)).filter(filterCond).collect(toSet());
+		}));
+
+		// 提前预习
+		items.add(this.buildAchieveItem(2, () -> {
+			if (lessonIds.isEmpty()) {
+				return Sets.newHashSet();
+			}
+			List<ReviewCount> tchCounts = this.reviewWorkStatDao.findTeacherReviewCountByLessonIds(lessonIds,
+					HomeworkCst.PHASE_PREVIEW);
+			if (tchCounts.size() == 0) {
+				return Sets.newHashSet();
+			}
+			List<ReviewCount> stuCounts = this.reviewWorkStatDao.findStudentReviewCountByLessonIds(lessonIds,
+					HomeworkCst.PHASE_PREVIEW, null);
+
+			Map<Long, List<ReviewCount>> userMap = stuCounts.stream().collect(groupingBy(ReviewCount::getUserId));
+
+			int total = tchCounts.size();
+			Set<Long> ids = Sets.newHashSet();
+			userMap.forEach((userId, counts) -> {
+				if (!filterCond.test(userId)) {
+					return;
+				}
+				Map<Long, Integer> lessonMap = counts.stream()
+						.collect(groupingBy(ReviewCount::getLessonId, summingInt(ReviewCount::getNum)));
+				int value = (int) tchCounts.stream().filter(v -> {
+					Integer num = lessonMap.get(v.getLessonId());
+					return num != null && num == v.getNum();
+				}).count();
+				if (ScoreUtils.toRate(value, total, 0) >= threshold_preview) {
+					ids.add(userId);
+				}
+			});
+
+			return ids;
+		}));
+
+		// 温故知新
+		items.add(this.buildAchieveItem(10, () -> {
+			if (lessonIds.isEmpty()) {
+				return Sets.newHashSet();
+			}
+			List<ReviewCount> tchCounts = this.reviewWorkStatDao.findTeacherReviewCountByLessonIds(lessonIds,
+					HomeworkCst.PHASE_REVIEW);
+
+			List<ReviewCount> stuCount12 = this.reviewWorkStatDao.findStudentReviewCountByLessonIds(lessonIds,
+					HomeworkCst.PHASE_REVIEW, null);
+			List<ReviewCount> stuCount3 = this.noteBookDao.findStudentReviewCountByCourseSingleId(lessonIds);
+
+			Map<Long, List<ReviewCount>> userMap12 = stuCount12.stream().collect(groupingBy(ReviewCount::getUserId));
+			Map<Long, List<ReviewCount>> userMap3 = stuCount3.stream().collect(groupingBy(ReviewCount::getUserId));
+
+			Set<Long> ids = Sets.newHashSet();
+			userIds.forEach(userId -> {
+				if (!filterCond.test(userId)) {
+					return;
+				}
+				Map<Long, Boolean> stateMap12 = Maps.newHashMap();
+				Map<Long, Boolean> stateMap3 = Maps.newHashMap();
+
+				List<ReviewCount> count12 = userMap12.getOrDefault(userId, Collections.emptyList());
+				List<ReviewCount> count3 = userMap3.getOrDefault(userId, Collections.emptyList());
+
+				if (!count12.isEmpty()) {
+					Map<Long, Integer> lessonMap = count12.stream()
+							.collect(groupingBy(ReviewCount::getLessonId, summingInt(ReviewCount::getNum)));
+					// 收集复习课件试卷完成量与布置量想同的数据
+					tchCounts.forEach(v -> {
+						Integer num = lessonMap.get(v.getLessonId());
+						stateMap12.put(v.getLessonId(), num != null && num == v.getNum());
+					});
+				}
+				if (!count3.isEmpty()) {
+					// 收集查看笔记次数大于0的数据
+					count3.forEach(v -> stateMap3.put(v.getLessonId(), v.getNum() > 0));
+				}
+
+				int total = (int) lessonIds.stream().filter(lessonId -> {
+					return stateMap12.containsKey(lessonId) || stateMap3.containsKey(lessonId);
+				}).count();
+				int value = (int) lessonIds.stream().filter(lessonId -> {
+					Boolean state12 = stateMap12.get(lessonId);
+					Boolean state3 = stateMap3.get(lessonId);
+					if (state12 == null && state3 == null) {
+						return false;
+					} else if (Boolean.FALSE.equals(state12)) {
+						return false;
+					} else if (Boolean.FALSE.equals(state3)) {
+						return false;
+					}
+					return true;
+				}).count();
+				if (ScoreUtils.toRate(value, total, 0) >= threshold_review) {
+					ids.add(userId);
+				}
+			});
+
+			return ids;
+		}));
+		items.sort(Comparator.comparingInt(AchieveItem::getType));
+
+		Achievement achievement = new Achievement();
+		achievement.setLabel(reportCycle.getLabel());
+		achievement.setNum(buildAchieveNum(items, userIds));
+		achievement.setScore(buildAchieveScore(items, userIds));
+		achievement.setItems(items);
+		return achievement;
+	}
+
+	private int buildAchieveNum(List<AchieveItem> items, List<Long> userIds) {
+		int total = userIds.size();
+		return (int) items.stream().filter(v -> {
+			int value = v.getUserIds().size();
+			return ScoreUtils.toRate(value, total, 0) >= 70;
+		}).count();
+	}
+
+	private int buildAchieveScore(List<AchieveItem> items, List<Long> userIds) {
+		int total = userIds.size() * 100;
+		int value = 0;
+		for (AchieveItem item : items) {
+			int rate = rates[item.getType() - 1];
+			value += item.getUserIds().size() * rate;
+		}
+		return ScoreUtils.toRate(value, total, 0).intValue();
+	}
+
+	private AchieveItem buildAchieveItem(int type, Supplier<Set<Long>> supplier) {
+		AchieveItem item = new AchieveItem();
+		item.setType(type);
+		item.setUserIds(supplier.get());
+		return item;
+	}
+}

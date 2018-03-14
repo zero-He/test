@@ -1,0 +1,92 @@
+package cn.strong.leke.diag.report;
+
+import static cn.strong.leke.lessonlog.model.TeacherActions.CALLED_AUTO;
+import static cn.strong.leke.lessonlog.model.TeacherActions.CALLED_HAND;
+import static cn.strong.leke.lessonlog.model.TeacherActions.DISCU;
+import static cn.strong.leke.lessonlog.model.TeacherActions.QUICK;
+import static java.util.stream.Collectors.toList;
+
+import java.util.List;
+
+import javax.annotation.Resource;
+
+import org.springframework.stereotype.Component;
+
+import cn.strong.leke.common.utils.CollectionUtils;
+import cn.strong.leke.context.base.UserBaseContext;
+import cn.strong.leke.diag.dao.homework.model.LessonExamAnaly;
+import cn.strong.leke.diag.dao.lesson.model.EvaluateInfo;
+import cn.strong.leke.diag.dao.lesson.mongo.LessonBehaviorDao;
+import cn.strong.leke.diag.dao.lesson.mybatis.AttendanceDao;
+import cn.strong.leke.diag.dao.lesson.mybatis.EvaluateDao;
+import cn.strong.leke.diag.model.report.MiddleInfo;
+import cn.strong.leke.diag.model.report.MiddleQuery;
+import cn.strong.leke.diag.service.HomeworkService;
+import cn.strong.leke.lessonlog.model.AttendStatInfo;
+import cn.strong.leke.lessonlog.model.InteractInfo;
+import cn.strong.leke.lessonlog.model.LessonBehavior;
+import cn.strong.leke.lessonlog.model.TopRankScore;
+import cn.strong.leke.model.user.UserBase;
+import cn.strong.leke.remote.service.lesson.ILessonRemoteService;
+
+@Component
+public class LessonMiddleReportHandler implements ReportHandler<MiddleQuery, MiddleInfo> {
+
+	@Resource
+	private LessonBehaviorDao lessonBehaviorDao;
+	@Resource
+	private EvaluateDao evaluateDao;
+	@Resource
+	private AttendanceDao attendanceDao;
+	@Resource
+	private HomeworkService homeworkService;
+	@Resource
+	private ILessonRemoteService lessonRemoteService;
+
+	@Override
+	public MiddleInfo execute(MiddleQuery query) {
+		Boolean hasAttend = this.attendanceDao.checkHasAttendByCourseSingleId(query.getLessonId());
+		if (!hasAttend) {
+			// 没有考勤数据，就是没上课
+			return new MiddleInfo(false, "老师未上课，报告无法生成。");
+		}
+		LessonBehavior behavior = this.lessonBehaviorDao.getLessonBehaviorByLessonId(query.getLessonId());
+		if (behavior == null || behavior.getInteracts() == null) {
+			return new MiddleInfo(false, "暂无数据，报告无法生成。");
+		}
+		EvaluateInfo lessonEval = this.evaluateDao.getEvaluateInfoByLessonId(query.getLessonId());
+		EvaluateInfo teacherEval = this.evaluateDao.getEvaluateInfoByTeacherId(query.getTeacherId());
+		List<LessonExamAnaly> exams = this.homeworkService.findExamScoreByLessonIdAndUsePhase(query.getLessonId(), 2);
+		AttendStatInfo attendStatInfo = this.attendanceDao.getAttendStatInfoByCourseSingleId(query.getLessonId());
+
+		// 课堂行为
+		List<InteractInfo> interacts = behavior.getInteracts();
+		List<InteractInfo> quicks = interacts.stream().filter(v -> QUICK.type == v.getType()).collect(toList());
+		List<InteractInfo> discus = interacts.stream().filter(v -> DISCU.type == v.getType()).collect(toList());
+		List<InteractInfo> calleds = interacts.stream()
+				.filter(v -> CALLED_AUTO.type == v.getType() || CALLED_HAND.type == v.getType()).collect(toList());
+		List<TopRankScore> tops = behavior.getTops();
+		if (tops.size() > 20) {
+			tops = tops.subList(0, 20);
+		}
+		calleds.forEach(call -> {
+			if (CollectionUtils.isNotEmpty(call.getUnids())) {
+				List<UserBase> users = UserBaseContext.findUserBaseByUserId(call.getUnids().toArray(new Long[0]));
+				call.setUnNames(users.stream().map(UserBase::getUserName).collect(toList()));
+			}
+		});
+		// 组合数据
+		MiddleInfo middleInfo = new MiddleInfo();
+		middleInfo.setFlower(behavior.getFlower());
+		middleInfo.setLessonEval(lessonEval);
+		middleInfo.setTeacherEval(teacherEval);
+		middleInfo.setAttendStatInfo(attendStatInfo);
+		middleInfo.setInteracts(interacts);
+		middleInfo.setTops(tops);
+		middleInfo.setExams(exams);
+		middleInfo.setQuicks(quicks);
+		middleInfo.setDiscus(discus);
+		middleInfo.setCalleds(calleds);
+		return middleInfo;
+	}
+}

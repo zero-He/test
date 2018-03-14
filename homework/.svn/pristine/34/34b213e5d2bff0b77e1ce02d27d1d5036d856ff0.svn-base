@@ -1,0 +1,21 @@
+package cn.strong.leke.homework.service;
+
+import java.util.List;
+
+import cn.strong.leke.homework.model.HomeworkGroupForm;
+import cn.strong.leke.model.user.User;
+import cn.strong.leke.remote.model.homework.HomeworkRemote;
+
+public interface IHomeworkGroupService {
+	/**
+	 *
+	 * 描述: 老师布置作业
+	 *
+	 * @author raolei
+	 * @created 2016年3月9日 下午3:24:31
+	 * @since v1.0.0
+	 * @param homeworks
+	 * @return void
+	 */
+	public List<HomeworkRemote> saveHomeworks(List<HomeworkGroupForm> homeworks, User user);
+}

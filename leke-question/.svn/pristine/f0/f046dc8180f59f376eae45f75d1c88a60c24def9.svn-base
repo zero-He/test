@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8" ?>   
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.question.dao.mybatis.wrongquestion.IWrongQuestionDao">
+
+	<insert id="insertWrongQuestion" parameterType="cn.strong.leke.question.model.wrongquestion.WrongQuestion">
+		<![CDATA[
+		insert que_wrong_question
+            (classId,
+             subjectId,
+             questionId,
+             rate,
+             errorTotal,
+             sourceName,
+             homeworkId,
+             wrongStuTotal,
+             assignDate,
+             userId,
+             schoolId,
+             createdOn,
+             createdBy,
+             isDeleted,
+             modifiedOn,
+             modifiedBy)
+		values (
+		        #{classId},
+		        #{subjectId},
+		        #{questionId},
+		        #{rate},
+		        #{errorTotal},
+		        #{sourceName},
+		        #{homeworkId},
+             	#{wrongStuTotal},
+		        #{assignDate},
+		        #{userId},
+		        #{schoolId},
+		        #{createdOn},
+		        #{createdBy},
+		        0,
+		        #{createdOn},
+		        #{createdBy})
+		]]>
+	</insert>
+	
+	<select id="getWrongQueByClassSubjQuestionId" resultType="cn.strong.leke.question.model.wrongquestion.WrongQuestion">
+		<![CDATA[
+			select *
+			from que_wrong_question
+			where isDeleted =0 and classId = #{classId} and subjectId= #{subjectId} 
+				and userId = #{userId} and questionId = #{questionId}
+				and schoolId = #{schoolId}
+		]]>
+	</select>
+	
+	<select id="getWrongSubject" resultType="cn.strong.leke.question.model.wrongquestion.WrongSubject">
+		<![CDATA[
+			select * 
+			from que_wrong_subject
+			where isDeleted = 0 and  userId = #{teacherId}
+				and classId = #{classId} 
+				and subjectId = #{subjectId}
+				and schoolId = #{schoolId}
+		]]>
+	</select>
+	
+	<update id="updateWrongSubjRate" parameterType="cn.strong.leke.question.model.wrongquestion.WrongSubject" >
+		<![CDATA[
+			update que_wrong_subject
+				set rate = #{rate},
+					modifiedOn = now(),
+	             	modifiedBy = #{modifiedBy}
+			where classId = #{classId} and subjectId = #{subjectId} 
+				and userId = #{userId} and isDeleted = 0 and schoolId = #{schoolId}
+		]]>
+	</update>
+	
+	<insert id="insertWrongSubject" parameterType="cn.strong.leke.question.model.wrongquestion.WrongSubject" >
+		<![CDATA[
+			insert que_wrong_subject
+	            (classId,
+	             subjectId,
+	             schoolId,
+	             rate,
+	             userId,
+	             createdOn,
+	             createdBy,
+	             isDeleted,
+	             modifiedOn,
+	             modifiedBy)
+			values (
+			        #{classId},
+			        #{subjectId},
+			        #{schoolId},
+			        #{rate},
+			        #{userId},
+			        #{createdOn},
+			        #{createdBy},
+			       	0,
+	       	        #{createdOn},
+			        #{createdBy})
+		]]>
+	</insert>
+	
+	<delete id="delWrongQuestion" parameterType="cn.strong.leke.question.model.wrongquestion.WrongQuestion">
+		<![CDATA[
+			update que_wrong_question
+				set isDeleted = 1, modifiedOn = now(),modifiedBy = #{modifiedBy}
+			where id= #{id} and isDeleted = 0
+		]]>
+	</delete>
+	
+	<select id="getWrongQuestion" resultType="cn.strong.leke.question.model.wrongquestion.WrongQuestion">
+		<![CDATA[
+			select * 
+			from que_wrong_question
+			where id= #{id} and isDeleted = 0
+		]]>
+	</select>
+	
+	
+	
+	
+	<select id="findWrongQuestion" 
+		resultType="cn.strong.leke.question.model.wrongquestion.WrongQuestion"
+		parameterType="cn.strong.leke.question.model.wrongquestion.WrongQuestionQuery">
+			SELECT 
+				wque.* ,que.paperId,que.source,que.questionTypeId
+			FROM que_wrong_question wque
+			JOIN que_question que
+				ON wque.questionId = que.questionId
+			<if test="knowledgeId != null">
+			LEFT JOIN que_question_knowledge knowQue 
+    			ON knowQue.questionId = wque.questionId AND knowQue.isDeleted = 0
+   			</if>
+			WHERE wque.isDeleted =0 AND que.isDeleted = 0 
+				AND wque.userId = #{userId}
+				AND wque.classId = #{classId}
+				AND wque.schoolId = #{schoolId}
+			<if test="knowledgeId != null">
+				AND knowQue.knowledgeId = #{knowledgeId}
+			</if>
+			<if test="subjectId != null and subjectId != ''">
+				AND wque.subjectId = #{subjectId}
+			</if>
+			<if test="questionTypeId != null and questionTypeId != ''">
+				AND que.questionTypeId = #{questionTypeId}
+			</if>
+			<if test="minDifficulty != null"><![CDATA[ AND que.difficulty >= #{minDifficulty} ]]></if>
+			<if test="maxDifficulty != null"><![CDATA[ AND que.difficulty <= #{maxDifficulty} ]]></if>
+			<![CDATA[ AND wque.rate >= #{minRate} AND wque.rate <= #{maxRate}  ]]>
+			<if test="orderColumn != null and orderColumn != ''">
+				ORDER BY ${orderColumn} DESC
+			</if>
+	</select>
+	
+	<select id="findWrongQuestionId" resultType="long"
+		parameterType="cn.strong.leke.question.model.wrongquestion.WrongSubjKnowQuery">
+		SELECT 
+			wque.questionId
+		FROM 
+			que_wrong_question wque
+		JOIN 
+			que_question que
+		ON 
+			wque.questionId = que.questionId
+		WHERE 
+			wque.isDeleted = 0 
+		AND que.isDeleted = 0
+		AND wque.userId = #{userId}
+		AND wque.classId = #{classId}
+		AND wque.schoolId = #{schoolId}
+		AND wque.subjectId = #{subjectId}
+	</select>
+	
+	<update id="updateWrongQuestion" parameterType="cn.strong.leke.question.model.wrongquestion.WrongQuestion">
+		<![CDATA[
+			update question.que_wrong_question
+			set 
+			  rate = #{rate},
+			  errorTotal = errorTotal +1,
+			  sourceName = #{sourceName},
+			  homeworkId = #{homeworkId},
+			  wrongStuTotal = #{wrongStuTotal},
+			  assignDate = #{assignDate},
+			  modifiedOn = now(),
+			  modifiedBy = #{createdBy}
+			where isDeleted = 0 and classId = #{classId} 
+				and subjectId = #{subjectId} and userId = #{userId} 
+				and questionId = #{questionId} and schoolId = #{schoolId}
+		]]>
+	</update>
+	
+</mapper>

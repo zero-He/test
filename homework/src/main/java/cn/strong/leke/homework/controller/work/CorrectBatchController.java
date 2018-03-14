@@ -1,0 +1,184 @@
+package cn.strong.leke.homework.controller.work;
+
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+import javax.annotation.Resource;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
+
+import cn.strong.leke.common.serialize.support.json.JsonUtils;
+import cn.strong.leke.context.paper.PaperContext;
+import cn.strong.leke.framework.web.JsonResult;
+import cn.strong.leke.homework.manage.HwQueCommentaryService;
+import cn.strong.leke.homework.manage.WorkDetailService;
+import cn.strong.leke.homework.model.Homework;
+import cn.strong.leke.homework.model.QuestionProgress;
+import cn.strong.leke.homework.model.WorkDetail;
+import cn.strong.leke.homework.service.HomeworkMainService;
+import cn.strong.leke.homework.service.HomeworkService;
+import cn.strong.leke.homework.util.HomeworkUtils;
+import cn.strong.leke.model.paper.PaperDTO;
+import cn.strong.leke.model.paper.QuestionGroup;
+import cn.strong.leke.model.paper.ScoredQuestion;
+import cn.strong.leke.model.question.QuestionResult;
+import cn.strong.leke.tags.answer.tags.PaperQuestionRender;
+import cn.strong.leke.tags.question.prepare.PrepareHandler;
+import cn.strong.leke.tags.question.prepare.PrepareHandlerAdapter;
+
+@Controller
+@RequestMapping("/auth/teacher/batch")
+public class CorrectBatchController {
+
+	@Resource
+	private WorkDetailService workDetailService;
+	@Resource
+	private HomeworkService homeworkService;
+	@Resource
+	private HomeworkMainService homeworkMainService;
+	@Resource
+	private HwQueCommentaryService hwQueCommentaryService;
+
+	/**
+	 * 批量批改工作台页面
+	 */
+	@RequestMapping("/workbench")
+	public void workbench(Long homeworkId, Long questionId, Boolean isExam, Model model) {
+		Homework homework = this.homeworkService.getHomeworkById(homeworkId);
+		PaperDTO paper = PaperContext.getPaperDTO(homework.getPaperId());
+		Function<ScoredQuestion, Long> mapper = scoredQuestion -> {
+			return scoredQuestion.getSubjective() ? scoredQuestion.getQuestionId() : 0;
+		};
+		List<Long> questionIds = paper.getDetail().getGroups().stream().flatMap(v -> v.getQuestions().stream())
+				.map(mapper).collect(Collectors.toList());
+		Integer index = questionIds.indexOf(questionId);
+		Map<String, Object> batchContext = new HashMap<String, Object>();
+		batchContext.put("index", index);
+		batchContext.put("cutDate", new Date());
+		batchContext.put("homework", homework);
+		batchContext.put("questionIds", questionIds);
+		batchContext.put("isExam", isExam);
+		batchContext.put("paperType", homework.getPaperType());
+
+		model.addAttribute("batchContext", batchContext);
+		model.addAttribute("batchContextJson", JsonUtils.toJSON(batchContext));
+	}
+
+	@RequestMapping("/groupTitle")
+	@ResponseBody
+	public JsonResult getGroupTitle(Long paperId, Long questionId) {
+		PaperDTO paper = PaperContext.getPaperDTO(paperId);
+		for (QuestionGroup itemGroup : paper.getDetail().getGroups()) {
+			Optional<ScoredQuestion> first = itemGroup.getQuestions().stream()
+					.filter(q -> q.getQuestionId().equals(questionId)).findFirst();
+			if (first.isPresent()) {
+				return new JsonResult().addDatas("groupTitle", itemGroup.getGroupTitle());
+			}
+		}
+		return new JsonResult();
+	}
+
+	/**
+	 * 获取下一个人
+	 * @param homeworkId
+	 * @param questionId
+	 * @param cutDate
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping(value = { "/next" })
+	public Object next(Long paperId, Long homeworkId, Long questionId, Long cutDate, Long homeworkDtlId) {
+		JsonResult json = new JsonResult();
+		Integer doneNum = this.workDetailService.getBatchCorrectCount(homeworkId, questionId, new Date(cutDate));
+		WorkDetail workDetail = null;
+		if (homeworkDtlId == null) {
+			workDetail = this.workDetailService.getBatchCorrectNext(homeworkId, questionId, new Date(cutDate));
+		} else {
+			workDetail = this.workDetailService.getWorkDetailByBatchCorrect(homeworkDtlId, questionId);
+		}
+		//合并新存储的微课批注信息
+		hwQueCommentaryService.mergeWorkDetailForVodMic(workDetail);
+		json.addDatas("doneNum", doneNum).addDatas("workDetail", workDetail);
+		if (workDetail != null) {
+			QuestionResult questionResult = workDetail.getQuestions().get(0);
+			PrepareHandlerAdapter.doPrepare(PrepareHandler.Mode.Correct, questionResult);
+			String html = PaperQuestionRender.doCorrectRender(paperId, questionId, questionResult);
+			json.addDatas("html", html);
+		}
+		return json;
+	}
+
+	/**
+	 * 获取该题的已经批改学生作业Id
+	 * @param paperId
+	 * @param homeworkId
+	 * @param questionId
+	 * @param cutDate
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping("/submitHwDtls")
+	public Object correctHistory(Long paperId, Long homeworkId, Long questionId, Long cutDate) {
+		List<Long> correctHistory = workDetailService.getBatchSubmitHwDtls(homeworkId, new Date(cutDate));
+		return new JsonResult().addDatas("submitHwDtls", correctHistory);
+	}
+
+	/**
+	 * 保存批量批改。
+	 * @param homeworkDtlId
+	 * @param questionResultJson
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping("/save")
+	public Object save(Long homeworkDtlId, String questionResultJson) {
+		QuestionResult questionResult = JsonUtils.readList(questionResultJson, QuestionResult.class).get(0);
+		this.homeworkMainService.saveCorrectSnapshotWithBatch(homeworkDtlId, questionResult);
+		return new JsonResult();
+	}
+
+	/**
+	 * 批量批改 题目列表页面
+	 * @param homeworkId
+	 * @param model
+	 */
+	@RequestMapping("batchQuestions")
+	public void batchQuestions(Long homeworkId, Model model) {
+		Homework homework = homeworkService.getHomeworkById(homeworkId);
+		PaperDTO paperDto = PaperContext.getPaperDTO(homework.getPaperId());
+		Integer paperType = paperDto.getPaperType();
+		List<QuestionProgress> questionProgresses = workDetailService.findBatchProgressByHomeworkId(homeworkId);
+		Map<String, Object> progressMaps = questionProgresses.stream().collect(Collectors
+				.toMap(v -> v.getQuestionId().toString(), v -> v.getCorrectNum() == null ? 0 : v.getCorrectNum()));
+		model.addAttribute("homework", homework);
+		model.addAttribute("homeworkId", homeworkId);
+		model.addAttribute("progressMaps", progressMaps);
+		model.addAttribute("groups", paperDto.getDetail().getGroups());
+		model.addAttribute("finishNum", homework.getFinishNum());
+		model.addAttribute("homeworkTypeStr", HomeworkUtils.fmtHomeworkTypeStr(homework.getHomeworkType()));
+		model.addAttribute("paperType", paperType);
+
+	}
+
+	/**
+	 * 根据题目Id,查询题干内容
+	 * @param questionId
+	 * @return
+	 */
+	@RequestMapping("getQuestionContent")
+	@ResponseBody
+	public JsonResult getQuestionContent(Long questionId, Long paperId) {
+		JsonResult jsonResult = new JsonResult();
+		jsonResult.addDatas("content", "");
+		return jsonResult;
+	}
+
+}

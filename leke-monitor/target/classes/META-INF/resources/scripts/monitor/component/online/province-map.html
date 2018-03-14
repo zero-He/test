@@ -1,0 +1,29 @@
+<header class="c-moniheader">
+	<h1 class="logo"><a href="//www.leke.cn"></a></h1>
+	<span class="title">乐课网动态监控</span>
+	<a class="back" href="#/"></a>
+</header>
+<article class="g-swallow c-moni-map">
+	<section class="mw">
+		<div class="m2">
+			<div class="c-box">
+				<h2 class="title">
+					省级在线用户数据监控(<span data-bind="text: stat.total().name">&nbsp;</span>)
+					<a class="switch"
+						data-bind="attr: {
+							href: '#/province/' + provinceId + '/details'
+						}"></a>
+				</h2>
+				<map-chart params="details: stat.details, mapinfo: mapinfo, 
+					onClick: function(data) {
+						onClickCity(data);
+					}"></map-chart>
+			</div>
+		</div>
+	</section>
+       	
+	<aside class="r">
+		<stat-total params="total: stat.total"></stat-total>
+		<pie-chart params="details: stat.details"></pie-chart>
+	</aside>
+</article>

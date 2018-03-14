@@ -1,0 +1,103 @@
+package cn.strong.leke.monitor.mongo.online.service.impl;
+
+import static com.mongodb.client.model.Filters.and;
+import static com.mongodb.client.model.Filters.gte;
+import static com.mongodb.client.model.Filters.lte;
+import static com.mongodb.client.model.Filters.ne;
+import static com.mongodb.client.model.Projections.include;
+import static com.mongodb.client.model.Sorts.descending;
+
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.TreeSet;
+
+import javax.annotation.PostConstruct;
+import javax.annotation.Resource;
+
+import org.bson.Document;
+import org.bson.conversions.Bson;
+import org.springframework.stereotype.Repository;
+import org.springframework.util.Assert;
+
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
+
+import cn.strong.leke.monitor.mongo.course.model.query.PlatformActiveStat;
+import cn.strong.leke.monitor.mongo.online.model.query.ActiveUserQuery;
+import cn.strong.leke.monitor.mongo.online.service.IPlatformActiveUserDao;
+@Repository
+public class PlatformActiveDao implements IPlatformActiveUserDao{
+	@Resource(name = "monitorDb")
+	private MongoDatabase db;
+	private MongoCollection<PlatformActiveStat> coll;  
+
+	@PostConstruct
+	public void init() {
+		Assert.notNull(db, "DB should not be null");
+		coll = db.getCollection("dayactive.user", PlatformActiveStat.class);
+	}
+
+	@Override
+	public Set<Integer> getStaDay(int fromDate, int endDate) {
+		Bson filter = and(gte("ts", endDate), lte("ts", fromDate));
+		return coll.find(filter, Document.class).projection(include("ts")).map(doc -> {
+			
+			return doc.getInteger("ts");
+			
+		}).into(new TreeSet<>(new Comparator<Integer>() {
+
+			@Override
+			public int compare(Integer o1, Integer o2) {
+				
+				return o1 -o2;
+			}
+		}));
+	}
+
+	@Override
+	public Set<Integer> getStaWeek(int startWeek, int endWeek) {
+		
+		Bson filter = and(lte("week", endWeek),gte("week", startWeek));
+		return coll.find(filter, Document.class).projection(include("week")).map(doc -> {
+			return doc.getInteger("week");
+		}).into(new TreeSet<>(new Comparator<Integer>() {
+
+			@Override
+			public int compare(Integer o1, Integer o2) {
+				
+				return o1 -o2;
+			}
+		}));
+	}
+
+	@Override
+	public Set<Integer> getStaMonth(int startMonth, int endMonth) {
+		Bson filter = and(lte("month", endMonth),gte("month", startMonth));
+		return coll.find(filter, Document.class).projection(include("month")).map(doc -> {
+			return doc.getInteger("month");
+		}).into(new TreeSet<>(new Comparator<Integer>() {
+
+			@Override
+			public int compare(Integer o1, Integer o2) {
+				
+				return o1 -o2;
+			}
+		}));
+	}
+	
+	@Override
+	public int countActiveUsersSince(ActiveUserQuery query) {
+		Bson pipeline = query.toBSON();
+		
+		PlatformActiveStat max = coll.find(and(pipeline,ne("classId", null))).sort(descending("allValidUser")).limit(1).first();
+		return max == null ? 0 : max.getAllValidUser();
+	}
+	
+	@Override
+	public int getActiveUsersCount(ActiveUserQuery query) {
+			Bson pipeline = query.toBSON();
+			return coll.distinct("userId", pipeline, Long.class).into(new HashSet<>()).size();
+	}
+
+}

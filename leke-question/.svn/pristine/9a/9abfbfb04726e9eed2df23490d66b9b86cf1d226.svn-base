@@ -1,0 +1,7 @@
+
+<!-- ko foreach: tags-->
+<span class="q-propterty-t-item">
+	<em data-bind="text: $data.officialTagName"></em>
+	<span data-bind="tid: $data.quesOfficialTagId" title="删除" class="q-propterty-t-delete"> x </span>
+</span>
+<!-- /ko -->

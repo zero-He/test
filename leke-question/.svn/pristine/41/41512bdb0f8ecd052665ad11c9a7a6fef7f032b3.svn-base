@@ -1,0 +1,167 @@
+/*
+ * Copyright (c) 2014 Strong Group - 版权所有
+ * 
+ * This software is the confidential and proprietary information of
+ * Strong Group. You shall not disclose such confidential information 
+ * and shall use it only in accordance with the terms of the license 
+ * agreement you entered into with www.cnstrong.cn.
+ */
+package cn.strong.leke.question.remote;
+
+import static cn.strong.leke.core.business.remote.PageRemotes.queryInPage;
+
+import java.util.Calendar;
+import java.util.Date;
+import java.util.List;
+
+import javax.annotation.Resource;
+
+import org.springframework.stereotype.Service;
+
+import cn.strong.leke.model.paper.PaperDTO;
+import cn.strong.leke.model.question.QuestionComment;
+import cn.strong.leke.model.question.QuestionDTO;
+import cn.strong.leke.model.question.QuestionFeedbackDTO;
+import cn.strong.leke.model.question.QuestionPraise;
+import cn.strong.leke.model.question.QuestionSelectRule;
+import cn.strong.leke.model.question.StrengThenSelectRule;
+import cn.strong.leke.model.question.querys.RepositoryQuestionQuery;
+import cn.strong.leke.model.repository.RepoDayGroup;
+import cn.strong.leke.model.repository.RepositoryRecord;
+import cn.strong.leke.question.core.question.query.IQuestionQueryService;
+import cn.strong.leke.question.service.IQuestionCommentService;
+import cn.strong.leke.question.service.IQuestionFeedbackService;
+import cn.strong.leke.question.service.IQuestionPraiseService;
+import cn.strong.leke.question.service.QuestionManager;
+import cn.strong.leke.question.service.QuestionService;
+import cn.strong.leke.remote.model.common.PageRemote;
+import cn.strong.leke.remote.model.question.SchoolQuestionContribution;
+import cn.strong.leke.remote.model.question.SchoolQuestionContributionQuery;
+import cn.strong.leke.remote.service.question.IQuestionRemoteService;
+
+/**
+ * 
+ * 描述:
+ * 
+ * @author WQB
+ * @created 2014-5-12 下午9:52:05
+ * @since v1.0.0
+ */
+@Service
+public class QuestionRemoteService implements IQuestionRemoteService {
+
+
+	@Resource
+	private QuestionManager questionManager;
+	@Resource
+	private QuestionService questionService;
+	@Resource
+	private IQuestionFeedbackService questionFeedbackService;
+	@Resource
+	private IQuestionPraiseService questionPraiseService;
+	@Resource
+	private IQuestionCommentService questionCommentService;
+	@Resource
+	private IQuestionQueryService questionQueryService;
+
+	@Override
+	public QuestionDTO getQuestionDTO(Long questionId) {
+		return questionManager.getQuestionDTO(questionId);
+	}
+
+	@Override
+	public QuestionSelectRule randExerciseByRule(QuestionSelectRule questionSelectRule) {
+		return this.questionManager.randExerciseByRule(questionSelectRule);
+	}
+
+	@Override
+	public StrengThenSelectRule randStrengThenByQuestionId(StrengThenSelectRule strengThenSelectRule) {
+		return this.questionManager.randStrengThenByQuestionId(strengThenSelectRule);
+	}
+
+	@Override
+	public void addQuestionFeedback(QuestionFeedbackDTO feedback) {
+		// questionFeedbackService.addQuestionFeedback(feedback);
+	}
+
+	@Override
+	public void addQuestionPraise(QuestionPraise praise) {
+		questionPraiseService.addQuestionPraise(praise);
+	}
+
+	@Override
+	public void addQuestionComment(QuestionComment queComment) {
+		questionCommentService.addQuestionComment(queComment);
+	}
+
+	@Override
+	public PageRemote<QuestionComment> queryCommentsByQuestionId(
+			final Long questionId, PageRemote<QuestionComment> pageRemote) {
+		return queryInPage(pageRemote, page -> {
+			return questionCommentService.queryCommentsByQuestionId(questionId, page);
+		});
+	}
+
+	@Override
+	public List<SchoolQuestionContribution> findSchoolQuestionContributions(
+			SchoolQuestionContributionQuery query) {
+		return questionManager.findSchoolQuestionContributions(query);
+	}
+
+	@Override
+	public PaperDTO preprocessAnswerSheetQuestions(PaperDTO paper) {
+		return questionManager.preprocessAnswerSheetQuestions(paper);
+	}
+
+	@Override
+	public PageRemote<RepositoryRecord> queryPersonalQuestions(
+			final RepositoryQuestionQuery query,
+			PageRemote<RepositoryRecord> pageRemote) {
+		return queryInPage(pageRemote, page -> {
+			return questionService.queryPersonalQuestions(query, page);
+		});
+	}
+
+	@Override
+	public PageRemote<RepositoryRecord> queryFavoriteQuestions(
+			final RepositoryQuestionQuery query,
+			PageRemote<RepositoryRecord> pageRemote) {
+		return queryInPage(pageRemote, page -> {
+			return questionService.queryFavoriteQuestions(query, page);
+		});
+	}
+
+	@Override
+	public PageRemote<RepositoryRecord> queryRepoQuestions(RepositoryQuestionQuery query,
+			PageRemote<RepositoryRecord> pageRemote) {
+		return queryInPage(pageRemote, page -> {
+			return questionQueryService.queryRepoQuestions(query, page);
+		});
+	}
+
+	@Override
+	public int countLekeQuestion(RepositoryQuestionQuery query) {
+		if (query.getEndDataTime() != null) {
+			query.setEndDataTime(ofEndDateTime(query.getEndDataTime()));
+		}
+		return questionQueryService.countLekeQuestion(query);
+	}
+
+	@Override
+	public List<RepoDayGroup> groupCreatedOnLekeQuestion(RepositoryQuestionQuery query) {
+		if (query.getEndDataTime() != null) {
+			query.setEndDataTime(ofEndDateTime(query.getEndDataTime()));
+		}
+		return questionQueryService.groupCreatedOnLekeQuestion(query);
+	}
+
+	private Date ofEndDateTime(Date date) {
+		Calendar calendar = Calendar.getInstance();
+		calendar.setTime(date);
+		calendar.set(Calendar.HOUR_OF_DAY, 23);
+		calendar.set(Calendar.MINUTE, 59);
+		calendar.set(Calendar.SECOND, 59);
+		calendar.set(Calendar.MILLISECOND, 999);
+		return calendar.getTime();
+	}
+}

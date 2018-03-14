@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" ?>   
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.diag.dao.homework.mybatis.DoubtExplainDao">
+
+	<select id="getStudentDoubtNumByTime" parameterType="map" resultType="int">
+	<![CDATA[
+		SELECT COUNT(*)
+		  FROM HW_DOUBT
+		 WHERE isDeleted = 0
+		   AND createdBy = #{studentId}
+		   AND createdOn >= #{start}
+		   AND createdOn <= #{end}
+	]]>
+	</select>
+
+	<select id="findUserDoubtNumByTime" parameterType="map" resultType="cn.strong.leke.diag.model.UserCount">
+	<![CDATA[
+		SELECT createdBy userId,
+			   COUNT(*)  num
+		  FROM HW_DOUBT
+		 WHERE isDeleted = 0
+		   AND createdOn >= #{start}
+		   AND createdOn <= #{end}
+		   AND subjectId = #{subjectId}
+		   AND createdBy IN
+	]]>
+		<foreach item="userId" collection="userIds" open="(" close=")" separator=",">
+			#{userId}
+		</foreach>
+		GROUP BY createdBy
+	</select>
+
+</mapper>   

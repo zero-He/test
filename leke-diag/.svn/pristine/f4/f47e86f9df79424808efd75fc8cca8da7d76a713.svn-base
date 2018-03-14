@@ -1,0 +1,48 @@
+var {toFixed, toRate} = require('../../../utils/number');
+var ReactChart = require('../../../react/ReactChart');
+var BehaviorChartConfig = require('./BehaviorChartConfig');
+
+class ClassStuationInfo extends React.Component {
+	render() {
+		var attend = this.props.attendStatInfo;
+		var bi = this.props.behaviorInfo;
+		var lekeVal = this.props.lekeVal;
+		var datas = [{name: '全勤', value: attend.realNum - attend.partNum}, {name: '非全勤', value: attend.partNum}, {name: '缺勤', value: attend.missNum}];
+		return (
+			<section id={this.props.id} className="ana-module">
+				<div className="title">上课情况</div>
+				<div className="inner-title">考勤情况</div>
+				<ReactChart className="maps" option={BehaviorChartConfig.buildGeneralPie(`应上课堂：${attend.planNum}`, datas)} />
+				<div className="texts">
+					<p className="paragraph">
+						<span>应上课堂<span className="fc-green">{attend.planNum}</span>节，</span>
+						<span>全勤<span className="fc-green">{attend.realNum - attend.partNum}</span>次，</span>
+						<span>非全勤<span className="fc-orange">{attend.partNum}</span>次，</span>
+						<span>缺勤<span className="fc-orange">{attend.missNum}</span>次，</span>
+						<span>全勤率<span className="fc-green">{toRate(attend.realNum - attend.partNum, attend.planNum)}%</span></span>
+					</p>
+				</div>
+				<div className="inner-title">课堂行为 <a href={`inclass.htm?cycleId=${this.props.cycleId}&userId=${ReportCst.userId}`} className="more">详情</a></div>
+				<div className="c-table">
+					<table>
+						<tbody>
+							<tr><th style={{width: '40%'}}>项目</th><th style={{width: '30%'}}>数量</th><th style={{width: '30%'}}>获得乐币</th></tr>
+							<tr><td>金榜题名</td><td>{bi.rank1}/{bi.rank2}/{bi.rank3}</td><td>{BehaviorChartConfig.renderLekeVal(lekeVal, '12302')}</td></tr>
+							<tr><td>点到</td><td>{bi.callNum1}/{bi.callNum2}</td><td>{BehaviorChartConfig.renderLekeVal(lekeVal, '12306')}</td></tr>
+							<tr><td>举手</td><td>{bi.raised}</td><td>{BehaviorChartConfig.renderLekeVal(lekeVal, '12103')}</td></tr>
+							<tr><td>被授权</td><td>{bi.authed}</td><td>--</td></tr>
+							<tr><td>课堂笔记</td><td>{bi.noteNum}</td><td>{BehaviorChartConfig.renderLekeVal(lekeVal, '12105')}</td></tr>
+							<tr><td>随堂作业</td><td>{bi.examNum1}/{bi.examNum2}</td><td>--</td></tr>
+							<tr><td>快速问答</td><td>{bi.quickNum1}/{bi.quickNum2}</td><td>--</td></tr>
+							<tr><td>分组讨论</td><td>{bi.discuNum1}/{bi.discuNum2}</td><td>{BehaviorChartConfig.renderLekeVal(lekeVal, '12307', '12308')}</td></tr>
+							<tr><td>献花</td><td>{bi.flowerNum}</td><td>{BehaviorChartConfig.renderLekeVal(lekeVal, '12107')}</td></tr>
+							<tr><td>评价</td><td>{bi.evalNum}/{attend.realNum}</td><td>{BehaviorChartConfig.renderLekeVal(lekeVal, '12104')}</td></tr>
+						</tbody>
+					</table>
+				</div>
+			</section>
+		);
+	}
+}
+
+module.exports = ClassStuationInfo;

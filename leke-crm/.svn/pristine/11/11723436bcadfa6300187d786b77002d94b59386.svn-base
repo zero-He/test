@@ -1,0 +1,12 @@
+
+
+mq.q.user.create.user.crm=${ci.mq.q.user.create.user.crm}
+
+mq.q.user.update.user.crm=${ci.mq.q.user.update.user.crm}
+
+mq.q.crm.sale.relation=${ci.mq.q.crm.sale.relation}
+
+mq.q.crm.rechange.point=${ci.mq.q.crm.rechange.point}
+
+mq.e.pay.point.bestowal=${ci.mq.e.pay.point.bestowal}
+mq.q.pay.point.bestowal=${ci.mq.q.pay.point.bestowal}

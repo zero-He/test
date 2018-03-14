@@ -1,0 +1,62 @@
+<form class="m-form c-form">
+<ul>
+	<li>
+		<label class="title">
+			<span class="s-c-r">*</span>
+			<span data-bind="i18n: 'que.question.searchItem.grade'">年级：</span>
+		</label>
+		<div class="con">
+			<select name="gradeId" class="u-select u-select-sm"
+				data-bind="options: grades,
+						   optionsText: 'gradeName',
+						   optionsValue: 'gradeId',
+						   optionsCaption: '==请选择==',
+						   value: outline.gradeId,
+						   valueAllowUnset: true,
+						   disable: outline.gradeId() != null"></select>
+		</div>
+	</li>
+	<li>
+		<label class="title">
+			<span class="s-c-r">*</span>
+			<span data-bind="i18n: 'que.question.searchItem.subject'">学科：</span>
+		</label>
+		<div class="con">
+			<select name="subjectId" class="u-select u-select-sm"
+				data-bind="options: subjects,
+						   optionsText: 'subjectName',
+						   optionsValue: 'subjectId',
+						   optionsCaption: '==请选择==',
+						   value: outline.subjectId,
+						   valueAllowUnset: true,
+						   disable: outline.outlineId() != null"></select>
+		</div>
+	</li>
+<!-- 	<li>
+		<label class="title">
+			<span class="require">*</span>
+			<span data-bind="i18n: 'que.question.searchItem.press'">教材版本：</span>
+		</label>
+		<div class="con">
+			<select name="pressId" class="u-select u-select-sm"
+				data-bind="options: presses,
+						   optionsText: 'pressName',
+						   optionsValue: 'pressId',
+						   optionsCaption: '==请选择==',
+						   value: material.pressId,
+						   valueAllowUnset: true,
+						   disable: material.materialId() != null"></select>
+		</div>
+	</li> -->
+	<li>
+		<label class="title">
+			<span class="s-c-r">*</span>
+			<span data-bind="i18n: 'que.question.searchItem.outline'">大纲名称：</span>
+		</label>
+		<div class="con">
+			<input name="outlineName" class="u-ipt u-ipt-lg" maxlength="30" 
+				data-bind="value: outline.outlineName"/>
+		</div>
+	</li>
+</ul>
+</form>

@@ -1,0 +1,110 @@
+<%@ page pageEncoding="UTF-8"%>
+<%@ include file="/pages/common/tags.jsp"%>
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<!DOCTYPE html>
+<html>
+<head>
+<title>子女作业 - 乐课网</title>
+<%@ include file="/pages/common/meta.jsp"%>
+
+<link rel="stylesheet" type="text/css" href="${assets}/styles/homework/homework.css?t=20171115">
+</head>
+<body>
+	<%@ include file="/pages/header/header.jsp"%>
+	<div class="g-bd">
+		<%@ include file="/pages/navigate/navigate.jsp"%>
+		<div class="g-mn">
+			<div>
+				<ul id="jStuswitch" class="m-tab">
+					<c:forEach var="student" items="${studentList }" varStatus="s">
+						<c:if test="${s.index == 0 }"><c:set var="className" value="active"/></c:if>
+						<li data-status="${s.index + 3}" data-studentid="${student.id}" data-schoolid="${student.classes[0].schoolId }"
+							class="${className }"><a>${student.userName}</a></li>
+						<c:set var="className" value=""/>
+					</c:forEach>
+				</ul>
+			</div>
+			<div>
+				<ul id="jCorrectFlag" class="m-tab">
+					<li data-status="0" class="active"><a>全部作业</a></li>
+					<li data-status="1"><a>待完成作业</a></li>
+					<li data-status="2"><a>待订正作业</a></li>
+				</ul>
+			</div>
+			<form id="myHomeworkForm" method="post" autocomplete="off">
+				<div class="m-search-box">
+					<div class="item">
+						<label class="title">学科：</label>
+						<select id="jSubject" class="u-select u-select-nm"></select>
+						<input type="hidden" id="jSubjectId" name="subjectId" />
+						<label class="title">作业截止时间：</label>
+						<input name="closeTime" id="closeTime" class="u-ipt u-ipt-nm Wdate" />
+						至
+						<input name="closeEndTime" id="closeEndTime" class="u-ipt u-ipt-nm Wdate" />
+			        </div>
+					<div class="item">
+						<label class="title">作业类型：</label>
+						<select id="jHomeworkType" name="homeworkType" class="u-select u-select-nm"></select>
+						<label for="" class="title">资源类型：</label>
+			            <select id="jResType" name="resType" class="u-select u-select-nm">
+			            	<option value="0">所有类型</option>
+			            	<option value="1">课件</option>
+			            	<option value="2">微课</option>
+			            	<option value="3">试卷</option>
+			            </select>
+						<input id="ButMyHomework" type="button" class="u-btn u-btn-nm u-btn-bg-turquoise" value="查询">
+					</div>
+					<input type="hidden" id="jisSubmit" name="isSubmit" />
+					<input type="hidden" id="j_bugFixStage" name="bugFixStage" />
+					<input type="hidden" id="jStudentId" name="studentId" value="${studentList[0].id}" />
+					<input type="hidden" id="jSchoolId" name="schoolId" value="${studentList[0].classes[0].schoolId}" />
+				</div>
+				<div class="m-table">
+					<table>
+						<thead>
+							<tr>
+								<th>作业类型</th>
+								<th>资源类型</th>
+								<th style="width: 120px;">作业名称</th>
+								<th>学科</th>
+								<th>布置作业老师</th>
+								<th>作业截止时间</th>
+								<th>提交作业时间</th>
+								<th>作业状态</th>
+								<th>操作区</th>
+							</tr>
+						</thead>
+						<tbody id="myHomeworkContext"></tbody>
+					</table>
+					<div class="page" id="page"></div>
+				</div>
+			</form>
+		</div>
+	</div>
+
+	<script id="myHomeworkContext_tpl" type="x-mustache">
+{{#dataList}} 
+<tr>
+	<td>{{homeworkTypeStr}}</td>
+	<td>{{resTypeStr}}</td>
+	<td>{{homeworkName}}</td>
+	<td>{{subjectName}}</td>
+	<td>{{teacherName}}</td>
+	<td>{{closeTimeStr}}</td>
+	<td>{{submitTimeString}}</td>
+	<td>{{homeworkStatus}}</td>
+	<td class="operation">
+		{{^isInvalid}}{{{linkHtml}}}{{/isInvalid}}
+		{{#isInvalid}}<locale:message code="homework.homework.correct.already"/>{{/isInvalid}}	
+	</td>
+</tr>
+{{/dataList}}
+</script>
+	<script id="myHomeworkLink_tpl" type="x-mustache">
+		<a href="{{linkHref}}" target="_blank" class="link">{{linkName}}</a>
+	</script>
+	<script>
+		seajs.use('homework/homework/parent/stusHomeworkList');
+	</script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+/* 
+ * 包名: cn.strong.leke.homework.service
+ *
+ * 文件名：DoubtService.java
+ *
+ * 版权所有：Copyright www.leke.cn Corporation 2014 
+ * 
+ * 创建者: luf
+ *
+ * 日期：2014-6-18
+ */
+package cn.strong.leke.homework.service;
+
+import java.util.List;
+
+import cn.strong.leke.framework.page.jdbc.Page;
+import cn.strong.leke.homework.model.Doubt;
+import cn.strong.leke.homework.model.DoubtDtl;
+import cn.strong.leke.homework.model.DoubtNAPIDto;
+
+/**
+ * 〈一句话功能简述〉 〈功能详细描述〉
+ * 
+ * @author luf
+ * @version Avatar
+ */
+public interface DoubtService {
+
+	boolean saveDoubt(Doubt doubt);
+
+	List<DoubtDtl> doubtList(Doubt doubt, Page page);
+
+	DoubtDtl getDetail(DoubtDtl doubt);
+	
+	List<DoubtDtl> getTeacherDoubtl(Doubt doubt, Page page);
+	
+	void saveDoubtN(List<DoubtNAPIDto> doubtList);
+
+}

@@ -1,0 +1,53 @@
+var {toFixed, toRate} = require('../../../utils/number');
+var {toSecond, toLevel, toLevelName} = require('./homework-utils');
+
+class SummaryInfo extends React.Component {
+	render() {
+		let {summary, totalScore, userName, myself} = this.props;
+		return (
+			<section id={this.props.id} className="ana-module">
+				<section className="ana-title">{myself ? null : userName}<span className="fc-green">《{summary.homeworkName}》</span>作业分析报告</section>
+				{this.renderTextInfo()}
+			</section>
+		);
+	}
+	renderTextInfo() {
+		let {summary, userName, totalScore, myself} = this.props;
+		let {totalNum, selfUsedTime, avgUsedTime, submitRank, selfScore, scoreRank} = summary;
+		var usedTimeComps = ['短于', '等于', '长于'];
+		var usedTimeIdx = 1;
+		if (selfUsedTime > avgUsedTime) {
+			usedTimeIdx = 2;
+		} else if (selfUsedTime < avgUsedTime) {
+			usedTimeIdx = 0;
+		}
+		if (myself) {
+			return (
+				<article className="texts">
+					<section>亲爱的<span className="fc-green">{userName}</span>同学：</section>
+					<section className="txt-idt">
+						<span>您好，本次作业共有<span className="fc-green">{totalNum}</span>位同学参加，</span>
+						<span>您的作业用时<span className="fc-green">{toSecond(selfUsedTime)}</span>分钟，<span className="fc-green">{usedTimeComps[usedTimeIdx]}</span>班级平均用时，</span>
+						<span>您第<span className="fc-green">{submitRank}</span>个提交，早于<span className="fc-green">{toRate(totalNum - submitRank, totalNum, 1)}</span>%的同学，</span>
+						<span>得分<span className="fc-green">{toFixed(selfScore, 1)}</span>分（满分{toFixed(totalScore)}分），排名第<span className="fc-green">{scoreRank}</span>，</span>
+						<span>表现<span className="fc-green">{toLevelName(toRate(selfScore, totalScore, 1))}</span>，领先全班<span className="fc-green">{toRate(totalNum - scoreRank, totalNum, 1)}</span>%的同学；</span>
+						<span>请努力学习，争取更上一层楼。</span>
+					</section>
+				</article>
+			);
+		} else {
+			return (
+				<article className="texts">
+					<section className="txt-idt">
+						<span><span className="fc-green">{userName}</span>同学作业用时<span className="fc-green">{toSecond(selfUsedTime)}</span>分钟，<span className="fc-green">{usedTimeComps[usedTimeIdx]}</span>班级平均用时，</span>
+						<span>第<span className="fc-green">{submitRank}</span>个提交，早于<span className="fc-green">{toRate(totalNum - submitRank, totalNum, 1)}</span>%的同学，</span>
+						<span>得分<span className="fc-green">{toFixed(selfScore, 1)}</span>分（满分{toFixed(totalScore)}分），排名第<span className="fc-green">{scoreRank}</span>，</span>
+						<span>表现<span className="fc-green">{toLevelName(toRate(selfScore, totalScore, 1))}</span>，领先全班<span className="fc-green">{toRate(totalNum - scoreRank, totalNum, 1)}</span>%的同学。</span>
+					</section>
+				</article>
+			);
+		}
+	}
+}
+
+module.exports = SummaryInfo;

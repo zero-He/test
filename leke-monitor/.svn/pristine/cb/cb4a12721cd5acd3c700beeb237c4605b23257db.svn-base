@@ -1,0 +1,280 @@
+package cn.strong.leke.monitor.controller.crm;
+
+import java.time.LocalDate;
+import java.util.List;
+
+import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
+
+import cn.strong.leke.common.serialize.support.json.JsonUtils;
+import cn.strong.leke.context.base.SchoolContext;
+import cn.strong.leke.context.base.UserBaseContext;
+import cn.strong.leke.context.user.UserContext;
+import cn.strong.leke.core.office.ExportExcelForTable;
+import cn.strong.leke.framework.page.jdbc.Page;
+import cn.strong.leke.framework.web.JsonResult;
+import cn.strong.leke.model.base.School;
+import cn.strong.leke.model.user.Role;
+import cn.strong.leke.model.user.User;
+import cn.strong.leke.model.user.UserBase;
+import cn.strong.leke.monitor.core.model.ClassStatistics;
+import cn.strong.leke.monitor.core.service.IClassStatisticsService;
+import cn.strong.leke.monitor.util.FileUtils;
+
+/**
+ * @ClassName: ClassStatisticsController
+ * @Description: CRM课堂统计控制器
+ * @author huangkai
+ * @date 2016年11月16日 下午3:14:07
+ * @version V1.0
+ */
+@Controller
+@RequestMapping("/auth/common/crm/*")
+public class ClassStatisticsController
+{
+	@Resource
+	private IClassStatisticsService classStatisticsService;
+
+	/**
+	 * @Description: 学校统计列表
+	 * @param model    参数
+	 * @throws
+	 */
+	@RequestMapping("schoolStatisticsList")
+	public String schoolStatisticsList(Model model)
+	{
+		User user = UserContext.user.get();
+
+		Role role = user.getCurrentRole();
+		if (role.getId().equals(600L) || role.getId().equals(601L) || role.getId().equals(602L)
+				|| role.getId().equals(603L) || role.getId().equals(604L))
+		{
+			return "redirect:/auth/common/crm/leader/schoolleaderList.htm";
+		}
+
+		LocalDate localDate = LocalDate.now();
+
+		model.addAttribute("dateEnd", localDate);
+		model.addAttribute("dateStart", localDate.minusMonths(1));
+		model.addAttribute("schoolStageStr", JsonUtils.toJSON(classStatisticsService.getSchoolStage()));
+		model.addAttribute("classStatistics", JsonUtils.toJSON(new ClassStatistics()));
+		return "/auth/common/crm/schoolStatisticsList";
+	}
+
+	/**
+	 * @Description: 学校统计列表分页数据源
+	 * @param classStatistics
+	 * @param page
+	 * @return    参数
+	 * @throws
+	 */
+	@RequestMapping("schoolStatisticsPage")
+	@ResponseBody
+	public JsonResult schoolStatisticsPage(ClassStatistics classStatistics, Page page, String isFind)
+	{
+		JsonResult jsonResult = new JsonResult();
+
+		User user = UserContext.user.get();
+		classStatistics.setSellerId(user.getId());
+		List<ClassStatistics> listClassStatistics = classStatisticsService.querySchoolClassStatistics(classStatistics,
+				page);
+
+		page.setDataList(listClassStatistics);
+
+		jsonResult.addDatas("page", page);
+
+		return jsonResult;
+	}
+
+	/**
+	 * @Description: 学校统计课堂明细
+	 * @param classStatistics
+	 * @param page
+	 * @return    参数
+	 * @throws
+	 */
+	@RequestMapping("classDetails")
+	@ResponseBody
+	public JsonResult classDetails(ClassStatistics classStatistics)
+	{
+		JsonResult jsonResult = new JsonResult();
+
+		jsonResult.addDatas("classDetails", JsonUtils.toJSON(classStatisticsService.getClassDetails(classStatistics)));
+
+		return jsonResult;
+	}
+
+	@RequestMapping("classStatisticsExport")
+	@ResponseBody
+	public void classStatisticsExport(String dataJson, HttpServletRequest request, HttpServletResponse response)
+			throws Exception
+	{
+		ClassStatistics classStatistics = JsonUtils.fromJSON(dataJson, ClassStatistics.class);
+
+		User user = UserContext.user.get();
+		classStatistics.setSellerId(user.getId());
+		
+		List<ClassStatistics> listClassStatistics = classStatisticsService.getExportData(classStatistics);
+
+		String[] headers =
+		{ "学校名称", "学段", "已结束课堂数", "备课课堂数", "上课课堂数", "备课率", "上课率", "预习作业布置份数", "预习作业绑定率", "课件数", "课件绑定率", "随堂作业布置份数",
+				"随堂作业绑定率", "随堂测试次数", "随堂测试发起率", "快速问答次数", "快速问答发起率", "课后作业布置份数", "作业布置数", "作业提交数", "作业批改数", "作业提交率",
+				"作业批改率" };
+		String[] fieldNames =
+		{ "schoolName", "schoolStageName", "endClassNum", "beikeClassNum", "classNum", "beikeRate", "classRate",
+				"previewWorkNum", "previewWorkRate", "coursewareNum", "coursewareRate", "classWorkNum", "classWorkRate",
+				"classTestNum", "classTestRate", "questionsAnswersNum", "questionsAnswersRate", "afterClassWorkNum",
+				"classWorkTotalNum", "workFinishNum", "workcorrectNum", "workFinishRate", "workcorrectRate" };
+
+		String pattern = "yyyy-MM-dd HH:mm";
+		response.setCharacterEncoding("UTF-8");
+		response.setContentType("application/octet-stream;charset=UTF-8");
+
+		String agent = request.getHeader("user-agent");
+
+		StringBuffer titleSingle = new StringBuffer("");
+		titleSingle.append("学校课堂统计");
+
+		String fileName = FileUtils.getEncodingFileName(titleSingle.toString() + ".xls", agent);
+		StringBuffer sb = new StringBuffer();
+		sb.append("attachment;").append(fileName);
+		response.setHeader("Content-disposition", sb.toString());
+
+		new ExportExcelForTable<ClassStatistics>().exportExcel(titleSingle.toString(), headers, fieldNames,
+				listClassStatistics, response.getOutputStream(), pattern);
+	}
+
+	/**
+	 * @Description: 老师统计列表
+	 * @param sellerId（客户经理）
+	 * @param schoolId（学校ID）
+	 * @param schoolStageId（学段ID）
+	 * @param model    参数
+	 * @throws
+	 */
+	@RequestMapping("teacherStatisticsList")
+	public void teacherStatisticsList(Long sellerId, Long schoolId, Long schoolStageId, String statisticsTimeStart,
+			String statisticsTimeEnd, Model model)
+	{
+		UserBase userBase = UserBaseContext.getUserBaseByUserId(sellerId);
+		School school = SchoolContext.getSchoolBySchoolId(schoolId);
+
+		LocalDate localDate = LocalDate.now();
+
+		if (statisticsTimeEnd == null || statisticsTimeEnd == "")
+		{
+			model.addAttribute("dateEnd", localDate);
+		} else
+		{
+			model.addAttribute("dateEnd", statisticsTimeEnd);
+		}
+
+		if (statisticsTimeStart == null || statisticsTimeStart == "")
+		{
+			model.addAttribute("dateStart", localDate.minusMonths(1));
+		} else
+		{
+			model.addAttribute("dateStart", statisticsTimeStart);
+		}
+		model.addAttribute("sellerName", userBase.getUserName());
+		model.addAttribute("sellerId", sellerId);
+		model.addAttribute("schoolName", school.getName());
+		model.addAttribute("schoolId", schoolId);
+		model.addAttribute("schoolStageId", schoolStageId);
+		model.addAttribute("subjectStr", JsonUtils.toJSON(classStatisticsService.getSubject(schoolId, schoolStageId)));
+		model.addAttribute("gradeStr", JsonUtils.toJSON(classStatisticsService.getGrade(schoolId, schoolStageId)));
+		model.addAttribute("classStatistics", JsonUtils.toJSON(new ClassStatistics()));
+	}
+
+	/**
+	 * @Description: 老师统计列表分页数据源
+	 * @param classStatistics
+	 * @param page
+	 * @return    参数
+	 * @throws
+	 */
+	@RequestMapping("teacherStatisticsPage")
+	@ResponseBody
+	public JsonResult teacherStatisticsPage(ClassStatistics classStatistics, Page page)
+	{
+		JsonResult jsonResult = new JsonResult();
+
+		List<ClassStatistics> listClassStatistics = classStatisticsService.queryTeacherClassStatistics(classStatistics,
+				page);
+
+		page.setDataList(listClassStatistics);
+		jsonResult.addDatas("page", page);
+
+		return jsonResult;
+	}
+
+	/**
+	 * @Description: 老师统计课堂明细
+	 * @param classStatistics
+	 * @param page
+	 * @return    参数
+	 * @throws
+	 */
+	@RequestMapping("teacherClassDetails")
+	@ResponseBody
+	public JsonResult teacherClassDetails(ClassStatistics classStatistics)
+	{
+		JsonResult jsonResult = new JsonResult();
+
+		jsonResult.addDatas("classDetails",
+				JsonUtils.toJSON(classStatisticsService.getTeacherClassDetails(classStatistics)));
+
+		return jsonResult;
+	}
+
+	/**
+	 * @Description: 老师统计导出
+	 * @param dataJson
+	 * @param request
+	 * @param response
+	 * @throws Exception    参数
+	 * @throws
+	 */
+	@RequestMapping("teacherStatisticsExport")
+	@ResponseBody
+	public void teacherStatisticsExport(String dataJson, HttpServletRequest request, HttpServletResponse response)
+			throws Exception
+	{
+		ClassStatistics classStatistics = JsonUtils.fromJSON(dataJson, ClassStatistics.class);
+
+		List<ClassStatistics> listClassStatistics = classStatisticsService.getTeacherExportData(classStatistics);
+
+		String[] headers =
+		{ "学科", "年级", "老师姓名", "已结束课堂数", "备课课堂数", "上课课堂数", "备课率", "上课率", "预习作业布置份数", "预习作业绑定率", "课件数", "课件绑定率",
+				"随堂作业布置份数", "随堂作业绑定率", "随堂测试次数", "随堂测试发起率", "快速问答次数", "快速问答发起率", "课后作业布置份数", "作业布置数", "作业提交数", "作业批改数",
+				"作业提交率", "作业批改率" };
+		String[] fieldNames =
+		{ "subjectName", "gradeName", "teacherName", "endClassNum", "beikeClassNum", "classNum", "beikeRate",
+				"classRate", "previewWorkNum", "previewWorkRate", "coursewareNum", "coursewareRate", "classWorkNum",
+				"classWorkRate", "classTestNum", "classTestRate", "questionsAnswersNum", "questionsAnswersRate",
+				"afterClassWorkNum", "classWorkTotalNum", "workFinishNum", "workcorrectNum", "workFinishRate",
+				"workcorrectRate" };
+		String pattern = "yyyy-MM-dd HH:mm";
+
+		response.setCharacterEncoding("UTF-8");
+		response.setContentType("application/octet-stream;charset=UTF-8");
+
+		String agent = request.getHeader("user-agent");
+		StringBuffer titleSingle = new StringBuffer("");
+		titleSingle.append("老师课堂统计");
+
+		String fileName = FileUtils.getEncodingFileName(titleSingle.toString() + ".xls", agent);
+		StringBuffer sb = new StringBuffer();
+		sb.append("attachment;").append(fileName);
+		response.setHeader("Content-disposition", sb.toString());
+
+		new ExportExcelForTable<ClassStatistics>().exportExcel(titleSingle.toString(), headers, fieldNames,
+				listClassStatistics, response.getOutputStream(), pattern);
+	}
+}

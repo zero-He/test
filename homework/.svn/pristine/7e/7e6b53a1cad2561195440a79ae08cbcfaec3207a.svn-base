@@ -1,0 +1,646 @@
+package cn.strong.leke.homework.controller;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.annotation.Resource;
+import javax.servlet.http.HttpServletRequest;
+
+import org.apache.commons.lang.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
+
+import cn.strong.leke.common.utils.DateUtils;
+import cn.strong.leke.context.base.UserBaseContext;
+import cn.strong.leke.context.base.UserBaseHelper;
+import cn.strong.leke.context.paper.PaperContext;
+import cn.strong.leke.context.question.QuestionContext;
+import cn.strong.leke.context.user.cst.RoleCst;
+import cn.strong.leke.core.business.incentive.DynamicHelper;
+import cn.strong.leke.framework.exceptions.ValidateException;
+import cn.strong.leke.framework.mq.MessageSender;
+import cn.strong.leke.framework.web.JsonResult;
+import cn.strong.leke.homework.manage.WorkDetailService;
+import cn.strong.leke.homework.model.ApiHwCount;
+import cn.strong.leke.homework.model.ApiParamDTO;
+import cn.strong.leke.homework.model.Homework;
+import cn.strong.leke.homework.model.HomeworkData;
+import cn.strong.leke.homework.model.HomeworkDtl;
+import cn.strong.leke.homework.model.HomeworkDtlDTO;
+import cn.strong.leke.homework.model.HomeworkDtlInfo;
+import cn.strong.leke.homework.model.HomeworkDtlQuery;
+import cn.strong.leke.homework.model.HomeworkType;
+import cn.strong.leke.homework.model.StuHwByDayDTO;
+import cn.strong.leke.homework.model.StuSubjRes;
+import cn.strong.leke.homework.model.WorkDetail;
+import cn.strong.leke.homework.model.WorkRequest;
+import cn.strong.leke.homework.service.HomeworkDtlService;
+import cn.strong.leke.homework.service.HomeworkMainService;
+import cn.strong.leke.homework.service.HomeworkService;
+import cn.strong.leke.homework.util.HomeworkCst;
+import cn.strong.leke.model.APIModel;
+import cn.strong.leke.model.incentive.DynamicInfo;
+import cn.strong.leke.model.incentive.DynamicTypes;
+import cn.strong.leke.model.paper.PaperDTO;
+import cn.strong.leke.model.paper.QuestionGroup;
+import cn.strong.leke.model.paper.ScoredQuestion;
+import cn.strong.leke.model.question.QuestionDTO;
+import cn.strong.leke.model.user.User;
+
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+
+/**
+ * 作业系统对外接口。
+ * @author  andy
+ * @created 2014年6月12日 下午2:40:34
+ * @since   v1.0.0
+ */
+@Controller
+@RequestMapping("/api/w/homework/*")
+public class APIHomeworkController {
+
+	private static final Logger logger = LoggerFactory.getLogger(APIHomeworkController.class);
+
+	@Resource
+	private HomeworkService homeworkService;
+	@Resource
+	private HomeworkDtlService homeworkDtlService;
+	@Resource
+	private HomeworkMainService homeworkMainService;
+	@Resource
+	private WorkDetailService workDetailService;
+	@Resource
+	private MessageSender onlinetestSender;
+
+	/**
+	 * 接口请求分发。
+	 * @param data
+	 * @param model
+	 * @return
+	 */
+	@RequestMapping("invoke")
+	public String invoke(@RequestParam("data") String data, Model model) {
+		Gson gson = new Gson();
+		TypeToken<APIModel<ApiParamDTO>> type = new TypeToken<APIModel<ApiParamDTO>>() {
+		};
+		APIModel<ApiParamDTO> param = gson.fromJson(data, type.getType());
+		String m = param.getM();
+		String methodName = m.substring(m.indexOf("_") + 1, m.lastIndexOf("_"));
+		model.addAttribute("m", param.getM());
+		model.addAttribute("p", param.getP());
+		APILogger.departed(param.getM(), data);
+		return "forward:/api/w/homework/" + methodName + ".htm";
+	}
+
+	private String toResponseM(String m) {
+		return m.substring(0, m.lastIndexOf("_")) + "_replay";
+	}
+
+	private APIModel<JsonResult> buildApiModel(JsonResult json, HttpServletRequest request) {
+		String m = (String) request.getAttribute("m");
+		APIModel<JsonResult> result = new APIModel<JsonResult>();
+		result.setP(json);
+		result.setM(this.toResponseM(m));
+		return result;
+	}
+
+	/**
+	 * 描述:根据月份和老师标识，查询教师每日作业数量
+	 * @param request
+	 * @return
+	 */
+	@Deprecated
+	@ResponseBody
+	@RequestMapping("getHwByMonth")
+	public APIModel<JsonResult> getHwByMonth(HttpServletRequest request) {
+		ApiParamDTO apiParamDTO = (ApiParamDTO) request.getAttribute("p");
+		JsonResult json = new JsonResult();
+		try {
+			List<ApiHwCount> hwCountList = homeworkService.getHwByMonth(apiParamDTO.getTeacherId(),
+					apiParamDTO.getMonth());
+			json.addDatas("list", hwCountList);
+		} catch (Exception e) {
+			logger.error(e.getMessage(), e);
+			json.setErr(e.getMessage());
+		}
+		return this.buildApiModel(json, request);
+	}
+
+	/**
+	 * 描述:根据日期和老师标识，查询教师当日作业情况
+	 * @param request
+	 * @return
+	 */
+	@Deprecated
+	@ResponseBody
+	@RequestMapping("getHwByDay")
+	public APIModel<JsonResult> getHwByDay(HttpServletRequest request) {
+		ApiParamDTO apiParamDTO = (ApiParamDTO) request.getAttribute("p");
+		JsonResult json = new JsonResult();
+		try {
+			List<Homework> hwList = homeworkService.getHwByDay(apiParamDTO.getTeacherId(), apiParamDTO.getDay());
+			List<HashMap<String, Object>> list = new ArrayList<HashMap<String, Object>>();
+			for (Homework hw : hwList) {
+				HashMap<String, Object> map = new HashMap<String, Object>();
+				map.put("homeworkId", hw.getHomeworkId());
+				HomeworkType homeworkType = HomeworkType.valueOf(hw.getHomeworkType());
+				if (homeworkType != null) {
+					map.put("homeworkType", homeworkType.name);
+				}
+				map.put("homeworkName", hw.getHomeworkName());
+				map.put("status", hw.getStatus());
+				map.put("paperId", hw.getPaperId());
+				map.put("subjective", hw.getSubjective());
+				map.put("className", hw.getClassName());
+				map.put("closeTime", DateUtils.format(hw.getCloseTime(), DateUtils.LONG_DATE_PATTERN));
+				map.put("totalNum", hw.getTotalNum());
+				map.put("submitNum", hw.getFinishNum());
+				map.put("correctNum", hw.getCorrectNum());
+
+				list.add(map);
+			}
+			json.addDatas("list", list);
+		} catch (Exception e) {
+			logger.error(e.getMessage(), e);
+			json.setErr(e.getMessage());
+		}
+		return this.buildApiModel(json, request);
+	}
+
+	/**
+	 * 描述:根据作业标识，查询每个学生的作业上交情况
+	 * @param request
+	 * @return
+	 */
+	@Deprecated
+	@ResponseBody
+	@RequestMapping("getHwDtl")
+	public APIModel<JsonResult> getHwDtl(HttpServletRequest request) {
+		ApiParamDTO apiParamDTO = (ApiParamDTO) request.getAttribute("p");
+		JsonResult json = new JsonResult();
+		try {
+			List<HomeworkDtlDTO> hwDtlList = homeworkDtlService.getHwDtl(apiParamDTO.getHomeworkId());
+			List<HashMap<String, Object>> list = new ArrayList<HashMap<String, Object>>();
+			for (HomeworkDtlDTO dtl : hwDtlList) {
+				HashMap<String, Object> map = new HashMap<String, Object>();
+				map.put("homeworkDtlId", dtl.getHomeworkDtlId());
+				map.put("studentId", dtl.getStudentId());
+				map.put("studentName", dtl.getStudentName());
+				map.put("homeworkName", dtl.getHomeworkName());
+				map.put("score", dtl.getScore());
+				map.put("isSubmit", dtl.getSubmitStatus());
+				map.put("isCorrect", dtl.getCorrectTime() == null ? 0 : 1);
+				map.put("submitSource", dtl.getSubmitSource());
+				map.put("correctSource", dtl.getCorrectSource());
+				map.put("soundFile", dtl.getSoundFile());
+				list.add(map);
+			}
+			json.addDatas("list", list);
+		} catch (Exception e) {
+			logger.error(e.getMessage(), e);
+			json.setErr(e.getMessage());
+		}
+		return this.buildApiModel(json, request);
+	}
+
+	/**
+	 * 作业题目及答案
+	 * @param request
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping("getHwPaperInfo")
+	public APIModel<JsonResult> getHwPaperInfo(HttpServletRequest request) {
+		// 接口参数：homeworkId
+		ApiParamDTO apiParamDTO = (ApiParamDTO) request.getAttribute("p");
+		JsonResult json = new JsonResult();
+		try {
+			Long paperId = apiParamDTO.getPaperId();
+			if (paperId == null) {
+				Homework homework = this.homeworkService.getHomeworkById(apiParamDTO.getHomeworkId());
+				paperId = homework.getPaperId();
+			}
+			PaperDTO paperDTO = PaperContext.getPaperDTO(paperId);
+			List<Long> questionIds = new ArrayList<Long>();
+			for (QuestionGroup questionGroup : paperDTO.getDetail().getGroups()) {
+				for (ScoredQuestion scoredQuestion : questionGroup.getQuestions()) {
+					questionIds.add(scoredQuestion.getQuestionId());
+				}
+			}
+			// 试卷信息
+			Map<String, Object> paperMap = new HashMap<String, Object>();
+			paperMap.put("paperId", paperDTO.getPaperId());
+			paperMap.put("paperType", paperDTO.getPaperType());
+			paperMap.put("subjective", paperDTO.getSubjective());
+			paperMap.put("handwritten", paperDTO.getHandwritten());
+			paperMap.put("schoolStageId", paperDTO.getSchoolStageId());
+			paperMap.put("subjectId", paperDTO.getSubjectId());
+
+			json.addDatas("paper", paperMap);
+			json.addDatas("attachment", paperDTO.getAttachment());
+			json.addDatas("paperDetail", paperDTO.getDetail());
+			json.addDatas("questionList", QuestionContext.findQuestions(questionIds.toArray(new Long[0])));
+		} catch (Exception e) {
+			logger.error(e.getMessage(), e);
+			json.setErr(e.getMessage());
+		}
+		return this.buildApiModel(json, request);
+	}
+
+	/**
+	 * 作业题目及答案
+	 * @param request
+	 * @return
+	 */
+	@Deprecated
+	@ResponseBody
+	@RequestMapping("getHwDtlInfo")
+	public APIModel<JsonResult> getHwDtlInfo(HttpServletRequest request) {
+		// 接口参数：homeworkDtlId
+		ApiParamDTO apiParamDTO = (ApiParamDTO) request.getAttribute("p");
+		JsonResult json = new JsonResult();
+		try {
+			HomeworkDtl homeworkDtl = this.homeworkDtlService.getHomeworkDtlById(apiParamDTO.getHomeworkDtlId());
+			json.addDatas("modifiedOn", homeworkDtl.getModifiedOn());
+
+			WorkDetail workDetail = this.workDetailService.getWorkDetailByHomeworkDtlId(apiParamDTO.getHomeworkDtlId());
+			if (workDetail != null) {
+				json.addDatas("questionResultList", workDetail.getQuestions());
+			} else {
+				json.addDatas("questionResultList", Collections.EMPTY_LIST);
+			}
+		} catch (Exception e) {
+			logger.error(e.getMessage(), e);
+			json.setErr(e.getMessage());
+		}
+		return this.buildApiModel(json, request);
+	}
+
+	/**
+	 * 批改结果回传
+	 * @param request
+	 * @return
+	 */
+	@Deprecated
+	@ResponseBody
+	@RequestMapping("upCorrectResult")
+	public APIModel<JsonResult> upCorrectResult(HttpServletRequest httpRequest) {
+		// 接口参数：homeworkDtlId, sourceFile, questionResultList
+		ApiParamDTO apiParamDTO = (ApiParamDTO) httpRequest.getAttribute("p");
+		JsonResult json = new JsonResult();
+		try {
+			WorkRequest request = new WorkRequest();
+			request.setHomeworkDtlId(apiParamDTO.getHomeworkDtlId());
+			request.setCommentary(apiParamDTO.getSoundFile());
+			request.setDataSource(HomeworkCst.HOMEWORK_DATA_SOURCE_PAD);
+			request.setQuestionResultList(apiParamDTO.getQuestionResultList());
+			HomeworkDtlInfo homeworkDtlInfo = this.homeworkMainService.saveCorrectSubmit(request);
+			DynamicInfo dynamicInfo = new DynamicInfo();
+			dynamicInfo.setDynamicType(DynamicTypes.HW_CORRECT_WORK);
+			dynamicInfo.setTitle(homeworkDtlInfo.getHomeworkName());
+			Homework homework = homeworkService.getHomeworkById(homeworkDtlInfo.getHomeworkId());
+			dynamicInfo.setUserId(homework.getTeacherId());
+			dynamicInfo.setUserName(homework.getTeacherName());
+			dynamicInfo.setRoleId(RoleCst.TEACHER);
+			dynamicInfo.setSchoolId(homework.getSchoolId());
+			DynamicHelper.publish(dynamicInfo);
+		} catch (Exception e) {
+			logger.error(e.getMessage(), e);
+			json.setErr(e.getMessage());
+		}
+		return this.buildApiModel(json, httpRequest);
+	}
+
+	// ******************************************************************************************
+	// *  以下为学生作业接口
+	// ******************************************************************************************
+
+	/**
+	 * 根据月份和学生标识，查询学生每日作业数量
+	 * @param request
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping("getStuHwByMonth")
+	public APIModel<JsonResult> getStuHwByMonth(HttpServletRequest request) {
+		ApiParamDTO apiParamDTO = (ApiParamDTO) request.getAttribute("p");
+		JsonResult json = new JsonResult();
+		try {
+			// 根据学生ID和月份查询
+			List<ApiHwCount> hwCountList = homeworkService.queryHwStuMonth(apiParamDTO.getStudentId(),
+					apiParamDTO.getMonth());
+			// 参考：homeworkService.getHwByMonth();
+			json.addDatas("list", hwCountList);
+		} catch (Exception e) {
+			logger.error(e.getMessage(), e);
+			json.setErr(e.getMessage());
+		}
+		return this.buildApiModel(json, request);
+	}
+
+	/**
+	 * 根据日期和学生标识，查询学生作业列表。
+	 * @param request
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping("getStuHwByDay")
+	public APIModel<JsonResult> getStuHwByDay(HttpServletRequest request) {
+		ApiParamDTO apiParamDTO = (ApiParamDTO) request.getAttribute("p");
+		JsonResult json = new JsonResult();
+		try {
+			List<StuHwByDayDTO> hwCountList = homeworkDtlService.queryStuHwByDayList(apiParamDTO.getStudentId(),
+					apiParamDTO.getDay());
+			json.addDatas("list", hwCountList);
+		} catch (Exception e) {
+			logger.error(e.getMessage(), e);
+			json.setErr(e.getMessage());
+		}
+		return this.buildApiModel(json, request);
+	}
+
+	/**
+	 * 查询作业信息。
+	 * @param request
+	 * @return
+	 */
+	@Deprecated
+	@ResponseBody
+	@RequestMapping("getStuHomework")
+	public APIModel<JsonResult> getStuHomework(HttpServletRequest request) {
+		ApiParamDTO apiParamDTO = (ApiParamDTO) request.getAttribute("p");
+		JsonResult json = new JsonResult();
+		try {
+			StuHwByDayDTO stuHwByDayDTO;
+			if (apiParamDTO.getHomeworkDtlId() != null) {
+				stuHwByDayDTO = homeworkDtlService.getStuHomeworkByHomeworkDtlId(apiParamDTO.getHomeworkDtlId());
+			} else {
+				stuHwByDayDTO = homeworkDtlService.getStuHomeworkByHomeworkIdAndStudentId(apiParamDTO.getHomeworkId(),
+						apiParamDTO.getStudentId());
+			}
+			//备课作业 补上
+			if(stuHwByDayDTO == null){
+				User user =UserBaseHelper.toUser(UserBaseContext.getUserBaseByUserId(apiParamDTO.getStudentId()));
+				this.homeworkService.createStuBeikeHwWithTx(apiParamDTO.getHomeworkId(), user);
+				stuHwByDayDTO = homeworkDtlService.getStuHomeworkByHomeworkIdAndStudentId(apiParamDTO.getHomeworkId(),
+						apiParamDTO.getStudentId());
+			}
+			json.addDatas("homeworkId", stuHwByDayDTO.getHomeworkId());
+			json.addDatas("teacherName", stuHwByDayDTO.getTeacherName());
+			json.addDatas("paperId", stuHwByDayDTO.getPaperId());
+			json.addDatas("status", stuHwByDayDTO.getStatus());
+			json.addDatas("subjectId", stuHwByDayDTO.getSubjectId());
+			json.addDatas("subjectName", stuHwByDayDTO.getSubjectName());
+			json.addDatas("className", stuHwByDayDTO.getClassName());
+			json.addDatas("courseName", stuHwByDayDTO.getCourseName());
+			json.addDatas("homeworkName", stuHwByDayDTO.getHomeworkName());
+			json.addDatas("homeworkType", stuHwByDayDTO.getHomeworkType());
+			json.addDatas("startTime", stuHwByDayDTO.getStartTime());
+			json.addDatas("closeTime", stuHwByDayDTO.getCloseTime());
+			json.addDatas("subjective", stuHwByDayDTO.getSubjective());
+			json.addDatas("homeworkDtlId", stuHwByDayDTO.getHomeworkDtlId());
+			json.addDatas("submitStatus", stuHwByDayDTO.getSubmitStatus());
+			json.addDatas("correctTime", stuHwByDayDTO.getCorrectTime());
+			json.addDatas("soundFile", stuHwByDayDTO.getSoundFile());
+			json.addDatas("score", stuHwByDayDTO.getScore());
+			json.addDatas("bugFixStage", stuHwByDayDTO.getBugFixStage());
+			json.addDatas("isSelfCheck", stuHwByDayDTO.getIsSelfCheck());
+			json.addDatas("isOpenAnswer", stuHwByDayDTO.getIsOpenAnswer());
+			
+		} catch (Exception e) {
+			logger.error(e.getMessage(), e);
+			json.setErr(e.getMessage());
+		}
+		return this.buildApiModel(json, request);
+	}
+
+	/**
+	 * 学生作业列表查询。
+	 * @param request
+	 * @return
+	 */
+	@Deprecated
+	@ResponseBody
+	@RequestMapping("findStuHomeworkList")
+	public APIModel<JsonResult> findStuHomeworkList(HttpServletRequest request) {
+		ApiParamDTO apiParamDTO = (ApiParamDTO) request.getAttribute("p");
+		JsonResult json = new JsonResult();
+		try {
+			HomeworkDtlQuery query = new HomeworkDtlQuery();
+			query.setStudentId(apiParamDTO.getStudentId());
+			query.setSubjectId(apiParamDTO.getSubjectId());
+			query.setHomeworkType(apiParamDTO.getHomeworkType());
+			query.setCloseTime(apiParamDTO.getStartTime());
+			query.setCloseEndTime(apiParamDTO.getEndTime());
+			query.setStart(apiParamDTO.getStart());
+			query.setLimit(apiParamDTO.getLimit());
+			// query.setCorrectFlag(correctFlag);
+			List<StuHwByDayDTO> list = homeworkDtlService.findStuHomeworkList(query);
+			json.addDatas("list", list);
+		} catch (Exception e) {
+			logger.error(e.getMessage(), e);
+			json.setErr(e.getMessage());
+		}
+		return this.buildApiModel(json, request);
+	}
+
+	/**
+	 * 保存/提交学生作业，返回批改结果。
+	 * @param request
+	 * @return
+	 */
+	@Deprecated
+	@ResponseBody
+	@RequestMapping("upStuHwInfo")
+	public APIModel<JsonResult> upStuHwInfo(HttpServletRequest request) {
+		ApiParamDTO apiParamDTO = (ApiParamDTO) request.getAttribute("p");
+		JsonResult json = new JsonResult();
+		try {
+			WorkRequest workRequest = new WorkRequest();
+			workRequest.setHomeworkDtlId(apiParamDTO.getHomeworkDtlId());
+			workRequest.setAnswerInfoList(apiParamDTO.getAnswerList());
+			workRequest.setDataSource(HomeworkCst.HOMEWORK_DATA_SOURCE_PAD);
+			if (HomeworkCst.API_MOBILE_SUBMIT_TYPE_SAVE == apiParamDTO.getSubmitType()) {
+				this.homeworkMainService.saveAnswerSnapshot(workRequest);
+			} else {
+				this.homeworkMainService.saveAnswerSubmit(workRequest);
+				HomeworkDtl homeworkDtl = this.homeworkDtlService.getHomeworkDtlById(apiParamDTO.getHomeworkDtlId());
+				json.addDatas("homeworkDtlId", apiParamDTO.getHomeworkDtlId());
+				json.addDatas("submitStatus", homeworkDtl.getSubmitStatus());
+				String correctTime = null;
+				if (homeworkDtl.getCorrectTime() != null) {
+					correctTime = DateUtils.format(homeworkDtl.getCorrectTime(), DateUtils.LONG_DATE_PATTERN);
+				}
+				json.addDatas("correctTime", correctTime);
+				json.addDatas("soundFile", homeworkDtl.getSoundFile());
+				json.addDatas("score", homeworkDtl.getScore());
+			}
+		} catch (Exception e) {
+			logger.error(e.getMessage(), e);
+			json.setErr(e.getMessage());
+		}
+		return this.buildApiModel(json, request);
+	}
+
+	/**
+	 * 获取试题
+	 * @param request
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping("getQuestion")
+	public APIModel<JsonResult> getQuestion(HttpServletRequest request) {
+		ApiParamDTO apiParamDTO = (ApiParamDTO) request.getAttribute("p");
+		JsonResult json = new JsonResult();
+		try {
+			List<Long> questionIds = apiParamDTO.getQuestionIds();
+			List<QuestionDTO> questionList = QuestionContext.findQuestions(questionIds);
+			json.addDatas("questionList", questionList);
+		} catch (Exception e) {
+			logger.error(e.getMessage(), e);
+			json.setErr(e.getMessage());
+		}
+		return this.buildApiModel(json, request);
+	}
+
+	// ******************************************************************************************
+	// *  以下为Flash端接口
+	// ******************************************************************************************
+
+	/**
+	 * 根据单课标识和老师标识，获取作业列表。
+	 * @param request
+	 * @return
+	 */
+	@Deprecated
+	@ResponseBody
+	@RequestMapping("getHwByCourseId")
+	public APIModel<JsonResult> getHwByCourseId(HttpServletRequest request) {
+		// 接口参数：courseId, teacherId
+		ApiParamDTO apiParamDTO = (ApiParamDTO) request.getAttribute("p");
+		JsonResult json = new JsonResult();
+		try {
+			List<Homework> homeworkList = this.homeworkService.getHwByCourseSingleId2(apiParamDTO.getTeacherId(),
+					apiParamDTO.getCourseId());
+			List<Map<String, Object>> list = new ArrayList<Map<String, Object>>();
+			for (Homework homework : homeworkList) {
+				Map<String, Object> item = new HashMap<String, Object>();
+				item.put("homeworkId", homework.getHomeworkId());
+				item.put("homeworkName", homework.getHomeworkName());
+				item.put("className", homework.getClassName());
+				item.put("paperId", homework.getPaperId());
+				item.put("closeTime", DateUtils.format(homework.getCloseTime(), DateUtils.LONG_DATE_PATTERN));
+				list.add(item);
+			}
+			json.addDatas("list", list);
+		} catch (Exception e) {
+			logger.error(e.getMessage(), e);
+			json.setErr(e.getMessage());
+		}
+		return this.buildApiModel(json, request);
+	}
+
+	/**
+	 * 根据试卷ID列表，获取试卷及题目信息。
+	 * @param request
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping("getPaperInfo")
+	public APIModel<JsonResult> getPaperInfo(HttpServletRequest request) {
+		// 接口参数：paperIds
+		ApiParamDTO apiParamDTO = (ApiParamDTO) request.getAttribute("p");
+		JsonResult json = new JsonResult();
+		try {
+			List<Map<String, Object>> list = new ArrayList<Map<String, Object>>();
+			for (Long paperId : apiParamDTO.getPaperIds()) {
+				Map<String, Object> item = new HashMap<String, Object>();
+				// 试卷明细
+				PaperDTO paperDTO = PaperContext.getPaperDTO(paperId);
+				item.put("paperId", paperId);
+				item.put("paperDetail", paperDTO.getDetail());
+				item.put("attachment", paperDTO.getAttachment());
+				// 试题列表
+				if (paperDTO.getDetail() != null) {
+					List<Long> questionIds = new ArrayList<Long>();
+					for (QuestionGroup questionGroup : paperDTO.getDetail().getGroups()) {
+						for (ScoredQuestion scoredQuestion : questionGroup.getQuestions()) {
+							questionIds.add(scoredQuestion.getQuestionId());
+						}
+					}
+					List<QuestionDTO> questionList = QuestionContext.findQuestions(questionIds.toArray(new Long[0]));
+					item.put("questionList", questionList);
+				}
+				list.add(item);
+			}
+			json.addDatas("list", list);
+		} catch (Exception e) {
+			logger.error(e.getMessage(), e);
+			json.setErr(e.getMessage());
+		}
+		return this.buildApiModel(json, request);
+	}
+
+	/**
+	 * 上传作业数据
+	 * @param request
+	 * @return
+	 */
+	@ResponseBody
+	@RequestMapping("upHwInfo")
+	public APIModel<JsonResult> upHwInfo(HttpServletRequest request) {
+		// 接口参数：homeworkId, detailList
+		ApiParamDTO apiParamDTO = (ApiParamDTO) request.getAttribute("p");
+		JsonResult json = new JsonResult();
+		try {
+			if (apiParamDTO.getHomeworkId() == null) {
+				throw new ValidateException("homework.api.homeworkid");
+			}
+			if (apiParamDTO.getVersion() == null) {
+				throw new ValidateException("homework.api.version");
+			}
+			if (StringUtils.isBlank(apiParamDTO.getDetailList())) {
+				throw new ValidateException("homework.api.answerdetail");
+			}
+			HomeworkData homeworkData = new HomeworkData();
+			homeworkData.setHomeworkId(apiParamDTO.getHomeworkId());
+			homeworkData.setVersion(apiParamDTO.getVersion());
+			homeworkData.setAnswerData(apiParamDTO.getDetailList());
+			homeworkData.setIsDeleted(false);
+
+			this.homeworkMainService.saveOnlineAnswerTempData(homeworkData);
+			this.onlinetestSender.send(homeworkData.getDataId());
+			json.addDatas("homeworkId", apiParamDTO.getHomeworkId());
+		} catch (Exception e) {
+			logger.error(e.getMessage(), e);
+			logger.error("Upload Data: " + apiParamDTO.getDetailList());
+			json.setErr(e.getMessage());
+		}
+		return this.buildApiModel(json, request);
+	}
+
+	@Deprecated
+	@ResponseBody
+	@RequestMapping("getHwSubjectList")
+	public APIModel<JsonResult> getHwSubjectList(HttpServletRequest request) {
+		JsonResult json = new JsonResult();
+		ApiParamDTO apiParamDTO = (ApiParamDTO) request.getAttribute("p");
+		try {
+			List<StuSubjRes> list = this.homeworkDtlService.findStuSubjResByStudentId(apiParamDTO.getStudentId(),apiParamDTO.getSubjectId(),null);
+			json.addDatas("list", list);
+		} catch (Exception e) {
+			logger.error(e.getMessage(), e);
+			json.setErr(e.getMessage());
+		}
+		return this.buildApiModel(json, request);
+	}
+}

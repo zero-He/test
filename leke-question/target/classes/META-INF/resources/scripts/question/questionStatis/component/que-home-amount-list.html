@@ -1,0 +1,225 @@
+
+<div class="detail">
+	<div class="g-mn">
+		<div class="z-section-homepage">
+			<div class="realtimedata f-pb35">
+				<h3 class="datatitle">乐课资源库实时数据</h3>
+				<div class="studycount f-mt20 ">
+					<ul>
+						<li class="item">
+							<p class="name red">课件</p>
+							<p class="count" data-bind="text: coursewareTotalAmount || 0">20000份</p>
+						</li>
+						<li class="item yellow">
+							<p class="name testpaper">试卷</p>
+							<p class="count" data-bind="text: paperTotalAmount || 0">20000份</p>
+						</li>
+						<li class="item lightblue">
+							<p class="name">习题</p>
+							<p class="count" data-bind="text: questionTotalAmount || 0">20000份</p>
+						</li>
+						<li class="item darkblue">
+							<p class="name">微课</p>
+							<p class="count" data-bind="text: microcourseTotalAmount || 0">20000份</p>
+						</li>
+						<li class="item">
+							<p class="name">备课包</p>
+							<p class="count" data-bind="text: beikepkgTotalAmount || 0">20000份</p>
+						</li>
+						<li class="item orange">
+							<p class="name">习题册</p>
+							<p class="count" data-bind="text: workbookTotalAmount || 0">20000份</p>
+						</li>
+						<li class="item purple">
+							<p class="name">口语专辑</p>
+							<p class="count" data-bind="text: albumTotal || 0">20000份</p>
+						</li>
+					</ul>
+				</div>
+			</div>
+			<div class="realtimedata f-mt20  f-pb20">
+					<h3 class="datatitle f-mt15 f-mb25 lightgreen">乐课教研资源实时数据：</h3>
+					<div class="m-table m-table-center">
+						<table>
+							<thead>
+								<tr>
+									<th>学段</th>
+									<th>课件</th>
+									<th>试卷</th>
+									<th>习题</th>
+									<th>微课</th>
+									<th>备课包</th>
+									<th>习题册</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr>
+									<td id="hao">
+										<table data-bind="foreach: schoolStages">
+										
+											<tr><td data-bind="text: $data.schoolStageName || 0">0</td></tr>
+
+									   </table>
+									</td>
+									<td id="hao">
+										<table data-bind="foreach: coursewareAmount">
+										
+											<tr><td data-bind="text: $data.inputAmount || 0">0</td></tr>
+
+									   </table>
+									</td>
+									
+									<td id="hao">
+										<table data-bind="foreach: paperAmount">
+										
+											<tr><td data-bind="text: $data.inputAmount || 0">0</td></tr>
+
+									   </table>
+									</td>
+									
+								   <td id="hao">
+										<table data-bind="foreach: questionAmount">
+										
+											<tr><td data-bind="text: $data.inputAmount || 0">0</td></tr>
+
+									   </table>
+									</td>
+									
+									<td id="hao">
+										<table data-bind="foreach: microcourseAmount">
+										
+											<tr><td data-bind="text: $data.inputAmount || 0">0</td></tr>
+
+									   </table>
+									</td>
+									
+									<td id="hao">
+										<table data-bind="foreach: beikepkgAmount">
+										
+											<tr><td data-bind="text: $data.inputAmount || 0">0</td></tr>
+
+									   </table>
+									</td>
+								
+									<td id="hao">
+										<table data-bind="foreach: workbookAmount">
+										
+											<tr><td data-bind="text: $data.inputAmount || 0">0</td></tr>
+
+									   </table>
+									</td>
+								</tr> 
+							</tbody>
+						</table>
+					</div>
+				</div>
+			<div class="datastatistics">
+				<h3 class="datatitle f-mt15 f-mb25">乐课教研各学科统计</h3>
+				<div class="querycondition">
+					<label>乐课教研各学科统计</label>
+						<label class="title" data-bind="i18n: 'que.question.searchItem.schoolStage'">学段：</label>
+						<select name="schoolStageId" class="u-select u-select-sm"
+							data-bind="options: schoolStagesNototal,
+									   optionsText: 'schoolStageName',
+									   optionsValue: 'schoolStageId',
+									   optionsCaption: '==请选择==',
+									   value: query.schoolStageId"></select>
+					<div class="date"> <span id="aWeekList" class="cur">本周</span> <span id="aMonthList" >本月</span> <span id="aTotalList">累计</span></div>
+				</div>
+				<div class="m-table m-table-center">
+				   <table>
+						<thead>
+							<tr>
+								<th>学段学科</th>
+								<th>课件</th>
+								<th>试卷</th>
+								<th>习题</th>
+								<th>微课</th>
+								<th>备课包</th>
+								<th>习题册</th>
+								<th>总计</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr>
+								<td id="hao">
+									<table data-bind="foreach: subjects">
+									
+							      	 	<tr><td data-bind="text: $data.subjectName || 0">0</td></tr>
+		
+							       </table>
+							    </td>
+							    
+							    <td id="hao">
+									<table data-bind="foreach: coursewareStageAmount">
+									
+							      	 	<tr><td data-bind="text: $data.inputAmount || 0">0</td></tr>
+		
+							       </table>
+							    </td>
+							    
+							     <td id="hao">
+									<table data-bind="foreach: paperStageAmount">
+									
+							      	 	<tr><td data-bind="text: $data.inputAmount || 0">0</td></tr>
+		
+							       </table>
+							    </td>
+							    
+							    <td id="hao">
+									<table data-bind="foreach: questionStageAmount">
+									
+							      	 	<tr><td data-bind="text: $data.inputAmount || 0">0</td></tr>
+		
+							       </table>
+							    </td>
+							    
+							    <td id="hao">
+									<table data-bind="foreach: microcourseStageAmount">
+									
+							      	 	<tr><td data-bind="text: $data.inputAmount || 0">0</td></tr>
+		
+							       </table>
+							    </td>
+							    
+							    <td id="hao">
+									<table data-bind="foreach: beikepkgStageAmount">
+									
+							      	 	<tr><td data-bind="text: $data.inputAmount || 0">0</td></tr>
+		
+							       </table>
+							    </td>
+							    
+							    <td id="hao">
+									<table data-bind="foreach: workbookStageAmount">
+									
+							      	 	<tr><td data-bind="text: $data.inputAmount || 0">0</td></tr>
+		
+							       </table>
+							    </td>
+								
+								<td id="hao">
+									<table data-bind="foreach: subjects">
+									
+										<tr><td data-bind="text: $data.amount || 0">0</td></tr>
+		
+								   </table>
+								</td>
+							
+								<!-- <td data-bind="text: $data.courseware || 0"></td>
+								<td data-bind="text: $data.paper || 0"></td> 
+								<td data-bind="text: $data.question || 0"></td> 
+								<td data-bind="text: $data.microcourse || 0"></td>
+								<td data-bind="text: $data.beikepkg || 0"></td> 
+								<td data-bind="text: $data.workbook || 0"></td> --> 
+							</tr> 
+						</tbody>
+					</table>
+				</div>
+			</div> 	
+		</div>
+	</div>
+</div>
+
+	
+	

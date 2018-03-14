@@ -1,0 +1,236 @@
+package cn.strong.leke.homework.util;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import com.fasterxml.jackson.annotation.JsonView;
+
+import cn.strong.leke.model.question.Answer;
+import cn.strong.leke.model.question.QuestionDTO;
+
+public class JsonQuestion {
+	
+	public static interface DoWork {
+	}
+	
+	public static interface ViewWork extends DoWork {
+	}
+
+	@JsonView(DoWork.class)
+	private Long questionId; // 题目ID
+	@JsonView(DoWork.class)
+	private Long subjectId; // 学科ID
+	@JsonView(DoWork.class)
+	private Boolean hasSub; // 是否有子题
+	@JsonView(DoWork.class)
+	private Long parentId; // 父题ID
+	@JsonView(DoWork.class)
+	private Integer ord; // 序号
+	@JsonView(DoWork.class)
+	private Boolean subjective; // 主观性
+	@JsonView(DoWork.class)
+	private String template; // 题型模板
+	@JsonView(DoWork.class)
+	private String stemContent; // 题干内容
+	@JsonView(ViewWork.class)
+	private String analysisContent; // 解析内容
+	@JsonView(ViewWork.class)
+	private Boolean isFbUnord; // 是否无序批改
+	@JsonView(DoWork.class)
+	private List<JsonAnswer> answers; // 答案列表
+	@JsonView(DoWork.class)
+	private List<JsonQuestion> subs;
+	// 是否被编辑过
+	private boolean isModified;
+
+	public Long getQuestionId() {
+		return questionId;
+	}
+
+	public void setQuestionId(Long questionId) {
+		this.questionId = questionId;
+	}
+
+	public Boolean getHasSub() {
+		return hasSub;
+	}
+
+	public void setHasSub(Boolean hasSub) {
+		this.hasSub = hasSub;
+	}
+
+	public Long getParentId() {
+		return parentId;
+	}
+
+	public void setParentId(Long parentId) {
+		this.parentId = parentId;
+	}
+
+	public Integer getOrd() {
+		return ord;
+	}
+
+	public void setOrd(Integer ord) {
+		this.ord = ord;
+	}
+
+	public Boolean getSubjective() {
+		return subjective;
+	}
+
+	public void setSubjective(Boolean subjective) {
+		this.subjective = subjective;
+	}
+
+	public String getTemplate() {
+		return template;
+	}
+
+	public void setTemplate(String template) {
+		this.template = template;
+	}
+
+	public String getStemContent() {
+		return stemContent;
+	}
+
+	public void setStemContent(String stemContent) {
+		this.stemContent = stemContent;
+	}
+
+	public String getAnalysisContent() {
+		return analysisContent;
+	}
+
+	public void setAnalysisContent(String analysisContent) {
+		this.analysisContent = analysisContent;
+	}
+
+	public Boolean getIsFbUnord() {
+		return isFbUnord;
+	}
+
+	public void setIsFbUnord(Boolean isFbUnord) {
+		this.isFbUnord = isFbUnord;
+	}
+
+	public List<JsonAnswer> getAnswers() {
+		return answers;
+	}
+
+	public void setAnswers(List<JsonAnswer> answers) {
+		this.answers = answers;
+	}
+
+	public List<JsonQuestion> getSubs() {
+		return subs;
+	}
+
+	public void setSubs(List<JsonQuestion> subs) {
+		this.subs = subs;
+	}
+
+	public boolean getIsModified() {
+		return isModified;
+	}
+
+	public void setIsModified(boolean isModified) {
+		this.isModified = isModified;
+	}
+
+	public static class JsonAnswer {
+		@JsonView(DoWork.class)
+		private Long answerId; // 答案ID
+		@JsonView(DoWork.class)
+		private Integer ord; // 序号
+		@JsonView(DoWork.class)
+		private String answerContent; // 答案内容
+		@JsonView(ViewWork.class)
+		private Boolean isCorrect; // 是否是正确选项
+
+		public Long getAnswerId() {
+			return answerId;
+		}
+
+		public void setAnswerId(Long answerId) {
+			this.answerId = answerId;
+		}
+
+		public Integer getOrd() {
+			return ord;
+		}
+
+		public void setOrd(Integer ord) {
+			this.ord = ord;
+		}
+
+		public String getAnswerContent() {
+			return answerContent;
+		}
+
+		public void setAnswerContent(String answerContent) {
+			this.answerContent = answerContent;
+		}
+
+		public Boolean getIsCorrect() {
+			return isCorrect;
+		}
+
+		public void setIsCorrect(Boolean isCorrect) {
+			this.isCorrect = isCorrect;
+		}
+	}
+
+	public static JsonQuestion mapper(QuestionDTO question) {
+		JsonQuestion jq = new JsonQuestion();
+		jq.setQuestionId(question.getQuestionId());
+		jq.setSubjectId(question.getSubjectId());
+		jq.setHasSub(question.getHasSub());
+		jq.setParentId(question.getParentId());
+		jq.setOrd(question.getOrd());
+		jq.setSubjective(question.getSubjective());
+		jq.setTemplate(question.getTemplate());
+		jq.setIsFbUnord(question.getStem() != null && Boolean.TRUE.equals(question.getStem().getIsFbUnord()));
+		if (question.getStem() != null) {
+			jq.setStemContent(question.getStem().getStemContent());
+		}
+		if (question.getAnalysis() != null) {
+			jq.setAnalysisContent(question.getAnalysis().getAnalysisContent());
+		}
+		if (question.getAnswers() != null) {
+			List<JsonAnswer> answers = question.getAnswers().stream().map((Answer answer) -> {
+				JsonAnswer ja = new JsonAnswer();
+				ja.setAnswerId(answer.getAnswerId());
+				ja.setOrd(answer.getOrd());
+				ja.setAnswerContent(answer.getAnswerContent());
+				ja.setIsCorrect(answer.getIsCorrect());
+				return ja;
+			}).collect(Collectors.toCollection(ArrayList::new));
+			jq.setAnswers(answers);
+		}
+		if (question.getSubs() != null) {
+			jq.setSubs(JsonQuestion.mapper(question.getSubs()));
+		}
+		return jq;
+	}
+
+	public static List<JsonQuestion> mapper(List<QuestionDTO> questions) {
+		return questions.stream().map(JsonQuestion::mapper).collect(Collectors.toCollection(ArrayList::new));
+	}
+
+	/**
+	 * @return the subjectId
+	 */
+	public Long getSubjectId() {
+		return subjectId;
+	}
+
+	/**
+	 * @param subjectId the subjectId to set
+	 */
+	public void setSubjectId(Long subjectId) {
+		this.subjectId = subjectId;
+	}
+}

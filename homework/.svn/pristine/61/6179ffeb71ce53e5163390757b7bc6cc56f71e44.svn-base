@@ -1,0 +1,82 @@
+package cn.strong.leke.homework.controller;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.annotation.Resource;
+
+import org.bson.types.ObjectId;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
+
+import cn.strong.leke.beike.model.LessonBeikePkgMQ;
+import cn.strong.leke.beike.model.LessonBeikePkgResourceMQ;
+import cn.strong.leke.common.serialize.support.json.JsonUtils;
+import cn.strong.leke.framework.web.JsonResult;
+import cn.strong.leke.homework.service.HomeworkAssignService;
+import cn.strong.leke.homework.service.HomeworkMainService;
+import cn.strong.leke.homework.service.HomeworkSnapshotService;
+
+@Controller
+@RequestMapping("/test")
+public class IntegrationController {
+
+	@Resource
+	private HomeworkMainService homeworkMainService;
+	@Resource
+	private HomeworkAssignService homeworkAssignService;
+	@Resource
+	private HomeworkSnapshotService homeworkSnapshotService;
+
+	@ResponseBody
+	@RequestMapping("/beike")
+	public Object beike(Long lessonId, String data) {
+		System.out.println(data);
+		LessonBeikePkgMQ beikePkgMQ = new LessonBeikePkgMQ();
+		List<LessonBeikePkgResourceMQ> resources = JsonUtils.readList(data, LessonBeikePkgResourceMQ.class);
+		resources.stream().filter(v -> v.getGuid() == null).forEach(v -> v.setGuid(new ObjectId().toHexString()));
+		beikePkgMQ.setLessonId(lessonId);
+		beikePkgMQ.setResources(resources);
+		this.homeworkAssignService.executeLessonBeikePkgWithTx(beikePkgMQ);
+		return new JsonResult();
+	}
+
+	@ResponseBody
+	@RequestMapping("/lessonEnd")
+	public Object lessonEnd(Long lessonId) {
+		this.homeworkSnapshotService.saveFlowAfterClassByLessonId(lessonId);
+		return new JsonResult();
+	}
+
+	@RequestMapping("/mutual")
+	public JsonResult mutual(Long dataId) {
+		this.homeworkMainService.handleMutualCorrectSubmitMessageWithTx(dataId);
+		return new JsonResult();
+	}
+
+	@RequestMapping("/test")
+	public JsonResult test(Long dataId) {
+		this.homeworkMainService.resolveOnlineSubmitHomeworkWithTx(dataId);
+		this.homeworkMainService.handleOnlineSubmitMessageWithTx(dataId);
+		return new JsonResult();
+	}
+
+	@RequestMapping("/list/{total}")
+	public JsonResult list(@PathVariable("total") int total,
+			@RequestParam(value = "curPage", defaultValue = "1") int curPage,
+			@RequestParam(value = "pageSize", defaultValue = "10") int pageSize) {
+		int start = (curPage - 1) * pageSize;
+		int end = start + pageSize;
+		if (end > total) {
+			end = total;
+		}
+		List<String> list = new ArrayList<>();
+		for (int i = start; i < end; i++) {
+			list.add("Item index " + (i + 1));
+		}
+		return new JsonResult().addDatas("list", list);
+	}
+}

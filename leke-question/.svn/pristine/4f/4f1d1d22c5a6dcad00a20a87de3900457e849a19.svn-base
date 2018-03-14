@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.strong.leke.question.dao.mybatis.question.IFamousTeacherQuestionDao">
+
+	<insert id="add" useGeneratedKeys="true" keyProperty="famousTeacherQuestionId"
+		parameterType="cn.strong.leke.question.model.question.FamousTeacherQuestion">
+		INSERT INTO que_famous_teacher_question(
+			questionId, teacherId, status, editLog,
+			isDeleted, createdBy, createdOn, modifiedBy, modifiedOn
+		) VALUES (
+			#{questionId}, #{teacherId}, #{status}, #{editLog},
+			0, #{createdBy}, now(), #{modifiedBy}, now()
+		)
+	</insert>
+	
+	<update id="remove" parameterType="cn.strong.leke.question.model.question.FamousTeacherQuestion">
+		UPDATE que_famous_teacher_question
+		<set>
+			isDeleted = 1,
+			<if test="modifiedBy != null">
+			modifiedBy = #{modifiedBy},
+			</if>
+			modifiedOn = now()
+		</set>
+		<where>
+			AND questionId = #{questionId}
+			AND teacherId = #{teacherId}
+			AND isDeleted = 0
+		</where>
+	</update>
+	
+	<select id="getByQuestionAndTeacher" parameterType="map" 
+		resultType="cn.strong.leke.question.model.question.FamousTeacherQuestion">
+		SELECT a.*
+		FROM que_famous_teacher_question a
+		<where>
+			AND questionId = #{questionId}
+			AND teacherId = #{teacherId}
+			AND isDeleted = 0
+		</where>
+	</select>
+	
+	<update id="updateStatus" parameterType="cn.strong.leke.question.model.question.FamousTeacherQuestion">
+		UPDATE que_famous_teacher_question
+		<set>
+			status = #{status},
+			editLog = #{editLog},
+			<if test="modifiedBy != null">
+			modifiedBy = #{modifiedBy},
+			</if>
+			modifiedOn = now()
+		</set>
+		<where>
+			AND questionId = #{questionId}
+			AND teacherId = #{teacherId}
+			AND isDeleted = 0
+		</where>
+	</update>
+	
+	<select id="findByQuestionIds" parameterType="map" 
+		resultType="cn.strong.leke.question.model.question.FamousTeacherQuestion">
+		SELECT a.*
+		FROM que_famous_teacher_question a
+		<where>
+			AND questionId IN
+			<foreach collection="questionIds" item="questionId" open="(" close=")" separator=",">
+				#{questionId}
+			</foreach>
+			<if test="teacherId != null">
+			AND teacherId = #{teacherId}
+			</if>
+			AND isDeleted = 0
+		</where>
+	</select>
+	
+	<select id="queryMyAgencyFmsTchQuestions" resultType="long"
+		 parameterType="cn.strong.leke.question.model.question.query.AgencyFmsTchQuestionQuery">
+		SELECT DISTINCT a.questionId
+		FROM que_famous_teacher_question ftq
+		JOIN que_question a
+		ON ftq.questionId = a.questionId
+		<if test="content != null and content != ''">
+			LEFT JOIN que_question_stem c
+			ON c.questionId = ftq.questionId
+			AND c.isDeleted = 0
+		</if>
+		<where>
+			<if test="famousTeacherId != null">
+			AND ftq.teacherId = #{famousTeacherId}
+			</if>
+			AND ftq.isDeleted = 0
+			AND a.isDeleted = 0
+			AND a.isDisabled = 0
+			AND a.createdBy = #{userId}
+			<if test="status != null">
+			AND ftq.status = #{status}
+			</if>
+			<if test="minCreatedOn != null">
+			<![CDATA[
+			AND ftq.createdOn >= #{minCreatedOn}
+			]]>
+			</if>
+			<if test="maxCreatedOn != null">
+			<![CDATA[
+			AND ftq.createdOn <= #{maxCreatedOn}
+			]]>
+			</if>
+			<if test="schoolStageId != null">
+			AND a.schoolStageId = #{schoolStageId}
+			</if>
+			<if test="subjectId != null">
+			AND a.subjectId = #{subjectId}
+			</if>
+			<if test="questionTypeId != null">
+			AND a.questionTypeId = #{questionTypeId}
+			</if>
+			<if test="content != null and content != ''">
+			AND (
+				a.source LIKE CONCAT('%', #{content}, '%')
+				OR c.stemContent LIKE CONCAT('%', #{content}, '%')
+			)
+			</if>
+		</where>
+		ORDER BY ftq.createdOn DESC
+	</select>
+</mapper>

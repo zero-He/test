@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.2.xsd">
+
+	<!-- 赠送点数 -->
+	<bean class="org.springframework.amqp.core.DirectExchange">
+		<constructor-arg value="${mq.e.pay.point.bestowal}"></constructor-arg>
+	</bean>
+	<bean class="org.springframework.amqp.core.Queue">
+		<constructor-arg value="${mq.q.pay.point.bestowal}"></constructor-arg>
+	</bean>
+	<bean class="cn.strong.leke.core.mq.Binding">
+		<constructor-arg index="0" value="${mq.q.pay.point.bestowal}" />
+		<constructor-arg index="1" value="${mq.e.pay.point.bestowal}" />
+		<constructor-arg index="2" value="${mq.q.pay.point.bestowal}" />
+	</bean>
+	<bean id="bestowalSender" class="cn.strong.leke.core.mq.rabbit.RabbitMQSender">
+		<property name="exchange" value="${mq.e.pay.point.bestowal}" />
+		<property name="routingKey" value="${mq.q.pay.point.bestowal}" />
+	</bean>
+
+</beans>
